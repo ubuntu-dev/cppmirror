@@ -20,9 +20,9 @@ set FILES="../src/main.cpp" "../src/utils.cpp" "../src/lexer.cpp" "../src/platfo
 IF NOT EXIST "build" mkdir "build"
 pushd "build"
 if "%RELEASE%"=="true" (
-    cl -FePreprocessor %RELEASE_COMMON_COMPILER_FLAGS% -Wall %FILES% -link -subsystem:console,5.2 kernel32.lib
+    cl -Femirror %RELEASE_COMMON_COMPILER_FLAGS% -Wall %FILES% -link -subsystem:console,5.2 kernel32.lib
 ) else (
-    cl -FePreprocessor %DEBUG_COMMON_COMPILER_FLAGS% -DRUN_TESTS=0 -Wall %FILES% -link -subsystem:console,5.2 kernel32.lib
+    cl -Femirror %DEBUG_COMMON_COMPILER_FLAGS% -DRUN_TESTS=0 -Wall %FILES% -link -subsystem:console,5.2 kernel32.lib
 )
 popd
 
@@ -31,7 +31,7 @@ rem Run after building.
 rem Test code.
 if "%RUN_TEST%"=="true" (
     pushd "test"
-    "../build/preprocessor.exe" test_code.cpp -p
+    "../build/mirror.exe" test_code.cpp -p
     popd
 
     pushd "build"
