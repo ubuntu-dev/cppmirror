@@ -108,7 +108,7 @@ Void *system_realloc(Void *ptr, PtrSize size);
 #if defined(free)
     #undef free
 #endif
-#define free(x) system_free(x);
+#define free(x) system_free(x)
 
 #if defined(alloc)
     #undef alloc
@@ -144,7 +144,9 @@ static Void *malloc_(PtrSize size, Char *guid, PtrSize cnt = 1) {
                 mem_list_root = cur;
             } else {
                 MemList *next = mem_list_root;
-                while(next->next) next = next->next;
+                while(next->next) {
+                    next = next->next;
+                }
 
                 next->next = cur;
             }
@@ -161,9 +163,10 @@ static Void free_(Void *ptr) {
         Bool found = false;
         MemList *next = mem_list_root;
         while(next) {
-            if(next->ptr == ptr) {
+            if((next->ptr == ptr) && (!next->freed)) {
                 found = true;
                 next->freed = true;
+                break;
             }
 
             next = next->next;
