@@ -51,6 +51,7 @@
 #include "lexer.h"
 #include "platform.h"
 #include "write_file.h"
+#include "test.h"
 
 enum SwitchType {
     SwitchType_unknown,
@@ -500,10 +501,7 @@ Int main(Int argc, Char **argv) {// TODO(Jonny): Support wildcards.
         }
 
         if(should_run_tests) {
-#if RUN_TESTS
-            Int run_tests(void);
-            res = run_tests();
-#endif
+            run_tests();
         } else {
             if(!number_of_files) {
                 push_error(ErrorType_no_files_pass_in);

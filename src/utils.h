@@ -50,6 +50,9 @@ enum ErrorType {
     ErrorType_did_not_write_entire_file,
     ErrorType_did_not_read_entire_file,
     ErrorType_could_not_create_directory,
+    ErrorType_incorrect_number_of_members_for_struct,
+    ErrorType_incorrect_struct_name,
+    ErrorType_incorrect_number_of_base_structs,
 
     ErrorType_count,
 };
