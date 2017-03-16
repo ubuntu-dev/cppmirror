@@ -7,15 +7,22 @@ All generated code strictly follows the C++11 specification, and should compile 
 
 # Build instructions
 
-## Windows
-Call `win32_msvc.bat` from a command line that has previously called 'vcvarsal.bat' in your favourite version of Visual Studio. This will generate the executable inside the `build` directory. It has not ever been tested with GCC or Clang on Windows, and there are currently no plans to easily support them.
+### Windows (MSVC)
+Call `win32_msvc.bat` from a command line that has previously called 'vcvarsal.bat' in your favourite version of Visual Studio. This will generate the executable inside the `build` directory.
 
-## Linux
+### Windows (Clang)
+N/A
+
+### Windows (GCC)
+N/A
+
+### Linux (Clang)
 Call `linux_clang.sh` from the command line, which should generate the app file inside the `build` directory. This uses Clang version 3.8, so if you don't have that version installed on your computer, then you'll need to change the line that says `CLANG_VERSION=3.8` to match the version you've got.
 
-There is currently no simple way to build using GCC on Linux, but there are plans to support this soon.
+### Linux (GCC)
+N/A
 
-## Mac
+### Mac (Clang)
 N/A
 
 # Contact
