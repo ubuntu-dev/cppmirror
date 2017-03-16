@@ -35,6 +35,6 @@ if "%RUN_TEST%"=="true" (
     popd
 
     pushd "build"
-    cl -FeTestCode %DEBUG_COMMON_COMPILER_FLAGS% -Wall "../test/test_code.cpp" -FmTest.map -link -subsystem:console,5.2 kernel32.lib
+    cl -Fetest %DEBUG_COMMON_COMPILER_FLAGS% -Wall "../test/test_code.cpp" -FmTest.map -link -subsystem:console,5.2 kernel32.lib
     popd
 )
