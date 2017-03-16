@@ -1,11 +1,11 @@
 # Mirror
-# Overview
+## Overview
 
 This is a simple project which aims to provide some meta programming functionality not currently avaiable in C++11 through code generation.
 
 All generated code strictly follows the C++11 specification, and should compile correctly under MSVC, Clang, or GCC, even with `-Wall` enabled.
 
-# Build instructions
+## Build instructions
 
 ### Windows (MSVC)
 Call `win32_msvc.bat` from a command line that has previously called 'vcvarsal.bat' in your favourite version of Visual Studio. This will generate the executable inside the `build` directory.
@@ -25,15 +25,15 @@ N/A
 ### Mac (Clang)
 N/A
 
-# Contact
+## Contact
 
 Any bugs, suggestions, complaints, or just general feedback, should be emailed to: seagull127@ymail.com.
 
-# LICENSE
+## LICENSE
 
 This software is dual-licensed to the public domain and under the following license: you are granted a perpetual, irrevocable license to copy, modify, publish, and distribute this file as you see fit.
 
-# Current Limitations
+## Current Limitations
 - It doesn't support templates.
 - There is currently no introspection support for functions.
 - Only limited support for introspection of C++ STL containers. These are:
