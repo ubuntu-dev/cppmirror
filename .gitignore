@@ -3,4 +3,4 @@ lauren_test
 *.sublime-project
 *.sublime-workspace
 .vscode/*
-test*
+/test*
