@@ -51,9 +51,6 @@
 #include "lexer.h"
 #include "platform.h"
 #include "write_file.h"
-#if RUN_TESTS
-    //    #include "test.h"
-#endif
 
 enum SwitchType {
     SwitchType_unknown,
