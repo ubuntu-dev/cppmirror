@@ -15,7 +15,7 @@ set DEBUG_COMMON_COMPILER_FLAGS=-nologo -MTd -Gm- -GR- -EHsc- -Od -Oi %COMMON_WA
 set RELEASE_COMMON_COMPILER_FLAGS=-nologo -MT -fp:fast -Gm- -GR- -EHa- -O2 -Oi %COMMON_WARNINGS% -DERROR_LOGGING=0 -DINTERNAL=0 -DMEM_CHECK=0 -DWIN32=1 -DLINUX=0 -FC -Zi -GS- -Gs9999999
 
 rem Build mirror.
-set FILES="../src/main.cpp" "../src/utils.cpp" "../src/lexer.cpp" "../src/platform_win32.cpp" "../src/write_file.cpp"
+set FILES="../src/main.cpp" "../src/utils.cpp" "../src/lexer.cpp" "../src/platform_win32.cpp" "../src/write_file.cpp" "../src/test.cpp"
 
 IF NOT EXIST "build" mkdir "build"
 pushd "build"
@@ -23,6 +23,7 @@ if "%RELEASE%"=="true" (
     cl -Femirror %RELEASE_COMMON_COMPILER_FLAGS% -Wall %FILES% -link -subsystem:console,5.2 kernel32.lib
 ) else (
     cl -Femirror %DEBUG_COMMON_COMPILER_FLAGS% -Wall %FILES% -link -subsystem:console,5.2 kernel32.lib
+    mirror -t
 )
 popd
 

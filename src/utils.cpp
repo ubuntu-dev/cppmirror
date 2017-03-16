@@ -46,6 +46,9 @@ Char *ErrorTypeToString(ErrorType e) {
         case ERROR_TYPE_TO_STRING(ErrorType_did_not_write_entire_file);
         case ERROR_TYPE_TO_STRING(ErrorType_did_not_read_entire_file);
         case ERROR_TYPE_TO_STRING(ErrorType_could_not_create_directory);
+        case ERROR_TYPE_TO_STRING(ErrorType_incorrect_number_of_members_for_struct);
+        case ERROR_TYPE_TO_STRING(ErrorType_incorrect_struct_name);
+        case ERROR_TYPE_TO_STRING(ErrorType_incorrect_number_of_base_structs);
 
         default: assert(0); break;
     }
