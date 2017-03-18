@@ -288,12 +288,12 @@ struct Variable {
     String type;
     String name;
     Access access;
-    Bool is_ptr;
+    Int ptr;
     Int array_count; // This is 1 if it's not an array. TODO(Jonny): Is this true anymore?
     Bool is_inside_anonymous_struct;
 };
 
-Variable create_variable(Char *type, Char *name, Bool is_ptr = false, Int array_count = 1);
+Variable create_variable(Char *type, Char *name, Int ptr = 0, Int array_count = 1);
 Bool compare_variable(Variable a, Variable b);
 Bool compare_variable_array(Variable *a, Variable *b, Int count);
 
@@ -302,6 +302,7 @@ Bool compare_variable_array(Variable *a, Variable *b, Int count);
 //
 Char to_caps(Char c);
 
+const Int max_ptr_size = 4;
 
 //
 // memset and memcpy
