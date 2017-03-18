@@ -173,6 +173,14 @@ internal Void write_type_struct(OutputBuffer *ob, String name, Int member_count,
                                 TypeStructType type, Bool is_ref, String base = create_string(""), Int inherited_count = 0) {
     Char const *ref = (is_ref) ? "&" : "";
 
+    Int ptr_count = 0;
+    Char *at = pointer_stuff;
+    while(*at++) {
+        if(*at == '*') {
+            ++ptr_count;
+        }
+    }
+
     write_to_output_buffer(ob,
                            "template<> struct TypeInfo<%.*s%s%s> {\n"
                            "    using type      = %.*s%s%s;\n"
@@ -185,8 +193,8 @@ internal Void write_type_struct(OutputBuffer *ob, String name, Int member_count,
                            "    static constexpr size_t member_count = %d;\n"
                            "    static constexpr size_t base_count   = %d;\n"
                            "\n"
-                           "    static constexpr bool is_ptr = %s;\n"
-                           "    static constexpr bool is_ref = %s;\n"
+                           "    static constexpr size_t ptr_level = %d;\n"
+                           "    static constexpr bool is_ref      = %s;\n"
                            "\n"
                            "    static constexpr bool is_primitive = %s;\n"
                            "    static constexpr bool is_class     = %s;\n"
@@ -201,7 +209,7 @@ internal Void write_type_struct(OutputBuffer *ob, String name, Int member_count,
                            name.len, name.e,
                            member_count,
                            inherited_count,
-                           (string_length(pointer_stuff)) ? "true" : "false",
+                           ptr_count,
                            (is_ref) ? "true" : "false",
                            (type == primitive) ? "true" : "false",
                            (type == struct_class) ? "true" : "false", // TODO(Jonny): Should I set this to true for enum classes?
@@ -228,22 +236,25 @@ internal Void write_type_struct_all(OutputBuffer *ob, String name, Int member_co
     TypeStructType type = (is_primitive(name)) ? primitive : struct_class;
     Int inherited_count = (struct_data) ? struct_data->inherited_count : 0;
 
-    if(!string_compare(name, create_string("void"))) {
-        write_type_struct(ob, name, member_count, "", type, false, base, inherited_count);
+    for(Int i = 0; (i < max_ptr_size); ++i) {
+        char ptr_buf[max_ptr_size + 1] = {};
+        for(Int j = 0; (j < i); ++j) {
+            ptr_buf[j] = '*';
+        }
+
+        write_type_struct(ob, name, member_count, ptr_buf, type, false, base, inherited_count);
+        if((!i) && (!string_compare(name, create_string("void")))) {
+            write_type_struct(ob, name, member_count, ptr_buf, type, true, base, inherited_count);
+        }
+
+        //write_type_struct(ob, name, member_count, " *",  type, false, base, inherited_count);
+        //write_type_struct(ob, name, member_count, " **", type, false, base, inherited_count);
+
+
+
+        //write_type_struct(ob, name, member_count, " *",  type, true, base, inherited_count);
+        //write_type_struct(ob, name, member_count, " **", type, true, base, inherited_count);
     }
-
-
-    write_type_struct(ob, name, member_count, " *",  type, false, base, inherited_count);
-    write_type_struct(ob, name, member_count, " **", type, false, base, inherited_count);
-
-    if(!string_compare(name, create_string("void"))) {
-        write_type_struct(ob, name, member_count, "", type, true, base, inherited_count);
-    }
-
-
-    write_type_struct(ob, name, member_count, " *",  type, true, base, inherited_count);
-    write_type_struct(ob, name, member_count, " **", type, true, base, inherited_count);
-
 }
 
 // TODO(Jonny): Maybe I could split this out into a serialize primitve and serialize struct code. For serialize primitive, it could be mostly templated,
@@ -601,9 +612,12 @@ internal Void write_out_recreated_struct(OutputBuffer *ob, StructData struct_dat
             arr = arr_buffer;
         }
 
+        char ptr_buf[max_ptr_size] = {};
+        for(Int k = 0; (k < md->ptr); ++k) ptr_buf[k] = '*';
+
         write_to_output_buffer(ob, " _%.*s %s%.*s%s; ",
                                md->type.len, md->type.e,
-                               (md->is_ptr) ? "*" : "",
+                               ptr_buf,
                                md->name.len, md->name.e,
                                (md->array_count > 1) ? arr_buffer : arr);
 
@@ -664,7 +678,9 @@ internal Void write_out_get_access(OutputBuffer *ob, StructData *struct_data, In
 // TODO(Jonny): This won't handle pointers or arrays.
 internal Void write_out_get_at_index(OutputBuffer *ob, StructData *struct_data, Int struct_count) {
     auto write_get_member = [](OutputBuffer *ob, StructData *sd, Variable *md, Int j, Char *ref_info) {
-        Char const *pointer_info = (md->is_ptr) ? " *" : "";
+        Char ptr_buf[max_ptr_size] = {};
+        for(Int k = 0; (k < md->ptr); ++k) ptr_buf[k] = '*';
+
 
         write_to_output_buffer(ob,
                                "template<> struct GetMember<%.*s%s, %d> {\n"
@@ -676,12 +692,12 @@ internal Void write_out_get_at_index(OutputBuffer *ob, StructData *struct_data, 
                                "};\n",
                                sd->name.len, sd->name.e, ref_info,
                                j,
-                               md->type.len, md->type.e, pointer_info,
+                               md->type.len, md->type.e, ptr_buf,
                                sd->name.len, sd->name.e,
                                sd->name.len, sd->name.e,
                                sd->name.len, sd->name.e,
-                               md->type.len, md->type.e, pointer_info,
-                               md->type.len, md->type.e, pointer_info,
+                               md->type.len, md->type.e, ptr_buf,
+                               md->type.len, md->type.e, ptr_buf,
                                md->name.len, md->name.e);
     };
 
@@ -843,13 +859,23 @@ internal Void write_out_type_specification_enum(OutputBuffer *ob, EnumData *enum
                                    "// enum %.*s\n",
                                    ed->name.len, ed->name.e);
 
-            write_type_struct(ob, ed->name, ed->no_of_values, "", an_enum, false, ed->type);
+            for(Int j = 0; (j < max_ptr_size); ++j) {
+                Char ptr_buf[max_ptr_size + 1] = {};
+                for(Int k = 0; (k < j); ++k) {
+                    ptr_buf[k] = '*';
+                }
+
+                write_type_struct(ob, ed->name, ed->no_of_values, ptr_buf, an_enum, false, ed->type);
+                write_type_struct(ob, ed->name, ed->no_of_values, ptr_buf, an_enum, true, ed->type);
+            }
+#if 0
             write_type_struct(ob, ed->name, ed->no_of_values, " *", an_enum, false, ed->type);
             write_type_struct(ob, ed->name, ed->no_of_values, " **", an_enum, false, ed->type);
 
             write_type_struct(ob, ed->name, ed->no_of_values, "", an_enum, true, ed->type);
             write_type_struct(ob, ed->name, ed->no_of_values, " *", an_enum, true, ed->type);
             write_type_struct(ob, ed->name, ed->no_of_values, " **", an_enum, true, ed->type);
+#endif
         }
     }
 }
@@ -916,11 +942,11 @@ internal Void write_get_members_of(OutputBuffer *ob, StructData *struct_data, In
                         } break;
                     }
 
-                    write_to_output_buffer(ob, ", \"%.*s\", offset_of(&_%.*s::%.*s), %s, %d},\n",
+                    write_to_output_buffer(ob, ", \"%.*s\", offset_of(&_%.*s::%.*s), %d, %d},\n",
                                            md->name.len, md->name.e,
                                            sd->name.len, sd->name.e,
                                            md->name.len, md->name.e,
-                                           (md->is_ptr) ? "true" : "false",
+                                           md->ptr,
                                            md->array_count);
                 }
 
@@ -970,11 +996,11 @@ internal Void write_get_members_of(OutputBuffer *ob, StructData *struct_data, In
                                     } break;
                                 }
 
-                                write_to_output_buffer(ob, ", \"%.*s\", (size_t)&((_%.*s *)0)->%.*s, %s, %d},\n",
+                                write_to_output_buffer(ob, ", \"%.*s\", (size_t)&((_%.*s *)0)->%.*s, %d, %d},\n",
                                                        base_class_var->name.len, base_class_var->name.e,
                                                        sd->name.len, sd->name.e,
                                                        base_class_var->name.len, base_class_var->name.e,
-                                                       (base_class_var->is_ptr) ? "true" : "false",
+                                                       base_class_var->ptr,
                                                        base_class_var->array_count);
                             }
                         }
@@ -1131,11 +1157,11 @@ internal Void write_get_members_of_str(OutputBuffer *ob, StructData *struct_data
                         } break;
                     }
 
-                    write_to_output_buffer(ob, ", \"%.*s\", offset_of(&_%.*s::%.*s), %s, %d},\n",
+                    write_to_output_buffer(ob, ", \"%.*s\", offset_of(&_%.*s::%.*s), %d, %d},\n",
                                            md->name.len, md->name.e,
                                            sd->name.len, sd->name.e,
                                            md->name.len, md->name.e,
-                                           (md->is_ptr) ? "true" : "false",
+                                           md->ptr,
                                            md->array_count);
                 }
 
@@ -1177,11 +1203,11 @@ internal Void write_get_members_of_str(OutputBuffer *ob, StructData *struct_data
                                 }
 
 
-                                write_to_output_buffer(ob, ", \"%.*s\", (size_t)&((_%.*s *)0)->%.*s, %s, %d},\n",
+                                write_to_output_buffer(ob, ", \"%.*s\", (size_t)&((_%.*s *)0)->%.*s, %d, %d},\n",
                                                        base_class_var->name.len, base_class_var->name.e,
                                                        sd->name.len, sd->name.e,
                                                        base_class_var->name.len, base_class_var->name.e,
-                                                       (base_class_var->is_ptr) ? "true" : "false",
+                                                       base_class_var->ptr,
                                                        base_class_var->array_count);
                             }
                         }
@@ -1324,7 +1350,7 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
     File res = {};
 
     OutputBuffer ob = {};
-    ob.size = 256 * 256;
+    ob.size = 1024 * 1024;
     ob.buffer = alloc(Char, ob.size);
     if(ob.buffer) {
         Char *name_buf = cast(Char *)push_scratch_memory();

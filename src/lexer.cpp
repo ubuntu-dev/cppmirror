@@ -190,7 +190,7 @@ internal Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
             } break;
 
             case TokenType_asterisk: {
-                res.is_ptr = true;
+                ++res.ptr;
             } break;
 
             case TokenType_identifier: {
@@ -425,8 +425,8 @@ internal Variable parse_variable(Tokenizer *tokenizer, TokenType end_token_type_
 
     // Is pointer?
     token = get_token(tokenizer);
-    if(token.type == TokenType_asterisk) {
-        res.is_ptr = true;
+    while(token.type == TokenType_asterisk) {
+        ++res.ptr;
         token = get_token(tokenizer);
     }
 
