@@ -782,24 +782,26 @@ internal Void write_out_get_name_at_index(OutputBuffer *ob, StructData *struct_d
     for(Int i = 0; (i < struct_count); ++i) {
         StructData *sd = struct_data + i;
 
-        write_to_output_buffer(ob,
-                               "template<>char const * get_member_name<%.*s>(int index){\n"
-                               "    switch(index) {\n",
-                               sd->name.len, sd->name.e);
+        if(sd->member_count) {
+            write_to_output_buffer(ob,
+                                   "template<>char const * get_member_name<%.*s>(int index){\n"
+                                   "    switch(index) {\n",
+                                   sd->name.len, sd->name.e);
 
-        for(Int j = 0; (j < sd->member_count); ++j) {
-            Variable *md = sd->members + j;
+            for(Int j = 0; (j < sd->member_count); ++j) {
+                Variable *md = sd->members + j;
+
+                write_to_output_buffer(ob,
+                                       "        case %d: { return(\"%.*s\"); } break;\n",
+                                       j,
+                                       md->name.len, md->name.e);
+            }
 
             write_to_output_buffer(ob,
-                                   "        case %d: { return(\"%.*s\"); } break;\n",
-                                   j,
-                                   md->name.len, md->name.e);
+                                   "    }\n"
+                                   "    return(0); // Not found.\n"
+                                   "}\n");
         }
-
-        write_to_output_buffer(ob,
-                               "    }\n"
-                               "    return(0); // Not found.\n"
-                               "}\n");
     }
 
 }
@@ -960,12 +962,12 @@ internal Void write_get_members_of(OutputBuffer *ob, StructData *struct_data, In
     if(struct_count) {
         Bool actually_written_anything = false;
 
-        for(Int i = 0; (i < struct_count); ++i) {
+        for(Int i = 0, written_cnt = 0; (i < struct_count); ++i) {
             StructData *sd = struct_data + i;
 
             if(sd->member_count) {
                 actually_written_anything = true;
-                if(!i) {
+                if(!written_cnt) {
                     write_to_output_buffer(ob,
                                            "    // %.*s\n"
                                            "    if(type_compare(T, %.*s)) {\n",
@@ -979,6 +981,7 @@ internal Void write_get_members_of(OutputBuffer *ob, StructData *struct_data, In
                                            sd->name.len, sd->name.e,
                                            sd->name.len, sd->name.e);
                 }
+                ++written_cnt;
 
                 write_to_output_buffer(ob, "        static MemberDefinition members_of_%.*s[] = {\n", sd->name.len, sd->name.e);
                 for(Int j = 0; (j < sd->member_count); ++j) {
