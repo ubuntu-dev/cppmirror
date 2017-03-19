@@ -398,21 +398,14 @@ internal Bool write_static_file() {
     return(res);
 }
 
-struct FunctionData {
-    String linkage;
-    String ret_type;
-    String name;
-    Variable params[32];
-    Int param_count;
-};
-
 internal Bool should_write_to_file = false;
 
 internal Void start_parsing(Char *fname, Char *file) {
     ParseResult parse_res = parse_stream(file);
 
     File file_to_write = write_data(fname, parse_res.struct_data, parse_res.struct_cnt,
-                                    parse_res.enum_data, parse_res.enum_cnt);
+                                    parse_res.enum_data, parse_res.enum_cnt,
+                                    parse_res.func_data, parse_res.func_cnt);
 
     if(should_write_to_file) {
         Char generated_file_name[256] = dir_name "/"; // TODO(Jonny): MAX_PATH?
@@ -438,8 +431,15 @@ internal Void start_parsing(Char *fname, Char *file) {
     }
     free(parse_res.struct_data);
 
-    for(Int i = 0; (i < parse_res.enum_cnt); ++i) free(parse_res.enum_data[i].values);
+    for(Int i = 0; (i < parse_res.enum_cnt); ++i) {
+        free(parse_res.enum_data[i].values);
+    }
     free(parse_res.enum_data);
+
+    for(Int i = 0; (i < parse_res.func_cnt); ++i) {
+        free(parse_res.func_data[i].params);
+    }
+    free(parse_res.func_data);
 }
 
 internal Void print_help(void) {

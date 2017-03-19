@@ -246,14 +246,6 @@ internal Void write_type_struct_all(OutputBuffer *ob, String name, Int member_co
         if((!i) && (!string_compare(name, create_string("void")))) {
             write_type_struct(ob, name, member_count, ptr_buf, type, true, base, inherited_count);
         }
-
-        //write_type_struct(ob, name, member_count, " *",  type, false, base, inherited_count);
-        //write_type_struct(ob, name, member_count, " **", type, false, base, inherited_count);
-
-
-
-        //write_type_struct(ob, name, member_count, " *",  type, true, base, inherited_count);
-        //write_type_struct(ob, name, member_count, " **", type, true, base, inherited_count);
     }
 }
 
@@ -460,6 +452,43 @@ internal Void forward_declare_enums(OutputBuffer *ob, EnumData *enum_data, Int e
     }
 }
 
+internal Void forward_declare_functions(OutputBuffer *ob, FunctionData *func_data, Int func_count) {
+    for(Int i = 0; (i < func_count); ++i) {
+        FunctionData *fd = func_data + i;
+
+        Char result_ptr_buf[max_ptr_size] = {};
+        for(Int j = 0; (j < fd->return_type_ptr); ++j) {
+            result_ptr_buf[j] = '*';
+        }
+
+        write_to_output_buffer(ob, "%.*s %.*s%s %.*s(",
+                               fd->linkage.len, fd->linkage.e,
+                               fd->return_type.len, fd->return_type.e,
+                               result_ptr_buf,
+                               fd->name.len, fd->name.e);
+
+        for(Int j = 0; (j < fd->param_cnt); ++j) {
+            Variable *v = fd->params + j;
+
+            Char ptr_buf[max_ptr_size] = {};
+            for(Int k = 0; (k < v->ptr); ++k) {
+                ptr_buf[k] = '*';
+            }
+
+            write_to_output_buffer(ob, "%.*s %s %.*s",
+                                   v->type.len, v->type.e,
+                                   ptr_buf,
+                                   v->name.len, v->name.e);
+
+            if(j < fd->param_cnt - 1) {
+                write_to_output_buffer(ob, ", ");
+            }
+        }
+
+        write_to_output_buffer(ob, ");\n");
+    }
+}
+
 internal Void write_meta_type_enum(OutputBuffer *ob, String *types, Int type_count, StructData *struct_data, Int struct_count) {
     write_to_output_buffer(ob, "\n// Enum with field for every type detected.\n");
     write_to_output_buffer(ob, "namespace pp { enum Type {\n");
@@ -576,7 +605,7 @@ internal void write_is_container(OutputBuffer *ob, String *types, Int type_count
 }
 
 internal Void write_out_recreated_struct(OutputBuffer *ob, StructData struct_data) {
-    write_to_output_buffer(ob, "    %s _%.*s", (struct_data.struct_type != StructType_union) ? "struct" : "union",
+    write_to_output_buffer(ob, "%s _%.*s", (struct_data.struct_type != StructType_union) ? "struct" : "union",
                            struct_data.name.len, struct_data.name.e);
     if(struct_data.inherited) {
         write_to_output_buffer(ob, " :");
@@ -628,8 +657,35 @@ internal Void write_out_recreated_struct(OutputBuffer *ob, StructData struct_dat
     write_to_output_buffer(ob, " };\n");
 }
 
+internal Void write_out_recreated_enums(OutputBuffer *ob, EnumData *enum_data, Int enum_count) {
+    write_to_output_buffer(ob, "// Recreated Enums.\n");
+    for(Int i = 0; (i < enum_count); ++i) {
+        EnumData *ed = enum_data + i;
+
+        write_to_output_buffer(ob, "enum %s _%.*s",
+                               (ed->is_struct) ? "class" : "",
+                               ed->name.len, ed->name.e);
+        if(ed->type.len) {
+            write_to_output_buffer(ob, " : %.*s",
+                                   ed->type.len, ed->type.e);
+        }
+        write_to_output_buffer(ob, " { ");
+
+        for(Int j = 0; (j < ed->no_of_values); ++j) {
+            EnumValue *v = ed->values + j;
+
+            write_to_output_buffer(ob, "%.*s = %d, ",
+                                   v->name.len, v->name.e,
+                                   v->value);
+        }
+
+        write_to_output_buffer(ob, " };\n");
+    }
+}
+
+
 internal Void write_out_recreated_structs(OutputBuffer *ob, StructData *struct_data, Int struct_count) {
-    write_to_output_buffer(ob, "    // Recreated structs.\n");
+    write_to_output_buffer(ob, "// Recreated structs.\n");
     for(Int i = 0; (i < struct_count); ++i) {
         write_out_recreated_struct(ob, struct_data[i]);
     }
@@ -726,24 +782,26 @@ internal Void write_out_get_name_at_index(OutputBuffer *ob, StructData *struct_d
     for(Int i = 0; (i < struct_count); ++i) {
         StructData *sd = struct_data + i;
 
-        write_to_output_buffer(ob,
-                               "template<>char const * get_member_name<%.*s>(int index){\n"
-                               "    switch(index) {\n",
-                               sd->name.len, sd->name.e);
+        if(sd->member_count) {
+            write_to_output_buffer(ob,
+                                   "template<>char const * get_member_name<%.*s>(int index){\n"
+                                   "    switch(index) {\n",
+                                   sd->name.len, sd->name.e);
 
-        for(Int j = 0; (j < sd->member_count); ++j) {
-            Variable *md = sd->members + j;
+            for(Int j = 0; (j < sd->member_count); ++j) {
+                Variable *md = sd->members + j;
+
+                write_to_output_buffer(ob,
+                                       "        case %d: { return(\"%.*s\"); } break;\n",
+                                       j,
+                                       md->name.len, md->name.e);
+            }
 
             write_to_output_buffer(ob,
-                                   "        case %d: { return(\"%.*s\"); } break;\n",
-                                   j,
-                                   md->name.len, md->name.e);
+                                   "    }\n"
+                                   "    return(0); // Not found.\n"
+                                   "}\n");
         }
-
-        write_to_output_buffer(ob,
-                               "    }\n"
-                               "    return(0); // Not found.\n"
-                               "}\n");
     }
 
 }
@@ -751,7 +809,6 @@ internal Void write_out_get_name_at_index(OutputBuffer *ob, StructData *struct_d
 internal Void write_sizeof_from_str(OutputBuffer *ob, StructData *struct_data, Int struct_count) {
     write_to_output_buffer(ob,
                            "static size_t get_size_from_str(char const *str) {\n");
-    //write_out_recreated_structs(ob, struct_data, struct_count);
     write_to_output_buffer(ob, "\n");
 
     for(Int i = 0; (i < struct_count); ++i) {
@@ -774,10 +831,25 @@ internal Void write_sizeof_from_str(OutputBuffer *ob, StructData *struct_data, I
                            "}\n");
 }
 
-internal Void write_out_type_specification_struct(OutputBuffer *ob, StructData *struct_data, Int struct_count) {
+internal Void write_out_type_specification_struct(OutputBuffer *ob, StructData *struct_data, Int struct_count,
+                                                  EnumData *enum_data, Int enum_count) {
     PtrSize size = 128;
     String *written_members = alloc(String, size);
     Int member_cnt = 0;
+
+    for(Int i = 0; (i < enum_count); ++i) {
+        EnumData *ed = enum_data + i;
+
+        if(member_cnt >= size) {
+            size *= 2;
+            void *ptr = realloc(written_members, sizeof(String) * size);
+            if(ptr) {
+                written_members = cast(String *)ptr;
+            }
+        }
+
+        written_members[member_cnt++] = ed->name;
+    }
 
     write_to_output_buffer(ob,
                            "//\n"
@@ -888,15 +960,14 @@ internal Void write_get_members_of(OutputBuffer *ob, StructData *struct_data, In
                            "template<typename T> static MemberDefinition *get_members_of_(void) {\n");
 
     if(struct_count) {
-        //write_out_recreated_structs(ob, struct_data, struct_count);
         Bool actually_written_anything = false;
 
-        for(Int i = 0; (i < struct_count); ++i) {
+        for(Int i = 0, written_cnt = 0; (i < struct_count); ++i) {
             StructData *sd = struct_data + i;
 
             if(sd->member_count) {
                 actually_written_anything = true;
-                if(!i) {
+                if(!written_cnt) {
                     write_to_output_buffer(ob,
                                            "    // %.*s\n"
                                            "    if(type_compare(T, %.*s)) {\n",
@@ -910,6 +981,7 @@ internal Void write_get_members_of(OutputBuffer *ob, StructData *struct_data, In
                                            sd->name.len, sd->name.e,
                                            sd->name.len, sd->name.e);
                 }
+                ++written_cnt;
 
                 write_to_output_buffer(ob, "        static MemberDefinition members_of_%.*s[] = {\n", sd->name.len, sd->name.e);
                 for(Int j = 0; (j < sd->member_count); ++j) {
@@ -1031,8 +1103,6 @@ internal Void write_get_members_of_str(OutputBuffer *ob, StructData *struct_data
                            "\n"
                            "// Convert a type into a members of pointer.\n"
                            "static MemberDefinition *get_members_of_str(char const *str) {\n");
-
-    //write_out_recreated_structs(ob, struct_data, struct_count);
 
     String prim[array_count(primitive_types)] = {};
     set_primitive_type(prim);
@@ -1346,7 +1416,8 @@ internal void write_string_to_enum(OutputBuffer *ob, EnumData enum_data) {
                            enum_data.name.len, enum_data.name.e);
 }
 
-File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData *enum_data, Int enum_count) {
+File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData *enum_data, Int enum_count,
+                FunctionData *func_data, Int func_count) {
     File res = {};
 
     OutputBuffer ob = {};
@@ -1369,9 +1440,10 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
         clear_scratch_memory();
 
         // Forward declare structs.
-        write_to_output_buffer(&ob, "// Forward declared structs and enums (these must be declared outside the namespace...)\n");
+        write_to_output_buffer(&ob, "// Forward declared structs, enums, and function (these must be declared outside the namespace...)\n");
         forward_declare_structs(&ob, struct_data, struct_count);
         forward_declare_enums(&ob, enum_data, enum_count);
+        forward_declare_functions(&ob, func_data, func_count);
 
         write_to_output_buffer(&ob,
                                "\n"
@@ -1400,9 +1472,10 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
                                    "namespace pp { // PreProcessor\n");
             write_to_output_buffer(&ob, "\n");
 
+            write_out_recreated_enums(&ob, enum_data, enum_count);
             write_out_recreated_structs(&ob, struct_data, struct_count);
 
-            write_out_type_specification_struct(&ob, struct_data, struct_count);
+            write_out_type_specification_struct(&ob, struct_data, struct_count, enum_data, enum_count);
             write_out_type_specification_enum(&ob, enum_data, enum_count);
             write_out_get_at_index(&ob, struct_data, struct_count);
             write_out_get_name_at_index(&ob, struct_data, struct_count);
