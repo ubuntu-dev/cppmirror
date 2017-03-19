@@ -452,6 +452,43 @@ internal Void forward_declare_enums(OutputBuffer *ob, EnumData *enum_data, Int e
     }
 }
 
+internal Void forward_declare_functions(OutputBuffer *ob, FunctionData *func_data, Int func_count) {
+    for(Int i = 0; (i < func_count); ++i) {
+        FunctionData *fd = func_data + i;
+
+        Char result_ptr_buf[max_ptr_size] = {};
+        for(Int j = 0; (j < fd->return_type_ptr); ++j) {
+            result_ptr_buf[j] = '*';
+        }
+
+        write_to_output_buffer(ob, "%.*s %.*s%s %.*s(",
+                               fd->linkage.len, fd->linkage.e,
+                               fd->return_type.len, fd->return_type.e,
+                               result_ptr_buf,
+                               fd->name.len, fd->name.e);
+
+        for(Int j = 0; (j < fd->param_cnt); ++j) {
+            Variable *v = fd->params + j;
+
+            Char ptr_buf[max_ptr_size] = {};
+            for(Int k = 0; (k < v->ptr); ++k) {
+                ptr_buf[k] = '*';
+            }
+
+            write_to_output_buffer(ob, "%.*s %s %.*s",
+                                   v->type.len, v->type.e,
+                                   ptr_buf,
+                                   v->name.len, v->name.e);
+
+            if(j < fd->param_cnt - 1) {
+                write_to_output_buffer(ob, ", ");
+            }
+        }
+
+        write_to_output_buffer(ob, ");\n");
+    }
+}
+
 internal Void write_meta_type_enum(OutputBuffer *ob, String *types, Int type_count, StructData *struct_data, Int struct_count) {
     write_to_output_buffer(ob, "\n// Enum with field for every type detected.\n");
     write_to_output_buffer(ob, "namespace pp { enum Type {\n");
@@ -1376,7 +1413,8 @@ internal void write_string_to_enum(OutputBuffer *ob, EnumData enum_data) {
                            enum_data.name.len, enum_data.name.e);
 }
 
-File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData *enum_data, Int enum_count) {
+File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData *enum_data, Int enum_count,
+                FunctionData *func_data, Int func_count) {
     File res = {};
 
     OutputBuffer ob = {};
@@ -1399,9 +1437,10 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
         clear_scratch_memory();
 
         // Forward declare structs.
-        write_to_output_buffer(&ob, "// Forward declared structs and enums (these must be declared outside the namespace...)\n");
+        write_to_output_buffer(&ob, "// Forward declared structs, enums, and function (these must be declared outside the namespace...)\n");
         forward_declare_structs(&ob, struct_data, struct_count);
         forward_declare_enums(&ob, enum_data, enum_count);
+        forward_declare_functions(&ob, func_data, func_count);
 
         write_to_output_buffer(&ob,
                                "\n"
