@@ -10,6 +10,7 @@
   ===================================================================================================*/
 
 #include "lexer.h"
+#include "platform.h"
 
 struct MacroData {
     String iden;
@@ -167,10 +168,18 @@ internal Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
     Token type = get_token(tokenizer);
     if(token_equals(type, "std")) {
         // TODO(Jonny): Hacky as fuck...
+        Char *std_string = "std::string";
+        Int std_string_len = string_length(std_string);
+
         type.len = 1;
         Char *at = type.e;
         while(*at != '>') {
             ++type.len; ++at;
+            if(type.len == std_string_len) {
+                if(token_equals(type, "std::string")) {
+                    break;
+                }
+            }
         }
     }
 
@@ -498,7 +507,7 @@ internal ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_
 
     Token peaked_token = peak_token(tokenizer);
     if(peaked_token.type == TokenType_colon) {
-        res.sd.inherited = alloc(String, 8);
+        res.sd.inherited = system_alloc(String, 8);
 
         eat_token(tokenizer);
 
@@ -507,7 +516,7 @@ internal ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_
             if(!(is_stupid_class_keyword(next)) && (next.type != TokenType_comma)) {
                 // TODO(Jonny): Fix properly.
                 /*if(res.sd.inherited_count + 1 >= cast(Int)(get_alloc_size(res.sd.inherited) / sizeof(String))) {
-                    Void *p = realloc(res.sd.inherited);
+                    Void *p = system_realloc(res.sd.inherited);
                     if(p) { res.sd.inherited = cast(String *)p; }
                 }*/
 
@@ -532,7 +541,7 @@ internal ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_
         };
 
         PtrSize member_info_mem_cnt = 256;
-        MemberInfo *member_info = alloc(MemberInfo, member_info_mem_cnt);
+        MemberInfo *member_info = system_alloc(MemberInfo, member_info_mem_cnt);
         if(member_info) {
             Bool inside_anonymous_struct = false;
             for(;;) {
@@ -598,7 +607,7 @@ internal ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_
                             if(!is_func) {
                                 if(member_cnt >= member_info_mem_cnt) {
                                     member_info_mem_cnt *= 2;
-                                    Void *p = realloc(member_info, sizeof(MemberInfo) * member_info_mem_cnt);
+                                    Void *p = system_realloc(member_info, sizeof(MemberInfo) * member_info_mem_cnt);
                                     if(p) {
                                         member_info = cast(MemberInfo *)p;
                                     }
@@ -631,13 +640,28 @@ internal ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_
                 }
             }
 
-            // Actually parse the members now.
             if(member_cnt > 0) {
-                res.sd.members = alloc(Variable, member_cnt * 2/*HACKY!!*/); // TODO(Jonny): This may not be correct. May need a realloc.
+                // Count the real number of members.
+                Int real_member_cnt = 0;
+                for(Int i = 0; (i < member_cnt); ++i) {
+                    Int var_cnt = 1;
+                    Char *at = member_info[i].pos;
+                    while(*at != ';') {
+                        if(*at == ',') {
+                            ++var_cnt;
+                        }
+
+                        ++at;
+                    }
+
+                    real_member_cnt += var_cnt;
+                }
+
+                // Now actually parse the member variables.
+                res.sd.members = system_alloc(Variable, real_member_cnt);
                 if(res.sd.members) {
                     Int member_index = 0;
                     for(Int i = 0; (i < member_cnt); ++i) {
-                        // Count the number of variables
                         Int var_cnt = 1;
                         Char *at = member_info[i].pos;
                         while(*at != ';') {
@@ -660,10 +684,11 @@ internal ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_
                     res.sd.member_count = member_index;
                 }
             }
-
-            free(member_info);
         }
+
+        system_free(member_info);
     }
+
 
     // Set the tokenizer to the end of the struct.
     eat_tokens(&start, 2);
@@ -727,7 +752,7 @@ internal ParseEnumResult parse_enum(Tokenizer *tokenizer) {
                 token = get_token(&copy);
             }
 
-            res.ed.values = alloc(EnumValue, res.ed.no_of_values);
+            res.ed.values = system_alloc(EnumValue, res.ed.no_of_values);
             if(res.ed.values) {
                 for(Int i = 0, count = 0; (i < res.ed.no_of_values); ++i, ++count) {
                     EnumValue *ev = res.ed.values + i;
@@ -1037,7 +1062,7 @@ internal AttemptFunctionResult attempt_to_parse_function(Token token, Tokenizer 
 
                 Token ob = get_token(tokenizer);
                 if(ob.type == TokenType_open_paren) {
-                    Variable *params = alloc(Variable, 8);
+                    Variable *params = system_alloc(Variable, 8);
                     Int param_cnt = 0;
 
                     Token t = peak_token(tokenizer);
@@ -1076,7 +1101,7 @@ internal AttemptFunctionResult attempt_to_parse_function(Token token, Tokenizer 
                         res.fd.param_cnt = param_cnt;
                         res.fd.return_type_ptr = return_pointer_cnt;
                     } else {
-                        free(params);
+                        system_free(params);
                     }
                 }
             }
@@ -1090,16 +1115,16 @@ ParseResult parse_stream(Char *stream) {
     ParseResult res = {};
 
     Int enum_max = 8;
-    res.enum_data = alloc(EnumData, enum_max);
+    res.enum_data = system_alloc(EnumData, enum_max);
 
     Int struct_max = 32;
-    res.struct_data = alloc(StructData, struct_max);
+    res.struct_data = system_alloc(StructData, struct_max);
 
     Int macro_max = 32;
-    macro_data = alloc(MacroData, macro_max);
+    macro_data = system_alloc(MacroData, macro_max);
 
     Int func_max = 128;
-    res.func_data = alloc(FunctionData, func_max);
+    res.func_data = system_alloc(FunctionData, func_max);
 
     if((res.enum_data)  && (res.struct_data) && (macro_data)) {
         Tokenizer tokenizer = { stream };
@@ -1143,7 +1168,7 @@ ParseResult parse_stream(Char *stream) {
 
                         if(res.struct_cnt + 1 >= struct_max) {
                             struct_max *= 2;
-                            Void *p = realloc(res.struct_data, struct_max);
+                            Void *p = system_realloc(res.struct_data, struct_max);
                             if(p) res.struct_data = cast(StructData *)p;
                         }
 
@@ -1154,7 +1179,7 @@ ParseResult parse_stream(Char *stream) {
                     } else if(token_equals(token, "enum")) {
                         if(res.enum_cnt + 1 >= enum_max) {
                             enum_max *= 2;
-                            Void *p = realloc(res.enum_data, enum_max);
+                            Void *p = system_realloc(res.enum_data, enum_max);
                             if(p) res.enum_data = cast(EnumData *)p;
                         }
 
@@ -1164,7 +1189,7 @@ ParseResult parse_stream(Char *stream) {
                         StructType struct_or_class = token_equals(token, "struct") ? StructType_struct : StructType_class;
                         if(res.struct_cnt + 1 >= struct_max) {
                             struct_max *= 2;
-                            Void *p = realloc(res.struct_data, struct_max);
+                            Void *p = system_realloc(res.struct_data, struct_max);
                             if(p) res.struct_data = cast(StructData *)p;
                         }
 
@@ -1183,7 +1208,7 @@ ParseResult parse_stream(Char *stream) {
             }
         }
 
-        free(macro_data);
+        system_free(macro_data);
     }
 
     return(res);

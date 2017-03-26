@@ -11,12 +11,8 @@
 
 #if INTERNAL
 
-#include "utils.h"
 #include "platform.h"
-#include "write_file.h"
-#include "lexer.h"
-
-// Because C++...
+#include "utils.h"
 namespace {
 #include "lexer.cpp"
 }
@@ -30,20 +26,28 @@ internal StructData parse_struct_test(Char *str, StructType type = StructType_st
     return(res.sd);
 }
 
-internal Void struct_tests() {
+internal Int struct_tests() {
+    Int res = 0;
+
     //
     // Member Count.
     //
     {
         StructData sd =  parse_struct_test("struct Foo { int a, b, c;};");
 
-        if(sd.member_count != 3) push_error(ErrorType_incorrect_number_of_members_for_struct);
+        if(sd.member_count != 3) {
+            push_error(ErrorType_incorrect_number_of_members_for_struct);
+            ++res;
+        }
     }
 
     {
         StructData sd =  parse_struct_test("struct Foo { int a; float f; double d; short s;};");
 
-        if(sd.member_count != 4) push_error(ErrorType_incorrect_number_of_members_for_struct);
+        if(sd.member_count != 4) {
+            push_error(ErrorType_incorrect_number_of_members_for_struct);
+            ++res;
+        }
     }
 
     {
@@ -56,7 +60,10 @@ internal Void struct_tests() {
                   "};";
         StructData sd =  parse_struct_test(s);
 
-        if(sd.member_count != 5) push_error(ErrorType_incorrect_number_of_members_for_struct);
+        if(sd.member_count != 5) {
+            push_error(ErrorType_incorrect_number_of_members_for_struct);
+            ++res;
+        }
     }
 
     //
@@ -64,17 +71,26 @@ internal Void struct_tests() {
     //
     {
         StructData sd = parse_struct_test("struct FooBar : public Foo, public Bar {};");
-        if(sd.inherited_count != 2) push_error(ErrorType_incorrect_number_of_base_structs);
+        if(sd.inherited_count != 2) {
+            push_error(ErrorType_incorrect_number_of_base_structs);
+            ++res;
+        }
     }
 
     {
         StructData sd = parse_struct_test("struct FooBar : public Foo {};");
-        if(sd.inherited_count != 1) push_error(ErrorType_incorrect_number_of_base_structs);
+        if(sd.inherited_count != 1) {
+            push_error(ErrorType_incorrect_number_of_base_structs);
+            ++res;
+        }
     }
 
     {
         StructData sd = parse_struct_test("struct FooBar : public F, public O, public O, public B, public A, public R {};");
-        if(sd.inherited_count != 6) push_error(ErrorType_incorrect_number_of_base_structs);
+        if(sd.inherited_count != 6) {
+            push_error(ErrorType_incorrect_number_of_base_structs);
+            ++res;
+        }
     }
 
     //
@@ -82,22 +98,38 @@ internal Void struct_tests() {
     //
     {
         StructData sd = parse_struct_test("struct FooBar : public Foo, public Bar {};");
-        if(sd.inherited_count != 2) push_error(ErrorType_incorrect_number_of_base_structs);
+        if(sd.inherited_count != 2) {
+            push_error(ErrorType_incorrect_number_of_base_structs);
+            ++res;
+        }
     }
 
     {
         StructData sd = parse_struct_test("struct FooBar : public Foo {};");
-        if(sd.inherited_count != 1) push_error(ErrorType_incorrect_number_of_base_structs);
+        if(sd.inherited_count != 1) {
+            push_error(ErrorType_incorrect_number_of_base_structs);
+            ++res;
+        }
     }
 
     {
         StructData sd = parse_struct_test("struct FooBar : public F, public O, public O, public B, public A, public R {};");
-        if(sd.inherited_count != 6) push_error(ErrorType_incorrect_number_of_base_structs);
+        if(sd.inherited_count != 6) {
+            push_error(ErrorType_incorrect_number_of_base_structs);
+            ++res;
+        }
     }
+
+    return(res);
 }
 
-Void run_tests() {
-    struct_tests();
-}
+#endif // INTERNAL
 
+Int run_tests() {
+    Int res = 0;
+#if INTERNAL
+    res += struct_tests();
 #endif
+
+    return(res);
+}
