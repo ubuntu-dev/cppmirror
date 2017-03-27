@@ -1048,7 +1048,7 @@ internal Void write_get_members_of(OutputBuffer *ob, StructData *struct_data, In
                         } break;
                     }
 
-                    write_to_output_buffer(ob, ", \"%.*s\", offset_of(&_%.*s::%.*s), %d, %d},\n",
+                    write_to_output_buffer(ob, ", \"%.*s\", (size_t)&((_%.*s *)0)0->%.*s, %d, %d},\n",
                                            md->name.len, md->name.e,
                                            sd->name.len, sd->name.e,
                                            md->name.len, md->name.e,
@@ -1277,7 +1277,7 @@ internal Void write_get_members_of_str(OutputBuffer *ob, StructData *struct_data
                         } break;
                     }
 
-                    write_to_output_buffer(ob, ", \"%.*s\", offset_of(&_%.*s::%.*s), %d, %d},\n",
+                    write_to_output_buffer(ob, ", \"%.*s\", (size_t)&((_%.*s *)0)->%.*s, %d, %d},\n",
                                            md->name.len, md->name.e,
                                            sd->name.len, sd->name.e,
                                            md->name.len, md->name.e,
