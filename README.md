@@ -7,23 +7,11 @@ All generated code strictly follows the C++11 specification, and should compile 
 
 ## Build instructions
 
-### Windows (MSVC)
-Call `win32_msvc.bat` from a command line that has previously called 'vcvarsal.bat' in your favourite version of Visual Studio. This will generate the executable inside the `build` directory.
+### Windows - MSVC
+Call `win32_msvc.bat` from the command line after previously calling 'vcvarsal.bat' in your favourite version of Visual Studio. This will generate the executable inside the `build` directory.
 
-### Windows (Clang)
-N/A
-
-### Windows (GCC)
-N/A
-
-### Linux (Clang)
+### Linux - Clang
 Call `linux_clang.sh` from the command line, which should generate the app file inside the `build` directory. This uses Clang version 3.8, so if you don't have that version installed on your computer, then you'll need to change the line that says `CLANG_VERSION=3.8` to match the version you've got.
-
-### Linux (GCC)
-N/A
-
-### Mac (Clang)
-N/A
 
 ## Contact
 
@@ -38,6 +26,7 @@ This software is dual-licensed to the public domain and under the following lice
 - There is currently no introspection support for functions.
 - Only limited support for introspection of C++ STL containers. These are:
     - std::vector
+    - std::string
     - std::list
     - std::forward_list
     - std::deque.
