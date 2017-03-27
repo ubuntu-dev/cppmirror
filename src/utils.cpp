@@ -66,14 +66,12 @@ Char *ErrorTypeToString(ErrorType e) {
 }
 
 Void push_error_(ErrorType type, Char *guid) {
-#if ERROR_LOGGING
     if(global_error_count + 1 < array_count(global_errors)) {
         Error *e = global_errors + global_error_count++;
 
         e->type = type;
         e->guid = guid;
     }
-#endif
 }
 
 Bool print_errors(void) {
@@ -86,16 +84,12 @@ Bool print_errors(void) {
         stbsp_snprintf(buffer2, array_count(buffer2), " with %d error(s).\n\n", global_error_count);
         system_write_to_console(buffer2);
 
-        // TODO(Jonny): Write errors to disk.
         for(Int i = 0; (i < global_error_count); ++i) {
             Char buffer[256] = {};
             stbsp_snprintf(buffer, array_count(buffer), "%s %s\n",
                            global_errors[i].guid, ErrorTypeToString(global_errors[i].type));
             system_write_to_console(buffer);
         }
-
-
-        //if(system_check_for_debugger()) { assert(0); }
     }
 
     return(res);
@@ -155,11 +149,10 @@ Int string_length(Char *str) {
 
 Bool string_concat(Char *dest, Int len, Char *a, Int a_len, Char *b, Int b_len) {
     Bool res = false;
-    Int i;
 
     if(len > a_len + b_len) {
-        for(i = 0; (i < a_len); ++i) *dest++ = *a++;
-        for(i = 0; (i < b_len); ++i) *dest++ = *b++;
+        for(Int i = 0; (i < a_len); ++i) *dest++ = *a++;
+        for(Int i = 0; (i < b_len); ++i) *dest++ = *b++;
 
         res = true;
     }
@@ -252,16 +245,16 @@ Bool string_contains(Char *str, Char *target) {
 ResultInt char_to_int(Char c) {
     ResultInt res = {};
     switch(c) {
-        case '0': res.e = 0; res.success = true; break;
-        case '1': res.e = 1; res.success = true; break;
-        case '2': res.e = 2; res.success = true; break;
-        case '3': res.e = 3; res.success = true; break;
-        case '4': res.e = 4; res.success = true; break;
-        case '5': res.e = 5; res.success = true; break;
-        case '6': res.e = 6; res.success = true; break;
-        case '7': res.e = 7; res.success = true; break;
-        case '8': res.e = 8; res.success = true; break;
-        case '9': res.e = 9; res.success = true; break;
+        case '0': { res.e = 0; res.success = true; } break;
+        case '1': { res.e = 1; res.success = true; } break;
+        case '2': { res.e = 2; res.success = true; } break;
+        case '3': { res.e = 3; res.success = true; } break;
+        case '4': { res.e = 4; res.success = true; } break;
+        case '5': { res.e = 5; res.success = true; } break;
+        case '6': { res.e = 6; res.success = true; } break;
+        case '7': { res.e = 7; res.success = true; } break;
+        case '8': { res.e = 8; res.success = true; } break;
+        case '9': { res.e = 9; res.success = true; } break;
     }
 
     return(res);
@@ -272,7 +265,9 @@ ResultInt string_to_int(String str) {
 
     for(Int i = 0; (i < str.len); ++i) {
         ResultInt temp_int = char_to_int(str.e[i]);
-        if(!temp_int.success) break;
+        if(!temp_int.success) {
+            break;
+        }
 
         res.e *= 10;
         res.e += temp_int.e;
@@ -419,7 +414,7 @@ Void set(void *dest, Byte v, PtrSize n) {
     }
 }
 
-#if 0
+#if OS_WIN32
 extern "C"
 {
 #pragma function(memset)

@@ -13,7 +13,6 @@
 
 #include "shared.h"
 
-// TODO(Jonny): This should probably be a flag, rather than compiled into the preprocessor.
 #if COMPILER_MSVC
     #define GUID__(file, seperator, line) file seperator line ")"
     #define GUID_(file, line) GUID__(file, "(", #line)
@@ -68,15 +67,19 @@ Void push_error_(ErrorType type, Char *guid);
 Char *ErrorTypeToString(ErrorType e);
 Bool print_errors(void);
 
-// Google Test compains...
-#if defined(assert)
-    #undef assert
-#endif
-
 #if INTERNAL
-    #define assert(Expression) do { static Bool Ignore = false; if(!Ignore) { if(!(Expression)) { push_error(ErrorType_assert_failed); *cast(int volatile *)0 = 0; } } } while(0)
+#define assert(Expression) \
+    do { \
+        static Bool Ignore = false; \
+        if(!Ignore) { \
+            if(!(Expression)) { \
+                push_error(ErrorType_assert_failed); \
+                *cast(PtrSize volatile *)0 = 0; \
+            } \
+        } \
+    } while(0)
 #else
-    #define assert(Expression) {}
+#define assert(Expression) {}
 #endif
 
 struct File {
@@ -92,7 +95,6 @@ static Int const scratch_memory_size = 256 * 256;
 Void *push_scratch_memory(Int size = scratch_memory_size);
 Void clear_scratch_memory(void);
 Void free_scratch_memory();
-
 
 //
 // String
@@ -170,7 +172,7 @@ Void copy(Void *dst, Void *src, PtrSize size);
 #define zero(dst, size) set(dst, 0, size)
 Void set(Void *dst, Byte v, PtrSize size);
 
-#if 0
+#if OS_WIN32
 extern "C"
 {
     void *memset(void *dest, int c, size_t count);
