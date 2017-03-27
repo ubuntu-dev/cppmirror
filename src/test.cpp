@@ -9,10 +9,11 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-#if INTERNAL
-
 #include "platform.h"
 #include "utils.h"
+
+#if INTERNAL
+
 namespace {
 #include "lexer.cpp"
 }
