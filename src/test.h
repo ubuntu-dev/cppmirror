@@ -11,11 +11,7 @@
 
 #if !defined(_TEST_H)
 
-#if INTERNAL
-    Void run_tests();
-#else
-    #define run_tests(...) {}
-#endif
+Int run_tests();
 
 #define _TEST_H
 #endif

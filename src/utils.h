@@ -13,7 +13,6 @@
 
 #include "shared.h"
 
-// TODO(Jonny): This should probably be a flag, rather than compiled into the preprocessor.
 #if COMPILER_MSVC
     #define GUID__(file, seperator, line) file seperator line ")"
     #define GUID_(file, line) GUID__(file, "(", #line)
@@ -68,164 +67,25 @@ Void push_error_(ErrorType type, Char *guid);
 Char *ErrorTypeToString(ErrorType e);
 Bool print_errors(void);
 
-// Google Test compains...
-#if defined(assert)
-    #undef assert
-#endif
-
 #if INTERNAL
-    #define assert(Expression) do { static Bool Ignore = false; if(!Ignore) { if(!(Expression)) { push_error(ErrorType_assert_failed); *cast(int volatile *)0 = 0; } } } while(0)
+#define assert(Expression) \
+    do { \
+        static Bool Ignore = false; \
+        if(!Ignore) { \
+            if(!(Expression)) { \
+                push_error(ErrorType_assert_failed); \
+                *cast(PtrSize volatile *)0 = 0; \
+            } \
+        } \
+    } while(0)
 #else
-    #define assert(Expression) {}
+#define assert(Expression) {}
 #endif
 
 struct File {
     Char *data;
     PtrSize size;
 };
-
-//
-// Memory stuff.
-//
-
-// These are implemented in Platform code... but defined here.
-Void *system_malloc(PtrSize size, PtrSize cnt = 1);
-Bool system_free(Void *ptr);
-Void *system_realloc(Void *ptr, PtrSize size);
-
-#if defined(malloc)
-    #undef malloc
-#endif
-#define malloc system_malloc
-
-#if defined(calloc)
-    #undef calloc
-#endif
-#define calloc system_malloc
-
-#if defined(realloc)
-    #undef realloc
-#endif
-#define realloc system_realloc
-
-#if defined(free)
-    #undef free
-#endif
-#define free(x) system_free(x)
-
-#if defined(alloc)
-    #undef alloc
-#endif
-#define alloc(Type, ...) (Type *)system_malloc(sizeof(Type), ##__VA_ARGS__)
-
-#if MEM_CHECK
-struct MemList {
-    Void *ptr;
-    MemList *next;
-    Char *guid;
-    Bool freed;
-};
-#if defined(MEM_ROOT_FILE)
-    MemList *mem_list_root = 0;
-#else
-    extern MemList *mem_list_root;
-#endif
-
-// malloc.
-static Void *malloc_(PtrSize size, Char *guid, PtrSize cnt = 1) {
-    Void *res = system_malloc(size * cnt);
-
-    if(res) {
-        MemList *cur = cast(MemList *)system_malloc(sizeof(MemList));
-        if(!cur) {
-            push_error_(ErrorType_ran_out_of_memory, guid);
-        } else {
-            cur->ptr = res;
-            cur->guid = guid;
-
-            if(!mem_list_root) {
-                mem_list_root = cur;
-            } else {
-                MemList *next = mem_list_root;
-                while(next->next) {
-                    next = next->next;
-                }
-
-                next->next = cur;
-            }
-        }
-    }
-
-    return(res);
-}
-
-// free
-static Void free_(Void *ptr) {
-    system_free(ptr);
-    if(ptr) {
-        Bool found = false;
-        MemList *next = mem_list_root;
-        while(next) {
-            if((next->ptr == ptr) && (!next->freed)) {
-                found = true;
-                next->freed = true;
-                break;
-            }
-
-            next = next->next;
-        }
-
-        assert(found);
-    }
-}
-
-// realloc
-static Void *realloc_(Void *ptr, PtrSize size, Char *guid) {
-    Void *res = system_realloc(ptr, size);
-    if(ptr) {
-        MemList *next = mem_list_root;
-        while(next) {
-            if(next->ptr == ptr) break;
-            next = next->next;
-        }
-
-        if(next) next->ptr = res;
-        else     push_error_(ErrorType_could_not_find_mallocd_ptr, guid);
-    }
-    return(res);
-}
-
-// malloc
-#if defined(malloc)
-    #undef malloc
-#endif
-#define malloc(size) malloc_(size, MAKE_GUID)
-
-// calloc
-#if defined(calloc)
-    #undef calloc
-#endif
-#define calloc(size, cnt) malloc_(size, MAKE_GUID, cnt)
-
-// realloc
-#if defined(realloc)
-    #undef realloc
-#endif
-#define realloc(ptr, size) realloc_(ptr, size, MAKE_GUID)
-
-// free
-#if defined(free)
-    #undef free
-#endif
-#define free(ptr) free_(ptr)
-
-// alloc
-#if defined(alloc)
-    #undef alloc
-#endif
-#define alloc(Type, ...) (Type *)malloc_(sizeof(Type), MAKE_GUID, ##__VA_ARGS__)
-
-#endif // MEM_CHECK
 
 //
 // Scratch memory
@@ -312,17 +172,12 @@ Void copy(Void *dst, Void *src, PtrSize size);
 #define zero(dst, size) set(dst, 0, size)
 Void set(Void *dst, Byte v, PtrSize size);
 
-#if 0
-    #if !RUN_TESTS
-        #if OS_WIN32
-            extern "C" void   *__cdecl memcpy(_Out_writes_bytes_all_(_Size) void *_Dst, _In_reads_bytes_(_Size) const void *_Src, _In_ size_t _Size);
-            extern "C" void   *__cdecl memset(_Out_writes_bytes_all_(_Size) void *_Dst, _In_ int _Val, _In_ size_t _Size);
-        #else
-            extern "C" void *memcpy(void *Dest, void const *Source, PtrSize Size);
-            extern "C" void *memset(void *Dest, int Value, PtrSize NumBytesToSet);
-        #endif
-
-    #endif
+#if OS_WIN32
+extern "C"
+{
+    void *memset(void *dest, int c, size_t count);
+    void *memcpy(void *dest, const void *src, size_t count);
+}
 #endif
 
 #define _UTILS_H

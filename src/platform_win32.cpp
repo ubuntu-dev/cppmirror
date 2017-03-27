@@ -12,13 +12,19 @@
 #include <windows.h>
 #include "platform.h"
 #include "utils.h"
-#include "stdio.h"
+#include "stb_sprintf.h"
+
+#if OS_WIN32
+extern "C" { int _fltused; }
+#endif
 
 Uint64 system_get_performance_counter(void) {
     Uint64 res = 0;
-    LARGE_INTEGER large_int;
 
-    if(QueryPerformanceCounter(&large_int)) res = large_int.QuadPart;
+    LARGE_INTEGER large_int;
+    if(QueryPerformanceCounter(&large_int)) {
+        res = large_int.QuadPart;
+    }
 
     return(res);
 }
@@ -27,7 +33,7 @@ Void system_print_timer(Uint64 value) {
     LARGE_INTEGER freq;
     if(QueryPerformanceFrequency(&freq)) {
         Uint64 duration = value * 1000 / freq.QuadPart;
-        printf("The program took %llums.\n", duration);
+        //printf("The program took %llums.\n", duration);
     }
 }
 
@@ -36,16 +42,24 @@ Bool system_check_for_debugger(void) {
 }
 
 Void *system_malloc(PtrSize size, PtrSize cnt/*= 1*/) {
-    return HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size * cnt);
+    Void *res = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size * cnt);
+
+    return(res);
 }
 
 Bool system_free(Void *ptr) {
-    if(ptr) return HeapFree(GetProcessHeap(), 0, ptr) != 0;
-    else    return false;
+    Bool res = false;
+    if(ptr) {
+        res = HeapFree(GetProcessHeap(), 0, ptr) != 0;
+    }
+
+    return(res);
 }
 
 Void *system_realloc(Void *ptr, PtrSize size) {
-    return HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ptr, size);
+    Void *res = HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ptr, size);
+
+    return(res);
 }
 
 File system_read_entire_file_and_null_terminate(Char *fname, Void *memory) {
@@ -127,10 +141,71 @@ Bool system_create_folder(Char *name) {
     return(res);
 }
 
-Void system_write_to_console(Char *str) {
-    printf("%s", str);
+Void system_write_to_console(Char *format, ...) {
+    PtrSize alloc_size = 1024;
+    Char *buf = system_alloc(Char, alloc_size);
+    if(buf) {
+        va_list args;
+        va_start(args, format);
+        Int sprintf_written = stbsp_vsnprintf(buf, alloc_size, format, args);
+        assert(sprintf_written < alloc_size);
+        va_end(args);
+
+        Int len = string_length(buf);
+        DWORD chars_written = 0;
+        Bool res = WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), buf, len, &chars_written, 0);
+
+        assert(res);
+        assert(chars_written == len);
+    }
+
+    system_free(buf);
 }
 
-Void system_write_to_stderr(Char *str) {
-    fprintf(stderr, "%s", str);
+int main(int argc, char **argv);
+void mainCRTStartup() {
+    Char *args = GetCommandLineA();
+    Int len = string_length(args);
+
+    // Count number of arguments.
+    Int argc = 1;
+    Bool in_quotes = false;
+    for(Int i = 0; (i < len); ++i) {
+        if(args[i] == '"') {
+            in_quotes = !in_quotes;
+        } else if(args[i] == ' ') {
+            if(!in_quotes) {
+                ++argc;
+            }
+        }
+    }
+
+    // Create copy of args.
+    Char *arg_cpy = system_alloc(Char, len);
+    string_copy(arg_cpy, args);
+
+    // Setup pointers.
+    in_quotes = false;
+    Char **argv = system_alloc(Char *, argc);
+    Char **cur = argv;
+    *cur = arg_cpy;
+    ++cur;
+    for(Int i = 0; (i < len); ++i) {
+        if(arg_cpy[i] == '"') {
+            in_quotes = !in_quotes;
+        } else if(arg_cpy[i] == ' ') {
+            if(!in_quotes) {
+                arg_cpy[i] = 0;
+                *cur = arg_cpy + i + 1;
+                ++cur;
+            }
+        }
+    }
+
+    int res = main(argc, argv);
+
+    system_free(arg_cpy);
+    system_free(argv);
+
+    ExitProcess(res);
 }

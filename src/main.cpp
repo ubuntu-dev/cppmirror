@@ -60,7 +60,6 @@ enum SwitchType {
     SwitchType_log_errors,
     SwitchType_run_tests,
     SwitchType_print_help,
-    SwitchType_display_time_taken,
     SwitchType_source_file,
 
     SwitchType_count,
@@ -75,7 +74,6 @@ internal SwitchType get_switch_type(Char *str) {
             switch(str[1]) {
                 case 'e': res = SwitchType_log_errors;         break;
                 case 'h': res = SwitchType_print_help;         break;
-                case 'p': res = SwitchType_display_time_taken; break;
 #if INTERNAL
                 case 's': res = SwitchType_silent;    break;
                 case 't': res = SwitchType_run_tests; break;
@@ -378,9 +376,18 @@ internal Bool write_static_file() {
         "    return(bytes_written);\n"
         "}\n"
         "\n"
-        "template<typename T, typename U> static size_t offset_of(U T::*member) {\n"
-        "    return((char *)&((T *)0->*member) - (char *)0);\n"
+        "template<>size_t\n"
+        "serialize_container<std::string, char>(void *member_ptr, char const *name, int indent, char *buffer, size_t buf_size, size_t bytes_written) {\n"
+        "    char indent_buf[256] = {};\n"
+        "    for(int i = 0; (i < indent); ++i) {indent_buf[i] = ' ';}\n"
+        "\n"
+        "    std::string &container = *(std::string *)member_ptr;\n"
+        "    bytes_written += pp_sprintf(buffer + bytes_written, buf_size - bytes_written, \"\\n%sstd::string %s = %c%s%c\",\n"
+        "                                indent_buf, name, 34, container.c_str(), 34);\n"
+        "\n"
+        "    return(bytes_written);\n"
         "}\n"
+        "\n"
         "\n"
         "} // namespace pp\n"
         "\n"
@@ -421,25 +428,25 @@ internal Void start_parsing(Char *fname, Char *file) {
                 push_error(ErrorType_could_not_write_to_disk);
             }
 
-            free(file_to_write.data);
+            system_free(file_to_write.data);
         }
     }
 
     for(Int i = 0; (i < parse_res.struct_cnt); ++i) {
-        free(parse_res.struct_data[i].members);
-        free(parse_res.struct_data[i].inherited);
+        system_free(parse_res.struct_data[i].members);
+        system_free(parse_res.struct_data[i].inherited);
     }
-    free(parse_res.struct_data);
+    system_free(parse_res.struct_data);
 
     for(Int i = 0; (i < parse_res.enum_cnt); ++i) {
-        free(parse_res.enum_data[i].values);
+        system_free(parse_res.enum_data[i].values);
     }
-    free(parse_res.enum_data);
+    system_free(parse_res.enum_data);
 
     for(Int i = 0; (i < parse_res.func_cnt); ++i) {
-        free(parse_res.func_data[i].params);
+        system_free(parse_res.func_data[i].params);
     }
-    free(parse_res.func_data);
+    system_free(parse_res.func_data);
 }
 
 internal Void print_help(void) {
@@ -459,14 +466,13 @@ internal Void print_help(void) {
 Int main(Int argc, Char **argv) {// TODO(Jonny): Support wildcards.
     Int res = 0;
 
-    Bool display_time_taken = false;
-    Uint64 start_time = system_get_performance_counter();
+    system_write_to_console("Starting Mirror...");
 
+    Bool should_log_errors = true;
     if(argc <= 1) {
         push_error(ErrorType_no_parameters);
         print_help();
     } else {
-        Bool should_log_errors = true;
         Bool should_run_tests = false;
         should_write_to_file = true;
 
@@ -477,11 +483,10 @@ Int main(Int argc, Char **argv) {// TODO(Jonny): Support wildcards.
 
             SwitchType type = get_switch_type(switch_name);
             switch(type) {
-                case SwitchType_silent:             should_write_to_file = false; break;
-                case SwitchType_log_errors:         should_log_errors = true;     break;
-                case SwitchType_run_tests:          should_run_tests = true;      break;
-                case SwitchType_print_help:         print_help();                 break;
-                case SwitchType_display_time_taken: display_time_taken = true;    break;
+                case SwitchType_silent:     should_write_to_file = false; break;
+                case SwitchType_log_errors: should_log_errors = true;     break;
+                case SwitchType_run_tests:  should_run_tests = true;      break;
+                case SwitchType_print_help: print_help();                 break;
 
                 case SwitchType_source_file: {
                     if(!string_contains(switch_name, dir_name)) {
@@ -501,19 +506,22 @@ Int main(Int argc, Char **argv) {// TODO(Jonny): Support wildcards.
         }
 
         if(should_run_tests) {
-            run_tests();
+            Int tests_failed = run_tests();
+
+            if(tests_failed == 0) system_write_to_console("all tests passed...");
+            else                  system_write_to_console("%d tests failed\n", tests_failed);
         } else {
             if(!number_of_files) {
                 push_error(ErrorType_no_files_pass_in);
             } else {
-                Byte *file_memory = alloc(Byte, largest_source_file_size);
+                Byte *file_memory = system_alloc(Byte, largest_source_file_size);
                 if(file_memory) {
                     // Write static file to disk.
                     if(should_write_to_file) {
                         Bool create_folder_success = system_create_folder(dir_name);
 
-                        if(!create_folder_success) push_error(ErrorType_could_not_create_directory);
-                        else                       write_static_file();
+                        if(create_folder_success) write_static_file();
+                        else                      push_error(ErrorType_could_not_create_directory);
                     }
 
                     // Parse files
@@ -530,36 +538,22 @@ Int main(Int argc, Char **argv) {// TODO(Jonny): Support wildcards.
                         }
                     }
 
-                    free(file_memory);
+                    system_free(file_memory);
                 }
             }
-#if MEM_CHECK
-            free_scratch_memory();
-
-            // Check memory leaks.
-            MemList *next = mem_list_root;
-            while(next) {
-                if(!next->freed) {
-                    push_error_(ErrorType_memory_not_freed, next->guid);
-                }
-
-                next = next->next;
-            }
-#endif
-            // Output errors.
         }
 
-        if(should_log_errors) {
-            if(print_errors()) {
-                res = 255;
-            }
+    }
+
+    system_write_to_console("Done");
+
+    if(should_log_errors) {
+        if(print_errors()) {
+            res = 255;
         }
     }
 
-    Uint64 end_time = system_get_performance_counter();
-    if(display_time_taken) {
-        system_print_timer(end_time - start_time);
-    }
+    system_write_to_console("\n");
 
     return(res);
 }

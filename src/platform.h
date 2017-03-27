@@ -14,7 +14,8 @@
 #include "shared.h"
 
 // Memory.
-Void *system_malloc(PtrSize size, PtrSize cnt/*= 1*/);
+#define system_alloc(Type, ...) (Type *)system_malloc(sizeof(Type), ##__VA_ARGS__)
+Void *system_malloc(PtrSize size, PtrSize cnt = 1);
 Bool system_free(Void *ptr);
 Void *system_realloc(Void *ptr, PtrSize size);
 
@@ -30,8 +31,7 @@ Bool system_create_folder(Char *name);
 Uint64 system_get_performance_counter(void);
 Void system_print_timer(Uint64 value);
 Bool system_check_for_debugger(void);
-Void system_write_to_console(Char *str);
-Void system_write_to_stderr(Char *str);
+Void system_write_to_console(Char *str, ...);
 
 #define _PLATFORM_H
 #endif

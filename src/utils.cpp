@@ -10,10 +10,12 @@
   ===================================================================================================*/
 
 #define MEM_ROOT_FILE
+#include "shared.h"
 #include "utils.h"
 #include "platform.h"
 
 #define STB_SPRINTF_IMPLEMENTATION
+#define STB_SPRINTF_NOFLOAT
 #include "stb_sprintf.h"
 
 //
@@ -64,14 +66,12 @@ Char *ErrorTypeToString(ErrorType e) {
 }
 
 Void push_error_(ErrorType type, Char *guid) {
-#if ERROR_LOGGING
     if(global_error_count + 1 < array_count(global_errors)) {
         Error *e = global_errors + global_error_count++;
 
         e->type = type;
         e->guid = guid;
     }
-#endif
 }
 
 Bool print_errors(void) {
@@ -80,20 +80,16 @@ Bool print_errors(void) {
     if(global_error_count) {
         res = true;
 
-        // TODO(Jonny): Write errors to disk.
-        system_write_to_stderr("\nPreprocessor errors:\n");
+        Char buffer2[256] = {};
+        stbsp_snprintf(buffer2, array_count(buffer2), " with %d error(s).\n\n", global_error_count);
+        system_write_to_console(buffer2);
+
         for(Int i = 0; (i < global_error_count); ++i) {
             Char buffer[256] = {};
-            stbsp_snprintf(buffer, array_count(buffer), "%s %s\n\n",
+            stbsp_snprintf(buffer, array_count(buffer), "%s %s\n",
                            global_errors[i].guid, ErrorTypeToString(global_errors[i].type));
-            system_write_to_stderr(buffer);
+            system_write_to_console(buffer);
         }
-
-        Char buffer2[256] = {};
-        stbsp_snprintf(buffer2, array_count(buffer2), "Preprocessor finished with %d error(s).\n\n\n", global_error_count);
-        system_write_to_stderr(buffer2);
-
-        //if(system_check_for_debugger()) { assert(0); }
     }
 
     return(res);
@@ -107,7 +103,7 @@ internal Int scratch_memory_index = 0;
 internal Void *global_scratch_memory = 0;
 Void *push_scratch_memory(Int size/*= scratch_memory_size*/) {
     if(!global_scratch_memory) {
-        global_scratch_memory = alloc(Byte, scratch_memory_size + 1);
+        global_scratch_memory = system_alloc(Byte, scratch_memory_size + 1);
         zero(global_scratch_memory, scratch_memory_size + 1);
     }
 
@@ -129,9 +125,7 @@ Void clear_scratch_memory(void) {
 }
 
 Void free_scratch_memory() {
-    if(global_scratch_memory) {
-        free(global_scratch_memory);
-    }
+    system_free(global_scratch_memory);
 }
 
 //
@@ -155,11 +149,10 @@ Int string_length(Char *str) {
 
 Bool string_concat(Char *dest, Int len, Char *a, Int a_len, Char *b, Int b_len) {
     Bool res = false;
-    Int i;
 
     if(len > a_len + b_len) {
-        for(i = 0; (i < a_len); ++i) *dest++ = *a++;
-        for(i = 0; (i < b_len); ++i) *dest++ = *b++;
+        for(Int i = 0; (i < a_len); ++i) *dest++ = *a++;
+        for(Int i = 0; (i < b_len); ++i) *dest++ = *b++;
 
         res = true;
     }
@@ -252,16 +245,16 @@ Bool string_contains(Char *str, Char *target) {
 ResultInt char_to_int(Char c) {
     ResultInt res = {};
     switch(c) {
-        case '0': res.e = 0; res.success = true; break;
-        case '1': res.e = 1; res.success = true; break;
-        case '2': res.e = 2; res.success = true; break;
-        case '3': res.e = 3; res.success = true; break;
-        case '4': res.e = 4; res.success = true; break;
-        case '5': res.e = 5; res.success = true; break;
-        case '6': res.e = 6; res.success = true; break;
-        case '7': res.e = 7; res.success = true; break;
-        case '8': res.e = 8; res.success = true; break;
-        case '9': res.e = 9; res.success = true; break;
+        case '0': { res.e = 0; res.success = true; } break;
+        case '1': { res.e = 1; res.success = true; } break;
+        case '2': { res.e = 2; res.success = true; } break;
+        case '3': { res.e = 3; res.success = true; } break;
+        case '4': { res.e = 4; res.success = true; } break;
+        case '5': { res.e = 5; res.success = true; } break;
+        case '6': { res.e = 6; res.success = true; } break;
+        case '7': { res.e = 7; res.success = true; } break;
+        case '8': { res.e = 8; res.success = true; } break;
+        case '9': { res.e = 9; res.success = true; } break;
     }
 
     return(res);
@@ -272,7 +265,9 @@ ResultInt string_to_int(String str) {
 
     for(Int i = 0; (i < str.len); ++i) {
         ResultInt temp_int = char_to_int(str.e[i]);
-        if(!temp_int.success) break;
+        if(!temp_int.success) {
+            break;
+        }
 
         res.e *= 10;
         res.e += temp_int.e;
@@ -301,7 +296,7 @@ ResultInt calculator_string_to_int(Char *str) {
         - Make sure each element in the string is either a number or a operator.
         - Do the calculator in order (multiply, divide, add, subtract).
     */
-    String *arr = alloc(String, 256); // TODO(Jonny): Random size.
+    String *arr = system_alloc(String, 256); // TODO(Jonny): Random size.
     if(arr) {
         Char *at = str;
         arr[0].e = at;
@@ -314,8 +309,8 @@ ResultInt calculator_string_to_int(Char *str) {
         }
         ++cnt;
 
-        Int *nums = alloc(Int, cnt);
-        Char *ops = alloc(Char, cnt);
+        Int *nums = system_alloc(Int, cnt);
+        Char *ops = system_alloc(Char, cnt);
         if((nums) && (ops)) {
             for(Int i = 0, j = 0; (j < cnt); ++i, j += 2) {
                 ResultInt r = string_to_int(arr[j]);
@@ -334,11 +329,11 @@ ResultInt calculator_string_to_int(Char *str) {
             // TODO(Jonny): At this point, I have all the numbers and ops in seperate arrays.
 
 clean_up:;
-            free(ops);
-            free(nums);
+            system_free(ops);
+            system_free(nums);
         }
 
-        free(arr);
+        system_free(arr);
     }
 
     return(res);
@@ -418,3 +413,27 @@ Void set(void *dest, Byte v, PtrSize n) {
         *dest8 = cast(Byte)v;
     }
 }
+
+#if OS_WIN32
+extern "C"
+{
+#pragma function(memset)
+    void *memset(void *dest, int c, size_t count) {
+        char *bytes = (char *)dest;
+        while (count--) {
+            *bytes++ = (char)c;
+        }
+        return dest;
+    }
+
+#pragma function(memcpy)
+    void *memcpy(void *dest, const void *src, size_t count) {
+        char *dest8 = (char *)dest;
+        const char *src8 = (const char *)src;
+        while (count--) {
+            *dest8++ = *src8++;
+        }
+        return dest;
+    }
+}
+#endif
