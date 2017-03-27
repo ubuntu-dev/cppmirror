@@ -79,7 +79,6 @@ internal StdResult get_std_information(String str) {
     return(res);
 }
 
-#define empty_line(ob) write_to_output_buffer(ob, "\n")
 internal Void write_to_output_buffer(OutputBuffer *ob, Char *format, ...) {
     va_list args;
     va_start(args, format);
@@ -970,14 +969,6 @@ internal Void write_out_type_specification_enum(OutputBuffer *ob, EnumData *enum
                 write_type_struct(ob, ed->name, ed->no_of_values, ptr_buf, an_enum, false, ed->type);
                 write_type_struct(ob, ed->name, ed->no_of_values, ptr_buf, an_enum, true, ed->type);
             }
-#if 0
-            write_type_struct(ob, ed->name, ed->no_of_values, " *", an_enum, false, ed->type);
-            write_type_struct(ob, ed->name, ed->no_of_values, " **", an_enum, false, ed->type);
-
-            write_type_struct(ob, ed->name, ed->no_of_values, "", an_enum, true, ed->type);
-            write_type_struct(ob, ed->name, ed->no_of_values, " *", an_enum, true, ed->type);
-            write_type_struct(ob, ed->name, ed->no_of_values, " **", an_enum, true, ed->type);
-#endif
         }
     }
 }
@@ -1048,7 +1039,7 @@ internal Void write_get_members_of(OutputBuffer *ob, StructData *struct_data, In
                         } break;
                     }
 
-                    write_to_output_buffer(ob, ", \"%.*s\", (size_t)&((_%.*s *)0)0->%.*s, %d, %d},\n",
+                    write_to_output_buffer(ob, ", \"%.*s\", (size_t)&((_%.*s *)0)->%.*s, %d, %d},\n",
                                            md->name.len, md->name.e,
                                            sd->name.len, sd->name.e,
                                            md->name.len, md->name.e,
