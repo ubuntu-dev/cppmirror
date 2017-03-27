@@ -82,18 +82,18 @@ Bool print_errors(void) {
     if(global_error_count) {
         res = true;
 
+        Char buffer2[256] = {};
+        stbsp_snprintf(buffer2, array_count(buffer2), " with %d error(s).\n\n", global_error_count);
+        system_write_to_console(buffer2);
+
         // TODO(Jonny): Write errors to disk.
-        system_write_to_console("\nPreprocessor errors:\n");
         for(Int i = 0; (i < global_error_count); ++i) {
             Char buffer[256] = {};
-            stbsp_snprintf(buffer, array_count(buffer), "%s %s\n\n",
+            stbsp_snprintf(buffer, array_count(buffer), "%s %s\n",
                            global_errors[i].guid, ErrorTypeToString(global_errors[i].type));
             system_write_to_console(buffer);
         }
 
-        Char buffer2[256] = {};
-        stbsp_snprintf(buffer2, array_count(buffer2), "Preprocessor finished with %d error(s).\n\n\n", global_error_count);
-        system_write_to_console(buffer2);
 
         //if(system_check_for_debugger()) { assert(0); }
     }

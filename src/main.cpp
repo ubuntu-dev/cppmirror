@@ -506,9 +506,10 @@ Int main(Int argc, Char **argv) {// TODO(Jonny): Support wildcards.
         }
 
         if(should_run_tests) {
-            system_write_to_console("\nRunning Tests...");
             Int tests_failed = run_tests();
-            system_write_to_console("%d Tests Failed\n", tests_failed);
+
+            if(tests_failed == 0) system_write_to_console("all tests passed...");
+            else                  system_write_to_console("%d tests failed\n", tests_failed);
         } else {
             if(!number_of_files) {
                 push_error(ErrorType_no_files_pass_in);
@@ -519,8 +520,8 @@ Int main(Int argc, Char **argv) {// TODO(Jonny): Support wildcards.
                     if(should_write_to_file) {
                         Bool create_folder_success = system_create_folder(dir_name);
 
-                        if(!create_folder_success) push_error(ErrorType_could_not_create_directory);
-                        else                       write_static_file();
+                        if(create_folder_success) write_static_file();
+                        else                      push_error(ErrorType_could_not_create_directory);
                     }
 
                     // Parse files
@@ -544,13 +545,15 @@ Int main(Int argc, Char **argv) {// TODO(Jonny): Support wildcards.
 
     }
 
-    system_write_to_console("Done\n");
+    system_write_to_console("Done");
 
     if(should_log_errors) {
         if(print_errors()) {
             res = 255;
         }
     }
+
+    system_write_to_console("\n");
 
     return(res);
 }
