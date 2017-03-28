@@ -153,7 +153,7 @@ Void system_write_to_console(Char *format, ...) {
 
         Int len = string_length(buf);
         DWORD chars_written = 0;
-        Bool res = WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), buf, len, &chars_written, 0);
+        Bool res = WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), buf, len, &chars_written, 0) != 0;
 
         assert(res);
         assert(chars_written == len);
@@ -181,7 +181,7 @@ void mainCRTStartup() {
     }
 
     // Create copy of args.
-    Char *arg_cpy = system_alloc(Char, len);
+    Char *arg_cpy = system_alloc(Char, len + 1);
     string_copy(arg_cpy, args);
 
     // Setup pointers.
