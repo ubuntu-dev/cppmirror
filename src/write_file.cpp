@@ -194,33 +194,38 @@ internal Void write_type_struct(OutputBuffer *ob, String name, Int member_count,
                            "    using weak_type = %.*s;\n"
                            "    using base      = %.*s;\n"
                            "\n"
-                           "    static constexpr char const * const name      = \"%.*s%s%s\";\n"
-                           "    static constexpr char const * const weak_name = \"%.*s\";\n"
+                           "    static char const * const name;\n"
+                           "    static char const * const weak_name;\n"
                            "\n"
-                           "    static constexpr size_t member_count = %d;\n"
-                           "    static constexpr size_t base_count   = %d;\n"
+                           "    static size_t const member_count = %d;\n"
+                           "    static size_t const base_count   = %d;\n"
                            "\n"
-                           "    static constexpr size_t ptr_level = %d;\n"
-                           "    static constexpr bool is_ref      = %s;\n"
+                           "    static size_t const ptr_level = %d;\n"
+                           "    static bool   const is_ref    = %s;\n"
                            "\n"
-                           "    static constexpr bool is_primitive = %s;\n"
-                           "    static constexpr bool is_class     = %s;\n"
-                           "    static constexpr bool is_enum      = %s;\n"
+                           "    static bool const is_primitive = %s;\n"
+                           "    static bool const is_class     = %s;\n"
+                           "    static bool const is_enum      = %s;\n"
                            "};\n"
+                           "char const * const TypeInfo<%.*s%s%s>::name      = \"%.*s%s%s\";\n"
+                           "char const * const TypeInfo<%.*s%s%s>::weak_name = \"%.*s\";\n"
                            "\n",
                            name.len, name.e, pointer_stuff, ref,
                            name.len, name.e, pointer_stuff, ref,
                            name.len, name.e,
                            (base.len) ? base.len : 4, (base.len) ? base.e : "void",
-                           name.len, name.e, pointer_stuff, ref,
-                           name.len, name.e,
                            member_count,
                            inherited_count,
                            ptr_count,
                            (is_ref) ? "true" : "false",
                            (type == primitive) ? "true" : "false",
                            (type == struct_class) ? "true" : "false", // TODO(Jonny): Should I set this to true for enum classes?
-                           (type == an_enum) ? "true" : "false");
+                           (type == an_enum) ? "true" : "false",
+                           name.len, name.e, pointer_stuff, ref,
+                           name.len, name.e, pointer_stuff, ref,
+                           name.len, name.e, pointer_stuff, ref,
+                           name.len, name.e);
+
 
     clear_scratch_memory();
 }
@@ -240,7 +245,7 @@ internal Void write_type_struct_all(OutputBuffer *ob, String name, Int member_co
         base = create_string("void");
     }
 
-    TypeStructType type = (is_primitive(name)) ? primitive : struct_class;
+    TypeStructType type = is_primitive(name) ? primitive : struct_class;
     Int inherited_count = (struct_data) ? struct_data->inherited_count : 0;
 
     for(Int i = 0; (i < max_ptr_size); ++i) {
@@ -250,7 +255,7 @@ internal Void write_type_struct_all(OutputBuffer *ob, String name, Int member_co
         }
 
         write_type_struct(ob, name, member_count, ptr_buf, type, false, base, inherited_count);
-        if((!i) && (!string_compare(name, create_string("void")))) {
+        if(!string_compare(name, create_string("void"))) {
             write_type_struct(ob, name, member_count, ptr_buf, type, true, base, inherited_count);
         }
     }
@@ -725,12 +730,12 @@ internal Void write_out_get_access(OutputBuffer *ob, StructData *struct_data, In
                            "//\n"
                            "// Get access at index.\n"
                            "//\n"
-                           "template<typename T, int index> constexpr Access get_access_at_index() { return(Access_unknown); }\n"
+                           "template<typename T, int index> Access get_access_at_index() { return(Access_unknown); }\n"
                            "\n");
 
     auto write_func = [](OutputBuffer *ob, StructData *sd, Int j, char *access, Char *modifier) {
         write_to_output_buffer(ob,
-                               "template<> constexpr Access get_access_at_index<%.*s%s, %d>() { return(Access_%s); }\n",
+                               "template<> Access get_access_at_index<%.*s%s, %d>() { return(Access_%s); }\n",
                                sd->name.len, sd->name.e, modifier,
                                j,
                                access);
@@ -1397,7 +1402,7 @@ internal Void write_get_number_of_members_str(OutputBuffer *ob, StructData *stru
 
 internal Void write_enum_to_string(OutputBuffer *ob, EnumData enum_data) {
     write_to_output_buffer(ob,
-                           "template<>constexpr char const *enum_to_string<%.*s>(%.*s element) {\n"
+                           "template<>char const *enum_to_string<%.*s>(%.*s element) {\n"
                            "    %.*s index = (%.*s)element;\n"
                            "    switch(index) {\n",
                            enum_data.name.len, enum_data.name.e,
@@ -1422,7 +1427,7 @@ internal Void write_enum_to_string(OutputBuffer *ob, EnumData enum_data) {
 
 internal void write_string_to_enum(OutputBuffer *ob, EnumData enum_data) {
     write_to_output_buffer(ob,
-                           "template<>constexpr %.*s string_to_enum<%.*s>(char const *str) {\n"
+                           "template<>%.*s string_to_enum<%.*s>(char const *str) {\n"
                            "    %.*s res = {};\n"
                            "    bool equal = false;\n"
                            "    char const *cpy = 0;\n"
@@ -1547,8 +1552,8 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
                                "//\n"
                                "\n"
                                "// Stub functions.\n"
-                               "template<typename T>static constexpr char const *enum_to_string(T element) { return(0); }\n"
-                               "template<typename T>static constexpr T string_to_enum(char const *str) { return(0); }\n"
+                               "template<typename T>static char const *enum_to_string(T element) { return(0); }\n"
+                               "template<typename T>static T string_to_enum(char const *str) { return(0); }\n"
                                "\n");
         for(Int i = 0; (i < enum_count); ++i) {
             if(enum_data[i].type.len) {
