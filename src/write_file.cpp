@@ -765,31 +765,32 @@ internal Void write_out_get_access(OutputBuffer *ob, StructData *struct_data, In
     }
 }
 
+internal Void write_get_member(OutputBuffer *ob, StructData *sd, Variable *md, Int j, Char *ref_info) {
+    Char ptr_buf[max_ptr_size] = {};
+    for(Int k = 0; (k < md->ptr); ++k) ptr_buf[k] = '*';
+
+
+    write_to_output_buffer(ob,
+                           "template<> struct GetMember<%.*s%s, %d> {\n"
+                           "    static %.*s%s *get(%.*s *ptr) {\n"
+                           "        _%.*s *cpy = (_%.*s *)ptr;\n"
+                           "        %.*s%s * res = (%.*s%s *)&cpy->%.*s;\n"
+                           "        return(res);\n"
+                           "    };\n"
+                           "};\n",
+                           sd->name.len, sd->name.e, ref_info,
+                           j,
+                           md->type.len, md->type.e, ptr_buf,
+                           sd->name.len, sd->name.e,
+                           sd->name.len, sd->name.e,
+                           sd->name.len, sd->name.e,
+                           md->type.len, md->type.e, ptr_buf,
+                           md->type.len, md->type.e, ptr_buf,
+                           md->name.len, md->name.e);
+}
+
 // TODO(Jonny): This won't handle pointers or arrays.
 internal Void write_out_get_at_index(OutputBuffer *ob, StructData *struct_data, Int struct_count) {
-    auto write_get_member = [](OutputBuffer *ob, StructData *sd, Variable *md, Int j, Char *ref_info) {
-        Char ptr_buf[max_ptr_size] = {};
-        for(Int k = 0; (k < md->ptr); ++k) ptr_buf[k] = '*';
-
-
-        write_to_output_buffer(ob,
-                               "template<> struct GetMember<%.*s%s, %d> {\n"
-                               "    static %.*s%s *get(%.*s *ptr) {\n"
-                               "        _%.*s *cpy = (_%.*s *)ptr;\n"
-                               "        %.*s%s * res = (%.*s%s *)&cpy->%.*s;\n"
-                               "        return(res);\n"
-                               "    };\n"
-                               "};\n",
-                               sd->name.len, sd->name.e, ref_info,
-                               j,
-                               md->type.len, md->type.e, ptr_buf,
-                               sd->name.len, sd->name.e,
-                               sd->name.len, sd->name.e,
-                               sd->name.len, sd->name.e,
-                               md->type.len, md->type.e, ptr_buf,
-                               md->type.len, md->type.e, ptr_buf,
-                               md->name.len, md->name.e);
-    };
 
     write_to_output_buffer(ob,
                            "// Get at index.\n"
