@@ -750,10 +750,10 @@ internal Void write_out_get_access(OutputBuffer *ob, StructData *struct_data, In
             Variable *md = sd->members + j;
 
             Char *access = 0;
-            if(md->access == Access_public)         { access = "public"; }
-            else if(md->access == Access_private)   { access = "private"; }
+            if(md->access == Access_public)         { access = "public";    }
+            else if(md->access == Access_private)   { access = "private";   }
             else if(md->access == Access_protected) { access = "protected"; }
-            else                                    { assert(0); /* Error, could not determine access. */ }
+            else                                    { assert(0);            } // Error, could not determine access.
 
             write_func(ob, sd, j, access, "");
             write_func(ob, sd, j, access, " *");
@@ -767,7 +767,9 @@ internal Void write_out_get_access(OutputBuffer *ob, StructData *struct_data, In
 
 internal Void write_get_member(OutputBuffer *ob, StructData *sd, Variable *md, Int j, Char *ref_info) {
     Char ptr_buf[max_ptr_size] = {};
-    for(Int k = 0; (k < md->ptr); ++k) ptr_buf[k] = '*';
+    for(Int k = 0; (k < md->ptr); ++k) {
+        ptr_buf[k] = '*';
+    }
 
 
     write_to_output_buffer(ob,
@@ -791,7 +793,6 @@ internal Void write_get_member(OutputBuffer *ob, StructData *sd, Variable *md, I
 
 // TODO(Jonny): This won't handle pointers or arrays.
 internal Void write_out_get_at_index(OutputBuffer *ob, StructData *struct_data, Int struct_count) {
-
     write_to_output_buffer(ob,
                            "// Get at index.\n"
                            "#define get_member(variable, index) GetMember<decltype(variable), index>::get(variable)\n"
@@ -806,7 +807,44 @@ internal Void write_out_get_at_index(OutputBuffer *ob, StructData *struct_data, 
 
             // Because get_member _requires_ a pointer, only generate code for the pointer version.
             write_get_member(ob, sd, md, j, " *");
-            write_get_member(ob, sd, md, j, " *&");
+            write_get_member(ob, sd, md, j, " *&"); // TODO(Jonny): Is this nessessary?
+        }
+    }
+}
+
+internal Void write_get_base(OutputBuffer *ob, StructData *struct_data, Int struct_count) {
+    write_to_output_buffer(ob,
+                           "// Get at index.\n"
+                           "#define get_base(variable, index) GetBase<decltype(variable), index>::get(variable)\n"
+                           "template<typename T, int index> struct GetBase {};\n");
+
+    for(Int i = 0; (i < struct_count); ++i) {
+        StructData *sd = struct_data + i;
+
+        if(!sd->inherited_count) {
+            // TODO(Jonny): Write "void".
+        } else {
+            for(Int j = 0; (j < sd->inherited_count); ++j) {
+
+                StructData *base = find_struct(sd->inherited[j], struct_data, struct_count);
+                assert(base); // TODO(Jonny): Better error handling!
+
+                write_to_output_buffer(ob,
+                                       "template<> struct GetBase<%.*s *, %d> {\n"
+                                       "    static %.*s *get(%.*s *ptr) {\n"
+                                       "        _%.*s *cpy = (_%.*s *)ptr;\n"
+                                       "        _%.*s *b = dynamic_cast<_%.*s *>(cpy);\n"
+                                       "\n"
+                                       "        return((%.*s *)b);\n"
+                                       "    }\n"
+                                       "};\n"
+                                       "\n",
+                                       sd->name.len, sd->name.e, j,
+                                       base->name.len, base->name.e, sd->name.len, sd->name.e,
+                                       sd->name.len, sd->name.e, sd->name.len, sd->name.e,
+                                       base->name.len, base->name.e, base->name.len, base->name.e,
+                                       base->name.len, base->name.e);
+            }
         }
     }
 }
@@ -1531,6 +1569,7 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
             write_out_type_specification_enum(&ob, enum_data, enum_count);
             write_out_get_at_index(&ob, struct_data, struct_count);
             write_out_get_name_at_index(&ob, struct_data, struct_count);
+            write_get_base(&ob, struct_data, struct_count);
 
             write_is_container(&ob, types, type_count);
             write_meta_type_to_name(&ob, struct_data, struct_count);
