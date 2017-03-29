@@ -1538,7 +1538,7 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
             write_out_get_access(&ob, struct_data, struct_count);
 
 
-            system_free( types);
+            system_free(types);
         }
 
         write_get_members_of(&ob, struct_data, struct_count);
@@ -1568,7 +1568,96 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
         write_to_output_buffer(&ob, "\n");
 
         write_to_output_buffer(&ob,
-                               "#define weak_type_compare(A, B) TypeCompare_<pp::Type<A>::weak_type, pp::Type<B>::weak_type>::e;");
+                               "#define weak_type_compare(A, B) TypeCompare_<pp::Type<A>::weak_type, pp::Type<B>::weak_type>::e;\n");
+
+        //
+        // Functors
+        //
+        {
+            write_to_output_buffer(&ob,
+                                   "\n\n"
+                                   "//\n"
+                                   "// Function stuff.\n"
+                                   "//\n"
+                                   "\n"
+                                   "#define get_functor(func) Functor_##func\n"
+                                   "\n"
+                                   "enum Linkage : int {\n"
+                                   "    Linkage_default,\n"
+                                   "    Linkage_static,\n"
+                                   "    Linkage_inline,\n"
+                                   "};\n"
+                                   "\n"
+                                   "struct FunctionData {\n"
+                                   "    char const *return_type;\n"
+                                   "    Linkage linkage;\n"
+                                   "};\n");
+
+            for(Int i = 0; (i < func_count); ++i) {
+                FunctionData *fd = func_data + i;
+
+                PtrSize size = scratch_memory_size / 4;
+                Char *buf1 = cast(Char *)push_scratch_memory(size); Int wrtn1 = 0; // Param list.
+                Char *buf2 = cast(Char *)push_scratch_memory(size); Int wrtn2 = 0; // Calling func from param list.
+                Char *buf3 = cast(Char *)push_scratch_memory(size); Int wrtn3 = 0; // Calling func from param list with this.
+                Char *buf4 = cast(Char *)push_scratch_memory(size); Int wrtn4 = 0; // Params as member variables
+
+                for(Int j = 0; (j < fd->param_cnt); ++j) {
+                    Variable *param = fd->params + j;
+
+                    Char *write_comma = (j < fd->param_cnt - 1) ? ", " : "";
+
+                    Char ptr_buf[max_ptr_size] = {};
+                    for(Int k = 0; (k < param->ptr); ++k) {
+                        ptr_buf[k] = '*';
+                    }
+
+                    // buf1
+                    wrtn1 += stbsp_snprintf(buf1 + wrtn1, size - wrtn1,
+                                            "%.*s %s_%.*s%s",
+                                            param->type.len, param->type.e,
+                                            ptr_buf,
+                                            param->name.len, param->name.e,
+                                            write_comma);
+
+                    // buf2
+                    wrtn2 += stbsp_snprintf(buf2 + wrtn2, size - wrtn2,
+                                            "_%.*s%s",
+                                            param->name.len, param->name.e,
+                                            write_comma);
+
+                    // buf3
+                    wrtn3 += stbsp_snprintf(buf3 + wrtn3, size - wrtn3,
+                                            "this->%.*s%s",
+                                            param->name.len, param->name.e,
+                                            write_comma);
+
+                    // buf4
+                    wrtn4 += stbsp_snprintf(buf4 + wrtn4, size - wrtn4,
+                                            "    %.*s %s%.*s;\n",
+                                            param->type.len, param->type.e,
+                                            ptr_buf,
+                                            param->name.len, param->name.e);
+                }
+
+
+                write_to_output_buffer(&ob,
+                                       "// %.*s\n"
+                                       "struct Functor_%.*s {\n"
+                                       "    %.*s operator()(%s) { return %.*s(%s); }\n"
+                                       "    %.*s operator()() { return %.*s(%s); }\n"
+                                       "\n"
+                                       "%s"
+                                       "};\n",
+                                       fd->name.len, fd->name.e,
+                                       fd->name.len, fd->name.e,
+                                       fd->return_type.len, fd->return_type.e, buf1, fd->name.len, fd->name.e, buf2,
+                                       fd->return_type.len, fd->return_type.e, fd->name.len, fd->name.e, buf3,
+                                       buf4);
+
+                clear_scratch_memory();
+            }
+        }
 
         //
         // # Guard macro.
