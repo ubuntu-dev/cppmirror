@@ -202,6 +202,12 @@ Bool string_compare(String a, String b) {
     return(res);
 }
 
+Bool string_compare(String a, Char *b) {
+    Bool res = string_compare(a, create_string(b));
+
+    return(res);
+}
+
 Bool string_compare_array(String *a, String *b, Int cnt) {
     Bool res = true;
     for(Int i = 0; (i < cnt); ++i) {

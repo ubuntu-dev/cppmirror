@@ -171,92 +171,86 @@ internal Bool is_primitive(String str) {
     return(res);
 }
 
-enum TypeStructType {
-    primitive, struct_class, an_enum
+enum DataType {
+    DataType_unknown,
+    DataType_primitive,
+    DataType_struct,
+    DataType_enum,
+
+    DataType_count,
 };
-
-// TODO(Jonny): Remove tuple stuff.
+#if 0
 internal Void write_type_struct(OutputBuffer *ob, String name, Int member_count, Char *pointer_stuff,
-                                TypeStructType type, Bool is_ref, String base = create_string(""), Int inherited_count = 0) {
-    Char const *ref = (is_ref) ? "&" : "";
-
-    Int ptr_count = 0;
-    Char *at = pointer_stuff;
-    while(*at++) {
-        if(*at == '*') {
-            ++ptr_count;
-        }
-    }
-
-    write_to_output_buffer(ob,
-                           "template<> struct TypeInfo<%.*s%s%s> {\n"
-                           "    using type      = %.*s%s%s;\n"
-                           "    using weak_type = %.*s;\n"
-                           "    using base      = %.*s;\n"
-                           "\n"
-                           "    static char const * const name;\n"
-                           "    static char const * const weak_name;\n"
-                           "\n"
-                           "    static size_t const member_count = %d;\n"
-                           "    static size_t const base_count   = %d;\n"
-                           "\n"
-                           "    static size_t const ptr_level = %d;\n"
-                           "    static bool   const is_ref    = %s;\n"
-                           "\n"
-                           "    static bool const is_primitive = %s;\n"
-                           "    static bool const is_class     = %s;\n"
-                           "    static bool const is_enum      = %s;\n"
-                           "};\n"
-                           "char const * const TypeInfo<%.*s%s%s>::name      = \"%.*s%s%s\";\n"
-                           "char const * const TypeInfo<%.*s%s%s>::weak_name = \"%.*s\";\n"
-                           "\n",
-                           name.len, name.e, pointer_stuff, ref,
-                           name.len, name.e, pointer_stuff, ref,
-                           name.len, name.e,
-                           (base.len) ? base.len : 4, (base.len) ? base.e : "void",
-                           member_count,
-                           inherited_count,
-                           ptr_count,
-                           (is_ref) ? "true" : "false",
-                           (type == primitive) ? "true" : "false",
-                           (type == struct_class) ? "true" : "false", // TODO(Jonny): Should I set this to true for enum classes?
-                           (type == an_enum) ? "true" : "false",
-                           name.len, name.e, pointer_stuff, ref,
-                           name.len, name.e, pointer_stuff, ref,
-                           name.len, name.e, pointer_stuff, ref,
-                           name.len, name.e);
+                                TypeStructType type, Bool is_ref, Int inherited_count = 0) {
 
 
     clear_scratch_memory();
 }
-
-internal Void write_type_struct_all(OutputBuffer *ob, String name, Int member_count, StructData *structs, Int struct_count) {
+#endif
+internal Void write_type_struct(OutputBuffer *ob, DataType type, String name, String base = create_string("void"),
+                                Int member_count = 0, Int inherited_count = 0) {
     write_to_output_buffer(ob, "\n// struct %.*s\n", name.len, name.e);
 
-    String base = {};
-    StructData *struct_data = find_struct(name, structs, struct_count);
-    if(struct_data) {
-        if(struct_data->inherited_count) {
-            base = struct_data->inherited[0];
-        }
-    }
-
-    if(!base.len) {
-        base = create_string("void");
-    }
-
-    TypeStructType type = is_primitive(name) ? primitive : struct_class;
-    Int inherited_count = (struct_data) ? struct_data->inherited_count : 0;
-
+    Bool alternate_ref = false;
     for(Int i = 0; (i < max_ptr_size); ++i) {
         char ptr_buf[max_ptr_size + 1] = {};
         for(Int j = 0; (j < i); ++j) {
             ptr_buf[j] = '*';
         }
 
-        write_type_struct(ob, name, member_count, ptr_buf, type, false, base, inherited_count);
-        if(!string_compare(name, create_string("void"))) {
-            write_type_struct(ob, name, member_count, ptr_buf, type, true, base, inherited_count);
+        for(Int j = 0; (j < 2); ++j) {
+            if((!j) || (!string_compare(name, "void"))) {
+                Char const *ref = (j) ? "&" : "";
+
+                Int ptr_count = 0;
+                Char *at = ptr_buf;
+                while(*at) {
+                    if(*at == '*') {
+                        ++ptr_count;
+                    }
+
+                    at++;
+                }
+
+                write_to_output_buffer(ob,
+                                       "template<> struct TypeInfo<%.*s%s%s> {\n"
+                                       "    using type      = %.*s%s%s;\n"
+                                       "    using weak_type = %.*s;\n"
+                                       "    using base      = %.*s;\n"
+                                       "\n"
+                                       "    static char const * const name;\n"
+                                       "    static char const * const weak_name;\n"
+                                       "\n"
+                                       "    static size_t const member_count = %d;\n"
+                                       "    static size_t const base_count   = %d;\n"
+                                       "\n"
+                                       "    static size_t const ptr_level = %d;\n"
+                                       "    static bool   const is_ref    = %s;\n"
+                                       "\n"
+                                       "    static bool const is_primitive = %s;\n"
+                                       "    static bool const is_struct    = %s;\n"
+                                       "    static bool const is_enum      = %s;\n"
+                                       // TODO(Jonny): Could I have an "is_functor" too? Or is that stupid?
+                                       "};\n"
+                                       "char const * const TypeInfo<%.*s%s%s>::name      = \"%.*s%s%s\";\n"
+                                       "char const * const TypeInfo<%.*s%s%s>::weak_name = \"%.*s\";\n"
+                                       "\n",
+                                       name.len, name.e, ptr_buf, ref,
+                                       name.len, name.e, ptr_buf, ref,
+                                       name.len, name.e,
+                                       base.len, base.e,
+                                       member_count,
+                                       inherited_count,
+                                       ptr_count,
+                                       (j) ? "true" : "false",
+                                       (type == DataType_primitive) ? "true" : "false",
+                                       (type == DataType_struct) ? "true" : "false", // TODO(Jonny): Should I set this to true for enum classes?
+                                       (type == DataType_enum) ? "true" : "false",
+                                       name.len, name.e, ptr_buf, ref,
+                                       name.len, name.e, ptr_buf, ref,
+                                       name.len, name.e, ptr_buf, ref,
+                                       name.len, name.e);
+            }
         }
     }
 }
@@ -929,7 +923,7 @@ internal Void write_out_type_specification_struct(OutputBuffer *ob, StructData *
                            "// Meta type specialization\n"
                            "//\n");
 
-    write_type_struct_all(ob, create_string("void"), 0, struct_data, struct_count);
+    write_type_struct(ob, DataType_primitive, create_string("void"));
 
     String primatives[array_count(primitive_types)] = {};
     set_primitive_type(primatives);
@@ -946,7 +940,7 @@ internal Void write_out_type_specification_struct(OutputBuffer *ob, StructData *
 
             written_members[member_cnt++] = primatives[i];
 
-            write_type_struct_all(ob, primatives[i], 0, struct_data, struct_count);
+            write_type_struct(ob, DataType_primitive, primatives[i]);
         }
     }
 
@@ -964,7 +958,8 @@ internal Void write_out_type_specification_struct(OutputBuffer *ob, StructData *
 
             written_members[member_cnt++] = sd->name;
 
-            write_type_struct_all(ob, sd->name, sd->member_count, struct_data, struct_count);
+            write_type_struct(ob, DataType_struct, sd->name, (sd->inherited_count) ? sd->inherited[0] : create_string("void"),
+                              sd->member_count, sd->inherited_count);
 
             for(Int j = 0; (j < sd->member_count); ++j) {
                 Variable *md = sd->members + j;
@@ -986,7 +981,11 @@ internal Void write_out_type_specification_struct(OutputBuffer *ob, StructData *
                         number_of_members = members_struct_data->member_count;
                     }
 
-                    write_type_struct_all(ob, md->type, number_of_members, struct_data, struct_count);
+                    StructData *member_data = find_struct(md->type, struct_data, struct_count);
+                    assert(member_data); // TODO(Jonny): Better error handling.
+                    write_type_struct(ob, DataType_struct, member_data->name,
+                                      (member_data->inherited_count) ? member_data->inherited[0] : create_string("void"),
+                                      member_data->member_count, member_data->inherited_count);
                 }
             }
         }
@@ -999,21 +998,7 @@ internal Void write_out_type_specification_enum(OutputBuffer *ob, EnumData *enum
     for(Int i = 0; (i < enum_count); ++i) {
         EnumData *ed = enum_data + i;
 
-        if(ed->type.len) {
-            write_to_output_buffer(ob,
-                                   "// enum %.*s\n",
-                                   ed->name.len, ed->name.e);
-
-            for(Int j = 0; (j < max_ptr_size); ++j) {
-                Char ptr_buf[max_ptr_size + 1] = {};
-                for(Int k = 0; (k < j); ++k) {
-                    ptr_buf[k] = '*';
-                }
-
-                write_type_struct(ob, ed->name, ed->no_of_values, ptr_buf, an_enum, false, ed->type);
-                write_type_struct(ob, ed->name, ed->no_of_values, ptr_buf, an_enum, true, ed->type);
-            }
-        }
+        write_type_struct(ob, DataType_enum, ed->name, ed->type, ed->no_of_values);
     }
 }
 
