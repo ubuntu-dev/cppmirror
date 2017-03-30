@@ -92,132 +92,24 @@ internal SwitchType get_switch_type(Char *str) {
     return(res);
 }
 
-internal Bool write_static_file() {
-    Char *file =
-        "//\n"
-        "// Code shared between generated files.\n"
-        "#if !defined(STATIC_GENERATED_H)\n"
-        "\n"
-        "#include <stdio.h>\n"
-        "#include <string.h>\n"
-        "#include <assert.h>\n"
-        "#include <stdlib.h>\n"
-        "#include <stddef.h>\n"
-        "// TODO(Jonny): Only include these if their needed?\n"
-        "#include <vector>\n"
-        "#include <deque>\n"
-        "#include <forward_list>\n"
-        "#include <list>\n"
-        "\n"
-        "namespace pp { // PreProcessor\n"
-        "\n"
-        "typedef void _void;\n"
-        "typedef char _char;\n"
-        "typedef short _short;\n"
-        "typedef int _int;\n"
-        "typedef long _long;\n"
-        "typedef float _float;\n"
-        "typedef double _double;\n"
-        "typedef bool _bool;\n"
-        "\n"
-        "#define PP_COMPILER_MSVC 0\n"
-        "#define PP_COMPILER_CLANG 0\n"
-        "#define PP_COMPILER_GCC 0\n"
-        "\n"
-        "#define PP_ENVIRONMENT64 0\n"
-        "#define PP_ENVIRONMENT32 0\n"
-        "\n"
-        "#define PP_OS_WIN32 0\n"
-        "#define PP_OS_LINUX 0\n"
-        "\n"
-        "#if defined(__clang__)\n"
-        "    #undef PP_COMPILER_CLANG\n"
-        "    #define PP_COMPILER_CLANG 1\n"
-        "#elif defined(_MSC_VER)\n"
-        "    #undef PP_COMPILER_MSVC\n"
-        "    #define PP_COMPILER_MSVC 1\n"
-        "#elif (defined(__GNUC__) || defined(__GNUG__)) // This has to be after __clang__, because Clang also defines this.\n"
-        "    #undef PP_COMPILER_GCC\n"
-        "    #define PP_COMPILER_GCC 1\n"
-        "#endif\n"
-        "\n"
-        "#if defined(__linux__)\n"
-        "    #undef PP_OS_LINUX\n"
-        "    #define PP_OS_LINUX 1\n"
-        "#elif defined(_WIN32)\n"
-        "    #undef PP_OS_WIN32\n"
-        "    #define PP_OS_WIN32 1\n"
-        "#endif\n"
-        "\n"
-        "#if PP_OS_LINUX\n"
-        "    #if (__x86_64__ || __ppc64__)\n"
-        "        #undef PP_ENVIRONMENT64\n"
-        "        #define PP_ENVIRONMENT64 1\n"
-        "    #else\n"
-        "        #undef PP_ENVIRONMENT32\n"
-        "        #define PP_ENVIRONMENT32 1\n"
-        "    #endif\n"
-        "#elif OS_WIN32\n"
-        "    #if defined(_WIN64)\n"
-        "        #undef PP_ENVIRONMENT64\n"
-        "        #define PP_ENVIRONMENT64 1\n"
-        "    #else\n"
-        "        #undef PP_ENVIRONMENT32\n"
-        "        #define PP_ENVIRONMENT32 1\n"
-        "    #endif\n"
-        "#endif\n"
-        "\n"
-        "template<class T, class U>struct TypeCompare_{ static const bool e = false; };\n"
-        "template<class T>struct TypeCompare_<T, T>{ static const bool e = true; };\n"
-        "#define type_compare(a, b) TypeCompare_<a, b>::e\n"
-        "\n"
-        "#if defined(_MSC_VER)\n"
-        "    #define pp_sprintf(buf, size, format, ...) sprintf_s(buf, size, format, ##__VA_ARGS__)\n"
-        "#else\n"
-        "    #define pp_sprintf(buf, size, format, ...) sprintf(buf, format, ##__VA_ARGS__)\n"
-        "#endif\n"
-        "\n"
-        "} // namespace pp\n"
-        "\n"
-        "#define STATIC_GENERATED\n"
-        "#endif // !defined(STATIC_GENERATED_H)\n"
-        "\n";
-
-    Int static_file_len = string_length(file);
-    Bool res = system_write_to_file(dir_name "/static_generated.h", file, static_file_len);
-
-    if(!res) {
-        push_error(ErrorType_could_not_write_to_disk);
-    }
-
-    return(res);
-}
-
 internal Bool should_write_to_file = false;
 
-internal Void start_parsing(Char *fname, Char *file) {
-    ParseResult parse_res = parse_stream(file);
+internal Void parse_and_write_file(Char *fdata) {
+    ParseResult parse_res = parse_stream(fdata);
 
-    File file_to_write = write_data(fname, parse_res.struct_data, parse_res.struct_cnt,
+    File file_to_write = write_data(parse_res.struct_data, parse_res.struct_cnt,
                                     parse_res.enum_data, parse_res.enum_cnt,
                                     parse_res.func_data, parse_res.func_cnt);
 
     if(should_write_to_file) {
-        Char generated_file_name[256] = dir_name "/"; // TODO(Jonny): MAX_PATH?
-        Int start = string_length(dir_name "/");
-        Char *generated_extension = "_generated.h";
+        Char *generated_file_name = "pp_generated.hpp";
 
-        // Add _generated.h to the filename.
-        if(string_concat(generated_file_name + start, array_count(generated_file_name) - start,
-                         fname, string_length(fname) - 4, // TODO(Jonny): Hacky, actually detect the extension properly.
-                         generated_extension, string_length(generated_extension))) {
-            Bool header_write_success = system_write_to_file(generated_file_name, file_to_write.data, file_to_write.size);
-            if(!header_write_success) {
-                push_error(ErrorType_could_not_write_to_disk);
-            }
-
-            system_free(file_to_write.data);
+        Bool header_write_success = system_write_to_file(generated_file_name, file_to_write.data, file_to_write.size);
+        if(!header_write_success) {
+            push_error(ErrorType_could_not_write_to_disk);
         }
+
+        system_free(file_to_write.data);
     }
 
     for(Int i = 0; (i < parse_res.struct_cnt); ++i) {
@@ -304,14 +196,6 @@ Int main(Int argc, Char **argv) {// TODO(Jonny): Support wildcards.
             } else {
                 Byte *file_memory = system_alloc(Byte, largest_source_file_size);
                 if(file_memory) {
-                    // Write static file to disk.
-                    if(should_write_to_file) {
-                        Bool create_folder_success = system_create_folder(dir_name);
-
-                        if(create_folder_success) write_static_file();
-                        else                      push_error(ErrorType_could_not_create_directory);
-                    }
-
                     // Parse files
                     for(Int i = 1; (i < argc); ++i) {
                         Char *file_name = argv[i];
@@ -321,7 +205,7 @@ Int main(Int argc, Char **argv) {// TODO(Jonny): Support wildcards.
                         if(type == SwitchType_source_file) {
                             File file = system_read_entire_file_and_null_terminate(file_name, file_memory);
 
-                            if(file.data) start_parsing(file_name, file.data);
+                            if(file.data) parse_and_write_file(file.data);
                             else          push_error(ErrorType_could_not_load_file);
                         }
                     }

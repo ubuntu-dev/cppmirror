@@ -148,7 +148,7 @@ internal Void write_type_info(OutputBuffer *ob, DataType type, String name, Stri
                 }
 
                 write_to_output_buffer(ob,
-                                       "template<> struct TypeInfo<%.*s%s%s> {\n"
+                                       "template<> struct pp_TypeInfo<%.*s%s%s> {\n"
                                        "    using type      = %.*s%s%s;\n"
                                        "    using weak_type = %.*s;\n"
                                        "    using base      = %.*s;\n"
@@ -167,8 +167,8 @@ internal Void write_type_info(OutputBuffer *ob, DataType type, String name, Stri
                                        "    static bool const is_enum      = %s;\n"
                                        // TODO(Jonny): Could I have an "is_functor" too? Or is that stupid?
                                        "};\n"
-                                       "char const * const TypeInfo<%.*s%s%s>::name      = \"%.*s%s%s\";\n"
-                                       "char const * const TypeInfo<%.*s%s%s>::weak_name = \"%.*s\";\n"
+                                       "char const * const pp_TypeInfo<%.*s%s%s>::name      = \"%.*s%s%s\";\n"
+                                       "char const * const pp_TypeInfo<%.*s%s%s>::weak_name = \"%.*s\";\n"
                                        "\n",
                                        name.len, name.e, ptr_buf, ref,
                                        name.len, name.e, ptr_buf, ref,
@@ -287,7 +287,7 @@ internal Void write_out_type_specification_struct(OutputBuffer *ob, StructData *
     system_free( written_members);
 }
 
-File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData *enum_data, Int enum_count,
+File write_data(StructData *struct_data, Int struct_count, EnumData *enum_data, Int enum_count,
                 FunctionData *func_data, Int func_count) {
     File res = {};
 
@@ -295,25 +295,158 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
     ob.size = 1024 * 1024;
     ob.buffer = system_alloc(Char, ob.size);
     if(ob.buffer) {
-        Char *name_buf = cast(Char *)push_scratch_memory();
-        Int len_wo_extension = string_length(fname) - 4; // TODO(Jonny): Do properly.
-
-        for(Int i = 0; (i < len_wo_extension); ++i) {
-            name_buf[i] = to_caps(fname[i]);
-        }
-
         write_to_output_buffer(&ob,
-                               "#if !defined(%s_GENERATED_H)\n"
-                               "#define %s_GENERATED_H\n"
-                               "\n",
-                               name_buf, name_buf);
+                               "#if !defined(PP_GENERATED_H)\n"
+                               "\n"
+                               "//\n"
+                               "// Detect compiler.\n"
+                               "//\n"
+                               "#if defined(PP_COMPILER_MSVC)\n"
+                               "    #undef PP_COMPILER_MSVC\n"
+                               "    #undef PP_COMPILER_CLANG\n"
+                               "    #undef PP_COMPILER_GCC\n"
+                               "\n"
+                               "    #define PP_COMPILER_MSVC 1\n"
+                               "    #define PP_COMPILER_CLANG 0\n"
+                               "    #define PP_COMPILER_GCC 0\n"
+                               "#elif defined(PP_COMPILER_CLANG)\n"
+                               "    #undef PP_COMPILER_MSVC\n"
+                               "    #undef PP_COMPILER_CLANG\n"
+                               "    #undef PP_COMPILER_GCC\n"
+                               "\n"
+                               "    #define PP_COMPILER_MSVC 0\n"
+                               "    #define PP_COMPILER_CLANG 1\n"
+                               "    #define PP_COMPILER_GCC 0\n"
+                               "#elif defined(PP_COMPILER_GCC)\n"
+                               "    #undef PP_COMPILER_MSVC\n"
+                               "    #undef PP_COMPILER_CLANG\n"
+                               "    #undef PP_COMPILER_GCC\n"
+                               "\n"
+                               "    #define PP_COMPILER_MSVC 0\n"
+                               "    #define PP_COMPILER_CLANG 0\n"
+                               "    #define PP_COMPILER_GCC 1\n"
+                               "#else\n"
+                               "    #define PP_COMPILER_MSVC 0\n"
+                               "    #define PP_COMPILER_CLANG 0\n"
+                               "    #define PP_COMPILER_GCC 0\n"
+                               "\n"
+                               "    #if defined(__clang__)\n"
+                               "        #undef PP_COMPILER_CLANG\n"
+                               "        #define PP_COMPILER_CLANG 1\n"
+                               "    #elif defined(_MSC_VER)\n"
+                               "        #undef PP_COMPILER_MSVC\n"
+                               "        #define PP_COMPILER_MSVC 1\n"
+                               "    #elif (defined(__GNUC__) || defined(__GNUG__)) // This has to be after __clang__, because Clang also defines this.\n"
+                               "        #undef PP_COMPILER_GCC\n"
+                               "        #define PP_COMPILER_GCC 1\n"
+                               "    #endif\n"
+                               "#endif\n"
+                               "\n"
+                               "//\n"
+                               "// Detect OS.\n"
+                               "//\n"
+                               "#if defined(PP_OS_WIN32)\n"
+                               "    #undef PP_OS_WIN32\n"
+                               "    #undef PP_OS_LINUX\n"
+                               "\n"
+                               "    #define PP_OS_WIN32 1\n"
+                               "    #define PP_OS_LINUX 0\n"
+                               "#elif defined(PP_OS_LINUX)\n"
+                               "    #undef PP_OS_WIN32\n"
+                               "    #undef PP_OS_LINUX\n"
+                               "\n"
+                               "    #define PP_OS_WIN32 0\n"
+                               "    #define PP_OS_LINUX 1\n"
+                               "#else"
+                               "    #define PP_OS_WIN32 0\n"
+                               "    #define PP_OS_LINUX 0\n"
+                               "\n"
+                               "    #if defined(__linux__)\n"
+                               "        #define PP_OS_LINUX 1\n"
+                               "    #elif defined(_WIN32)\n"
+                               "        #define PP_OS_WIN32 1\n"
+                               "    #endif\n"
+                               "#endif\n"
+                               "\n"
+                               "//\n"
+                               "// Detect 32/64 bit.\n"
+                               "//\n"
+                               "#if defined(PP_ENVIRONMENT64)\n"
+                               "    #undef PP_ENVIRONMENT64\n"
+                               "    #undef PP_ENVIRONMENT32\n"
+                               "\n"
+                               "    #define PP_ENVIRONMENT64 1\n"
+                               "    #define PP_ENVIRONMENT32 0\n"
+                               "#elif defined(PP_ENVIRONMENT32)\n"
+                               "    #undef PP_ENVIRONMENT64\n"
+                               "    #undef PP_ENVIRONMENT32\n"
+                               "\n"
+                               "    #define PP_ENVIRONMENT64 0\n"
+                               "    #define PP_ENVIRONMENT32 1\n"
+                               "#else"
+                               "    #define PP_ENVIRONMENT64 0\n"
+                               "    #define PP_ENVIRONMENT32 0\n"
+                               "\n"
+                               "    #if PP_OS_LINUX\n"
+                               "        #if (__x86_64__ || __ppc64__)\n"
+                               "            #undef PP_ENVIRONMENT64\n"
+                               "            #define PP_ENVIRONMENT64 1\n"
+                               "        #else\n"
+                               "            #undef PP_ENVIRONMENT32\n"
+                               "            #define PP_ENVIRONMENT32 1\n"
+                               "        #endif\n"
+                               "    #elif OS_WIN32\n"
+                               "        #if defined(_WIN64)\n"
+                               "            #undef PP_ENVIRONMENT64\n"
+                               "            #define PP_ENVIRONMENT64 1\n"
+                               "        #else\n"
+                               "            #undef PP_ENVIRONMENT32\n"
+                               "            #define PP_ENVIRONMENT32 1\n"
+                               "        #endif\n"
+                               "    #endif\n"
+                               "#endif\n"
+                               "\n"
+                               "typedef void pp_void;\n"
+                               "typedef char pp_char;\n"
+                               "typedef short pp_short;\n"
+                               "typedef int pp_int;\n"
+                               "typedef long pp_long;\n"
+                               "typedef float pp_float;\n"
+                               "typedef double pp_double;\n"
+                               "typedef bool pp_bool;\n"
+                               "typedef size_t pp_size_t;\n"
+                               "\n"
+                               "#define pp_std std\n"
+                               "\n"
+                               "//\n"
+                               "// Type compare and weak type compare.\n"
+                               "//\n"
+                               "template<class T, class U>struct pp_TypeCompare_{ static bool const e = false; };\n"
+                               "template<class T>struct pp_TypeCompare_<T, T>{ static bool const e = true; };\n"
+                               "#define pp_type_compare(A, B) pp_TypeCompare_<A, B>::e\n"
+                               "#define pp_weak_type_compare(A, B) pp_TypeCompare_<pp::TypeInfo<A>::weak_type, pp::TypeInfo<B>::weak_type>::e;\n"
+                               "\n"
+                               "static bool pp_string_compare(char const *a, char const *b) {\n"
+                               "    for(;; ++a, ++b) {\n"
+                               "        if((*a == 0) && (*b == 0)) {\n"
+                               "            return(true);\n"
+                               "        } else if(*a != *b) {\n"
+                               "            return(false);\n"
+                               "        }\n"
+                               "    }\n"
+                               "}\n");
 
-        clear_scratch_memory();
+
+
+        // TODO(Jonny): typedefs don't work, so I'll need to re-create them too.
 
         // Forward declare structs.
         {
             write_to_output_buffer(&ob,
-                                   "// Forward declared structs, enums, and function (these must be declared outside the namespace...)\n");
+                                   "\n"
+                                   "//\n"
+                                   "// Forward declared structs, enums, and functions\n"
+                                   "//\n");
 
             for(Int i = 0; (i < struct_count); ++i) {
                 StructData *sd = struct_data + i;
@@ -380,11 +513,6 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
             }
         }
 
-        write_to_output_buffer(&ob,
-                               "\n"
-                               "#define _std std // TODO(Jonny): This is really stupid..."
-                               "\n");
-
         //
         // Types enum.
         //
@@ -399,20 +527,19 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
             Int type_count = get_actual_type_count(types, struct_data, struct_count);
             assert(type_count <= max_type_count);
 
-            write_to_output_buffer(&ob, "\n");
-            write_to_output_buffer(&ob,
-                                   "#include \"static_generated.h\"\n"
-                                   "namespace pp { // PreProcessor\n");
-            write_to_output_buffer(&ob, "\n");
+            write_to_output_buffer(&ob, "\n\n");
 
             // Recreated enums.
             {
+                // TODO(Jonny): I don't think these are actually nessessary for anything. I'm leaving it in just in case
+                //              that changes though.
+#if 0
                 write_to_output_buffer(&ob, "// Recreated structs/enums.\n");
 
                 for(Int i = 0; (i < enum_count); ++i) {
                     EnumData *ed = enum_data + i;
 
-                    write_to_output_buffer(&ob, "enum %s _%.*s",
+                    write_to_output_buffer(&ob, "enum %s pp_%.*s",
                                            (ed->is_struct) ? "class" : "",
                                            ed->name.len, ed->name.e);
                     if(ed->type.len) {
@@ -431,14 +558,19 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
 
                     write_to_output_buffer(&ob, " };\n");
                 }
+#endif
             }
 
             // Recreated structs.
             {
+                write_to_output_buffer(&ob,
+                                       "//\n"
+                                       "// Recreated structs.\n"
+                                       "//\n");
                 for(Int i = 0; (i < struct_count); ++i) {
                     StructData *sd = struct_data + i;
 
-                    write_to_output_buffer(&ob, "%s _%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
+                    write_to_output_buffer(&ob, "%s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
                                            sd->name.len, sd->name.e);
                     if(sd->inherited) {
                         write_to_output_buffer(&ob, " :");
@@ -448,7 +580,7 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
 
                             if(j > 0) write_to_output_buffer(&ob, ",");
 
-                            write_to_output_buffer(&ob, " public _%.*s", inherited->len, inherited->e);
+                            write_to_output_buffer(&ob, " public pp_%.*s", inherited->len, inherited->e);
                         }
                     }
                     write_to_output_buffer(&ob, " { ");
@@ -477,7 +609,7 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
                         char ptr_buf[max_ptr_size] = {};
                         for(Int k = 0; (k < md->ptr); ++k) ptr_buf[k] = '*';
 
-                        write_to_output_buffer(&ob, " _%.*s %s%.*s%s; ",
+                        write_to_output_buffer(&ob, " pp_%.*s %s%.*s%s; ",
                                                md->type.len, md->type.e,
                                                ptr_buf,
                                                md->name.len, md->name.e,
@@ -491,8 +623,13 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
                 }
             }
 
+            // Type info definition.
             write_to_output_buffer(&ob,
-                                   "template<typename T> struct TypeInfo {\n"
+                                   "\n"
+                                   "//\n"
+                                   "// Type info definition.\n"
+                                   "//\n"
+                                   "template<typename T> struct pp_TypeInfo {\n"
                                    "    using type      = void;\n"
                                    "    using weak_type = void;\n"
                                    "    using base      = void;\n"
@@ -505,7 +642,6 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
                                    "\n"
                                    "    static bool const ptr_level;\n"
                                    "    static bool const is_ref;\n"
-                                   "\n"
                                    "\n"
                                    "    static bool const is_primitive;\n"
                                    "    static bool const is_class;\n"
@@ -527,8 +663,8 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
             {
                 write_to_output_buffer(&ob,
                                        "// Get at index.\n"
-                                       "#define get_member(variable, index) GetMember<decltype(variable), index>::get(variable)\n"
-                                       "template<typename T, int index> struct GetMember { /* Can I have a static assert in here that will only get called if the function is generated?? */};\n");
+                                       "#define pp_get_member(variable, index) pp_GetMember<decltype(variable), index>::get(variable)\n"
+                                       "template<typename T, int index> struct pp_GetMember { };\n");
 
                 for(Int i = 0; (i < struct_count); ++i) {
                     StructData *sd = struct_data + i;
@@ -544,9 +680,9 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
 
                         // Because get_member _requires_ a pointer, only generate code for the pointer version.
                         write_to_output_buffer(&ob,
-                                               "template<> struct GetMember<%.*s *, %d> {\n"
+                                               "template<> struct pp_GetMember<%.*s *, %d> {\n"
                                                "    static %.*s%s *get(%.*s *ptr) {\n"
-                                               "        _%.*s *cpy = (_%.*s *)ptr;\n"
+                                               "        pp_%.*s *cpy = (pp_%.*s *)ptr;\n"
                                                "        %.*s%s * res = (%.*s%s *)&cpy->%.*s;\n"
                                                "        return(res);\n"
                                                "    };\n"
@@ -567,13 +703,13 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
             // Get member name at index.
             {
                 write_to_output_buffer(&ob,
-                                       "template<typename T>static char const * get_member_name(int index){return(0);}\n");
+                                       "template<typename T>static char const * pp_get_member_name(int index){return(0);}\n");
                 for(Int i = 0; (i < struct_count); ++i) {
                     StructData *sd = struct_data + i;
 
                     if(sd->member_count) {
                         write_to_output_buffer(&ob,
-                                               "template<>char const * get_member_name<%.*s>(int index){\n"
+                                               "template<>char const * pp_get_member_name<%.*s>(int index){\n"
                                                "    switch(index) {\n",
                                                sd->name.len, sd->name.e);
 
@@ -598,8 +734,8 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
             {
                 write_to_output_buffer(&ob,
                                        "// Get at index.\n"
-                                       "#define get_base(variable, index) GetBase<decltype(variable), index>::get(variable)\n"
-                                       "template<typename T, int index> struct GetBase {};\n");
+                                       "#define pp_get_base(variable, index) pp_GetBase<decltype(variable), index>::get(variable)\n"
+                                       "template<typename T, int index> struct pp_GetBase {};\n");
 
                 for(Int i = 0; (i < struct_count); ++i) {
                     StructData *sd = struct_data + i;
@@ -610,10 +746,10 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
                             assert(base); // TODO(Jonny): Better error handling!
 
                             write_to_output_buffer(&ob,
-                                                   "template<> struct GetBase<%.*s *, %d> {\n"
+                                                   "template<> struct pp_GetBase<%.*s *, %d> {\n"
                                                    "    static %.*s *get(%.*s *ptr) {\n"
-                                                   "        _%.*s *cpy = (_%.*s *)ptr;\n"
-                                                   "        _%.*s *b = dynamic_cast<_%.*s *>(cpy);\n"
+                                                   "        pp_%.*s *cpy = (pp_%.*s *)ptr;\n"
+                                                   "        pp_%.*s *b = dynamic_cast<pp_%.*s *>(cpy);\n"
                                                    "\n"
                                                    "        return((%.*s *)b);\n"
                                                    "    }\n"
@@ -635,19 +771,19 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
                                        "//\n"
                                        "// Get access at index.\n"
                                        "//\n"
-                                       "enum Access {\n"
-                                       "    Access_unknown,\n"
-                                       "    Access_public,\n"
-                                       "    Access_private,\n"
-                                       "    Access_protected,\n"
+                                       "enum pp_Access : int {\n"
+                                       "    pp_Access_unknown,\n"
+                                       "    pp_Access_public,\n"
+                                       "    pp_Access_private,\n"
+                                       "    pp_Access_protected,\n"
                                        "\n"
-                                       "    Access_count,\n"
+                                       "    pp_Access_count,\n"
                                        "};\n"
-                                       "template<typename T, int index> Access get_access_at_index() { return(Access_unknown); }\n");
+                                       "template<typename T, int index> pp_Access pp_get_access_at_index() { return(pp_Access_unknown); }\n");
 
                 auto write_func = [](OutputBuffer *ob, StructData *sd, Int j, char *access, Char *modifier) {
                     write_to_output_buffer(ob,
-                                           "template<> Access get_access_at_index<%.*s%s, %d>() { return(Access_%s); }\n",
+                                           "template<> pp_Access pp_get_access_at_index<%.*s%s, %d>() { return(pp_Access_%s); }\n",
                                            sd->name.len, sd->name.e, modifier,
                                            j,
                                            access);
@@ -656,7 +792,12 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
                 for(Int i = 0; (i < struct_count); ++i) {
                     StructData *sd = struct_data + i;
 
-                    write_to_output_buffer(&ob, "\n");
+                    write_to_output_buffer(&ob,
+                                           "\n"
+                                           "//\n"
+                                           "// %.*s\n"
+                                           "//\n",
+                                           sd->name.len, sd->name.e);
 
                     for(Int j = 0; (j < sd->member_count); ++j) {
                         Variable *md = sd->members + j;
@@ -665,8 +806,13 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
                         if(md->access == Access_public)         { access = "public";    }
                         else if(md->access == Access_private)   { access = "private";   }
                         else if(md->access == Access_protected) { access = "protected"; }
-                        else                                    { assert(0);            } // Error, could not determine access.
+                        else                                    { assert(0);            }
 
+                        write_to_output_buffer(&ob,
+                                               "\n"
+                                               "// %.*s::%.*s\n",
+                                               sd->name.len, sd->name.e,
+                                               md->name.len, md->name.e);
                         write_func(&ob, sd, j, access, "");
                         write_func(&ob, sd, j, access, " *");
                         write_func(&ob, sd, j, access, " **");
@@ -690,8 +836,8 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
                                "//\n"
                                "\n"
                                "// Stub functions.\n"
-                               "template<typename T>static char const *enum_to_string(T element) { return(0); }\n"
-                               "template<typename T>static T string_to_enum(char const *str) { return(0); }\n"
+                               "template<typename T>static char const *pp_enum_to_string(T element) { return(0); }\n"
+                               "template<typename T>static T pp_string_to_enum(char const *str) { return(0); }\n"
                                "\n");
         for(Int i = 0; (i < enum_count); ++i) {
             EnumData *ed = enum_data + i;
@@ -703,7 +849,7 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
                 // Enum to string.
                 {
                     write_to_output_buffer(&ob,
-                                           "template<>char const *enum_to_string<%.*s>(%.*s element) {\n"
+                                           "template<>char const *pp_enum_to_string<%.*s>(%.*s element) {\n"
                                            "    %.*s index = (%.*s)element;\n"
                                            "    switch(index) {\n",
                                            ed->name.len, ed->name.e,
@@ -729,11 +875,8 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
                 // String to enum.
                 {
                     write_to_output_buffer(&ob,
-                                           "template<>%.*s string_to_enum<%.*s>(char const *str) {\n"
-                                           "    %.*s res = {};\n"
-                                           "    bool equal = false;\n"
-                                           "    char const *cpy = 0;\n"
-                                           "    char const *cmp = 0;\n"
+                                           "template<>%.*s pp_string_to_enum<%.*s>(char const *str) {\n"
+                                           "    %.*s res = 0;\n"
                                            "\n",
                                            ed->name.len, ed->name.e,
                                            ed->name.len, ed->name.e,
@@ -741,62 +884,56 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
                     for(Int j = 0; (j < ed->no_of_values); ++j) {
                         EnumValue *v = ed->values + j;
 
+                        if(!j) {
+                            write_to_output_buffer(&ob,
+                                                   "    ");
+                        } else {
+                            write_to_output_buffer(&ob,
+                                                   "    else ");
 
+                        }
 
                         write_to_output_buffer(&ob,
-                                               "    if(!equal) {\n"
-                                               "        equal = true;\n"
-                                               "        cpy = str;\n"
-                                               "        cmp = \"%.*s\";\n"
-                                               "        while((*cpy) && (*cmp)) {\n"
-                                               "            if(*cmp != *cpy) {\n"
-                                               "                equal = false;\n"
-                                               "                break; // while\n"
-                                               "            }\n"
-                                               "            ++cpy; ++cmp;\n"
-                                               "        }\n"
-                                               "        if(equal) { res = %d;}\n"
-                                               "    }"
-                                               "\n",
+                                               "if(!pp_string_compare(\"%.*s\", str)) {\n"
+                                               "        res = (%.*s)%d;\n"
+                                               "    }\n",
                                                v->name.len, v->name.e,
+                                               ed->name.len, ed->name.e,
                                                v->value);
                     }
 
                     write_to_output_buffer(&ob,
                                            "\n"
-                                           "    return (%.*s)res;\n"
+                                           "    return (%.*s)res; \n"
                                            "}\n",
                                            ed->name.len, ed->name.e);
                 }
             }
         }
 
-        write_to_output_buffer(&ob, "\n");
-
-        write_to_output_buffer(&ob,
-                               "#define weak_type_compare(A, B) TypeCompare_<pp::Type<A>::weak_type, pp::Type<B>::weak_type>::e;\n");
+        // TODO(Jonny): A lot of the function stuff won't actually work if you pass a struct into a function. This may
+        //              be fixable if I generate a .hpp file and a .cpp file.
 
         //
         // Functors
         //
         {
             write_to_output_buffer(&ob,
-                                   "\n\n"
+                                   "\n"
                                    "//\n"
                                    "// Function stuff.\n"
                                    "//\n"
+                                   "#define pp_get_functor(func) pp_Functor_##func\n"
                                    "\n"
-                                   "#define get_functor(func) Functor_##func\n"
-                                   "\n"
-                                   "enum Linkage : int {\n"
-                                   "    Linkage_default,\n"
-                                   "    Linkage_static,\n"
-                                   "    Linkage_inline,\n"
+                                   "enum pp_Linkage : int {\n"
+                                   "    pp_Linkage_default,\n"
+                                   "    pp_Linkage_static,\n"
+                                   "    pp_Linkage_inline,\n"
                                    "};\n"
                                    "\n"
-                                   "struct FunctionData {\n"
+                                   "struct pp_FunctionData {\n"
                                    "    char const *return_type;\n"
-                                   "    Linkage linkage;\n"
+                                   "    pp_Linkage linkage;\n"
                                    "};\n");
 
             for(Int i = 0; (i < func_count); ++i) {
@@ -849,17 +986,23 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
 
                 write_to_output_buffer(&ob,
                                        "// %.*s\n"
-                                       "struct Functor_%.*s {\n"
-                                       "    %.*s operator()(%s) { return %.*s(%s); }\n"
-                                       "    %.*s operator()() { return %.*s(%s); }\n"
-                                       "\n"
-                                       "%s"
-                                       "};\n",
+                                       "struct pp_Functor_%.*s {\n"
+                                       "    %.*s operator()(%s) { return %.*s(%s); }\n",
                                        fd->name.len, fd->name.e,
                                        fd->name.len, fd->name.e,
-                                       fd->return_type.len, fd->return_type.e, buf1, fd->name.len, fd->name.e, buf2,
-                                       fd->return_type.len, fd->return_type.e, fd->name.len, fd->name.e, buf3,
-                                       buf4);
+                                       fd->return_type.len, fd->return_type.e, buf1, fd->name.len, fd->name.e, buf2);
+
+                if(fd->param_cnt) {
+                    write_to_output_buffer(&ob,
+                                           "    %.*s operator()() { return %.*s(%s); }\n"
+                                           "\n"
+                                           "%s",
+                                           fd->return_type.len, fd->return_type.e, fd->name.len, fd->name.e, buf3,
+                                           buf4);
+                }
+                write_to_output_buffer(&ob,
+                                       "};\n"
+                                       "\n");
 
                 clear_scratch_memory();
             }
@@ -870,10 +1013,10 @@ File write_data(Char *fname, StructData *struct_data, Int struct_count, EnumData
         //
         write_to_output_buffer(&ob,
                                "\n"
-                               "#undef _std // :(\n"
-                               "} // namespace pp\n"
+                               "#undef pp_std\n"
                                "\n"
-                               "#endif // Header guard.\n"
+                               "#define PP_GENERATED_H\n"
+                               "#endif // #if defined(PP_GENERATED_H)\n"
                                "\n");
 
         res.size = ob.index;
