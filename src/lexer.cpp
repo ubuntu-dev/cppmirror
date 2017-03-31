@@ -72,23 +72,26 @@ struct Token {
 
 struct Tokenizer {
     Char *at;
-    // TODO(Jonny): Might be nice to have a line variable in here.
+    Int line;
 };
 
-internal Bool is_end_of_line(Char c) {
+internal Bool is_end_of_line(Char c, Tokenizer *tokenizer) {
     Bool res = ((c == '\n') || (c == '\r'));
+    if(c == '\n') {
+        ++tokenizer->line;
+    }
 
     return(res);
 }
 
-internal Bool is_whitespace(Char c) {
-    Bool res = ((c == ' ') || (c == '\t') || (c == '\v') || (c == '\f') || (is_end_of_line(c)));
+internal Bool is_whitespace(Char c, Tokenizer *tokenizer) {
+    Bool res = ((c == ' ') || (c == '\t') || (c == '\v') || (c == '\f') || (is_end_of_line(c, tokenizer)));
 
     return(res);
 }
 
 internal Void skip_to_end_of_line(Tokenizer *tokenizer) {
-    while(is_end_of_line(*tokenizer->at)) {
+    while(is_end_of_line(*tokenizer->at, tokenizer)) {
         ++tokenizer->at;
     }
 }
@@ -237,40 +240,45 @@ internal Void eat_whitespace(Tokenizer *tokenizer) {
     for(;;) {
         if(!tokenizer->at[0]) { // Nul terminator.
             break;
-        } else if(is_whitespace(tokenizer->at[0])) { // Whitespace
+        } else if(is_whitespace(tokenizer->at[0], tokenizer)) { // Whitespace
             ++tokenizer->at;
         } else if((tokenizer->at[0] == '/') && (tokenizer->at[1] == '/')) { // C++ comments.
             tokenizer->at += 2;
-            while((tokenizer->at[0]) && (!is_end_of_line(tokenizer->at[0]))) ++tokenizer->at;
+            while((tokenizer->at[0]) && (!is_end_of_line(tokenizer->at[0], tokenizer))) {
+                ++tokenizer->at;
+            }
+
         } else if((tokenizer->at[0] == '/') && (tokenizer->at[1] == '*')) { // C comments.
             tokenizer->at += 2;
-            while((tokenizer->at[0]) && !((tokenizer->at[0] == '*') && (tokenizer->at[1] == '/'))) ++tokenizer->at;
+            while((tokenizer->at[0]) && !((tokenizer->at[0] == '*') && (tokenizer->at[1] == '/'))) {
+                ++tokenizer->at;
+            }
+            if(tokenizer->at[0] == '*') {
+                tokenizer->at += 2;
+            }
 
-            if(tokenizer->at[0] == '*') { tokenizer->at += 2; }
         } else if(tokenizer->at[0] == '#') { // #if 0 blocks.
-            Char *hash_if_zero = "#if 0";
-            Int hash_if_zero_length = string_length(hash_if_zero);
+            String hash_if_zero = create_string("#if 0");
+            String hash_if_one = create_string("#if 1");
 
-            Char *hash_if_one = "#if 1";
-            Int hash_if_one_length = string_length(hash_if_one);
+            if(string_compare(hash_if_zero, tokenizer->at)) {
+                tokenizer->at += hash_if_zero.len;
 
-            if(string_compare(tokenizer->at, hash_if_zero, hash_if_zero_length)) {
-                tokenizer->at += hash_if_zero_length;
-
-                Char *hash_end_if = "#endif";
-                Int hash_end_if_length = string_length(hash_end_if);
+                String hash_end_if = create_string("#endif");
 
                 Int level = 0;
                 while(++tokenizer->at) {
-                    if(tokenizer->at[0] == '#') {
+                    if(tokenizer->at[0] == '\n') {
+                        ++tokenizer->line;
+                    } else if(tokenizer->at[0] == '#') {
                         if((tokenizer->at[1] == 'i') && (tokenizer->at[2] == 'f')) {
                             ++level;
 
-                        } else if(string_compare(tokenizer->at, hash_end_if, hash_end_if_length)) {
+                        } else if(string_compare(hash_end_if, tokenizer->at)) {
                             if(level) {
                                 --level;
                             } else {
-                                tokenizer->at += hash_end_if_length;
+                                tokenizer->at += hash_end_if.len;
                                 eat_whitespace(tokenizer);
 
                                 break; // for
@@ -278,30 +286,31 @@ internal Void eat_whitespace(Tokenizer *tokenizer) {
                         }
                     }
                 }
-            } else if(string_compare(tokenizer->at, hash_if_one, hash_if_one_length)) { // #if 1 #else blocks.
-                tokenizer->at += hash_if_zero_length;
+            } else if(string_compare(hash_if_one, tokenizer->at)) { // #if 1 #else blocks.
+                tokenizer->at += hash_if_one.len;
 
-                Char *hash_else = "#else";
-                Int hash_else_length = string_length(hash_else);
+                String hash_else = create_string("#else");
 
-                Char *hash_end_if = "#endif";
-                Int hash_end_if_length = string_length(hash_end_if);
+                String hash_end_if = create_string("#endif");
 
                 Int level = 0;
                 while(++tokenizer->at) {
+                    if(tokenizer->at[0] == '\n') {
+                        ++tokenizer->line;
+                    }
                     if(tokenizer->at[0] == '#') {
                         if((tokenizer->at[1] == 'i') && (tokenizer->at[2] == 'f')) {
                             ++level;
-                        } else if(string_compare(tokenizer->at, hash_end_if, hash_end_if_length)) {
+                        } else if(string_compare(hash_end_if, tokenizer->at)) {
                             if(level != 0) {
                                 --level;
                             } else {
-                                tokenizer->at += hash_end_if_length;
+                                tokenizer->at += hash_end_if.len;
                                 break; // for
                             }
-                        } else if(string_compare(tokenizer->at, hash_else, hash_else_length)) {
+                        } else if(string_compare(hash_else, tokenizer->at)) {
                             if(level == 0) {
-                                tokenizer->at += hash_else_length;
+                                tokenizer->at += hash_else.len;
                                 Int Level2 = 0;
 
                                 while(++tokenizer->at) {
@@ -309,11 +318,11 @@ internal Void eat_whitespace(Tokenizer *tokenizer) {
                                         if((tokenizer->at[1] == 'i') && (tokenizer->at[2] == 'f')) {
                                             ++Level2;
 
-                                        } else if(string_compare(tokenizer->at, hash_end_if, hash_end_if_length)) {
+                                        } else if(string_compare(hash_end_if, tokenizer->at)) {
                                             if(Level2 != 0) {
                                                 --Level2;
                                             } else {
-                                                tokenizer->at += hash_end_if_length;
+                                                tokenizer->at += hash_end_if.len;
                                                 eat_whitespace(tokenizer);
 
                                                 break; // for
@@ -578,7 +587,7 @@ internal ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_
                             break; // for
                         } else if(token.type == TokenType_hash) {
                             // TODO(Jonny): Support macros with '/' to extend their lines?
-                            while(!is_end_of_line(tokenizer->at[0])) {
+                            while(!is_end_of_line(tokenizer->at[0], tokenizer)) {
                                 ++tokenizer->at;
                             }
                         } else {
@@ -1127,7 +1136,7 @@ ParseResult parse_stream(Char *stream) {
     macro_data = system_alloc(MacroData, macro_max);
 
     if((res.enums.e)  && (res.structs.e) && (res.funcs.e) && (macro_data)) {
-        Tokenizer tokenizer = { stream };
+        Tokenizer tokenizer = { stream, 1 };
 
         Bool parsing = true;
         while(parsing) {
@@ -1147,7 +1156,7 @@ ParseResult parse_stream(Char *stream) {
                         md->iden = token_to_string(get_token(&tokenizer));
                         eat_whitespace(&tokenizer);
                         md->res.e = tokenizer.at;
-                        while(!is_end_of_line(*tokenizer.at)) {
+                        while(!is_end_of_line(*tokenizer.at, &tokenizer)) {
                             ++md->res.len;
                             ++tokenizer.at;
                         }
