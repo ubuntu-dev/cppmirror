@@ -93,7 +93,7 @@ internal SwitchType get_switch_type(Char *str) {
 }
 
 internal Bool should_write_to_file = false;
-
+#if 0
 internal Void parse_and_write_file(Char *fdata) {
     ParseResult parse_res = parse_stream(fdata);
 
@@ -126,7 +126,7 @@ internal Void parse_and_write_file(Char *fdata) {
     }
     system_free(parse_res.funcs.e);
 }
-
+#endif
 internal Void print_help(void) {
     Char *help = "    List of Commands.\n"
                  "        -e - Print errors to the console.\n"
@@ -139,6 +139,10 @@ internal Void print_help(void) {
                  "\n";
 
     system_write_to_console(help);
+}
+
+internal ParseResult merge_parse_results(ParseResult a, ParseResult b) {
+
 }
 
 Int main(Int argc, Char **argv) {// TODO(Jonny): Support wildcards.
@@ -154,65 +158,105 @@ Int main(Int argc, Char **argv) {// TODO(Jonny): Support wildcards.
         Bool should_run_tests = false;
         should_write_to_file = true;
 
-        PtrSize largest_source_file_size = 0;
-        Int number_of_files = 0;
-        for(Int i = 1; (i < argc); ++i) {
-            Char *switch_name = argv[i];
+        Int fnames_max_cnt = 16;
+        Char **fnames = system_alloc(Char *, fnames_max_cnt);
+        if(fnames) {
+            PtrSize total_file_size = 0;
+            Int number_of_files = 0;
+            for(Int i = 1; (i < argc); ++i) {
+                Char *switch_name = argv[i];
 
-            SwitchType type = get_switch_type(switch_name);
-            switch(type) {
-                case SwitchType_silent:     should_write_to_file = false; break;
-                case SwitchType_log_errors: should_log_errors = true;     break;
-                case SwitchType_run_tests:  should_run_tests = true;      break;
-                case SwitchType_print_help: print_help();                 break;
+                SwitchType type = get_switch_type(switch_name);
+                switch(type) {
+                    case SwitchType_silent:     { should_write_to_file = false; } break;
+                    case SwitchType_log_errors: { should_log_errors = true;     } break;
+                    case SwitchType_run_tests:  { should_run_tests = true;      } break;
+                    case SwitchType_print_help: { print_help();                 } break;
 
-                case SwitchType_source_file: {
-                    if(!string_contains(switch_name, dir_name)) {
-                        PtrSize file_size = system_get_file_size(switch_name);
-                        if(!file_size) {
-                            push_error(ErrorType_cannot_find_file);
-                        } else {
-                            ++number_of_files;
-
-                            if(file_size > largest_source_file_size) {
-                                largest_source_file_size = file_size + 1; // We read the nul-terminator, so this has to be one greater.
+                    case SwitchType_source_file: {
+                        if(number_of_files >= fnames_max_cnt - 1) {
+                            fnames_max_cnt *= 2;
+                            Void *p = system_realloc(fnames, fnames_max_cnt * sizeof(Char *));
+                            if(p) {
+                                fnames = cast(Char **)p;
                             }
                         }
-                    }
-                } break;
-            }
-        }
 
-        if(should_run_tests) {
-            Int tests_failed = run_tests();
+                        fnames[number_of_files++] = switch_name;
+#if 0
+                        if(!string_contains(switch_name, dir_name)) {
+                            PtrSize file_size = system_get_file_size(switch_name);
+                            if(!file_size) {
+                                push_error(ErrorType_cannot_find_file);
+                            } else {
+                                ++number_of_files;
 
-            if(tests_failed == 0) system_write_to_console("all tests passed...");
-            else                  system_write_to_console("%d tests failed\n", tests_failed);
-        } else {
-            if(!number_of_files) {
-                push_error(ErrorType_no_files_pass_in);
-            } else {
-                Byte *file_memory = system_alloc(Byte, largest_source_file_size);
-                if(file_memory) {
-                    // Parse files
-                    for(Int i = 1; (i < argc); ++i) {
-                        Char *file_name = argv[i];
-                        zero(file_memory, largest_source_file_size);
-
-                        SwitchType type = get_switch_type(file_name);
-                        if(type == SwitchType_source_file) {
-                            File file = system_read_entire_file_and_null_terminate(file_name, file_memory);
-
-                            if(file.data) parse_and_write_file(file.data);
-                            else          push_error(ErrorType_could_not_load_file);
+                                if(file_size > largest_source_file_size) {
+                                    largest_source_file_size = file_size + 1; // We read the nul-terminator, so this has to be one greater.
+                                }
+                            }
                         }
-                    }
-
-                    system_free(file_memory);
+#endif
+                    } break;
                 }
             }
-        }
 
+            if(should_run_tests) {
+                Int tests_failed = run_tests();
+
+                if(tests_failed == 0) { system_write_to_console("all tests passed...");             }
+                else                  { system_write_to_console("%d tests failed\n", tests_failed); }
+            } else {
+                if(!number_of_files) {
+                    push_error(ErrorType_no_files_pass_in);
+                } else {
+                    File file = system_read_multiple_files_into_one(fnames, number_of_files);
+                    if(file.size) {
+                        ParseResult parse_res = parse_stream(file.data);
+                        File file_to_write = write_data(parse_res);
+                        Bool write_success = system_write_to_file("pp_generated.hpp", file_to_write);
+
+                        system_free(file.data);
+                    }
+
+
+
+#if 0
+                    ParseResult full_parse_result = {};
+                    for(Int i = 0; (i < number_of_files); ++i) {
+                        File file = system_read_entire_file_and_null_terminate(fnames[i], file_memory);
+                        ParseResult local = parse_stream(file.data);
+                        full_parse_result = merge_parse_results(full_parse_result, local);
+                    }
+
+                    File file_to_write = write_data(full_parse_result);
+                    Bool write_success = system_write_to_file("pp_generated.hpp", )
+#endif
+
+#if 0
+                                         Byte *file_memory = system_alloc(Byte, largest_source_file_size);
+                    if(file_memory) {
+                        // Parse files
+                        for(Int i = 1; (i < argc); ++i) {
+                            Char *file_name = argv[i];
+
+                            SwitchType type = get_switch_type(file_name);
+                            if(type == SwitchType_source_file) {
+                                File file = system_read_entire_file_and_null_terminate(file_name, file_memory);
+
+                                if(file.data) parse_and_write_file(file.data);
+                                else          push_error(ErrorType_could_not_load_file);
+                            }
+                        }
+
+                        system_free(file_memory);
+                    }
+#endif
+                }
+            }
+
+            system_free(fnames);
+        }
     }
 
     system_write_to_console("Done");

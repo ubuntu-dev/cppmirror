@@ -57,7 +57,13 @@ Bool system_free(Void *ptr) {
 }
 
 Void *system_realloc(Void *ptr, PtrSize size) {
-    Void *res = HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ptr, size);
+
+    Void *res = 0;
+    if(ptr) {
+        res = HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ptr, size);
+    } else {
+        res = system_malloc(size);
+    }
 
     return(res);
 }
@@ -89,7 +95,7 @@ File system_read_entire_file_and_null_terminate(Char *fname, Void *memory) {
     return(res);
 }
 
-Bool system_write_to_file(Char *fname, Void *data, PtrSize data_size) {
+Bool system_write_to_file(Char *fname, File file) {
     Bool res = false;
     HANDLE fhandle;
     DWORD fsize32, bytes_written;
@@ -97,11 +103,11 @@ Bool system_write_to_file(Char *fname, Void *data, PtrSize data_size) {
     fhandle = CreateFileA(fname, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, 0, CREATE_ALWAYS, 0, 0);
     if(fhandle != INVALID_HANDLE_VALUE) {
 #if ENVIRONMENT32
-        fsize32 = data_size;
+        fsize32 = file.size;
 #else
-        fsize32 = safe_truncate_size_64(data_size);
+        fsize32 = safe_truncate_size_64(file.size);
 #endif
-        if(WriteFile(fhandle, data, fsize32, &bytes_written, 0)) {
+        if(WriteFile(fhandle, file.data, fsize32, &bytes_written, 0)) {
             if(bytes_written != fsize32) push_error(ErrorType_did_not_write_entire_file);
             else                         res = true;
         }
@@ -128,6 +134,35 @@ PtrSize system_get_file_size(Char *fname) {
         }
 
         CloseHandle(fhandle);
+    }
+
+    return(res);
+}
+
+File system_read_multiple_files_into_one(Char **fnames, Int cnt) {
+    File res = {};
+
+    WIN32_FIND_DATA file_data = {};
+    HANDLE fhandle = {};
+
+    for(Int i = 0; (i < cnt); ++i) {
+        fhandle = FindFirstFile(fnames[i], &file_data);
+
+        do {
+            Char *tmp_fname = file_data.cFileName;
+            Int len = string_length(tmp_fname);
+            if((tmp_fname[len - 1] == 'p') && (tmp_fname[len - 2] == 'p') && (tmp_fname[len - 3] == 'c') && (tmp_fname[len - 4] == '.')) {
+                LARGE_INTEGER file_size;
+                file_size.HighPart = file_data.nFileSizeHigh;
+                file_size.LowPart = file_data.nFileSizeLow;
+                void *p = system_realloc(res.data, res.size + file_size.QuadPart + 1);
+                if(p) {
+                    res.data = cast(Char *)p;
+                    File f = system_read_entire_file_and_null_terminate(tmp_fname, res.data + res.size);
+                    res.size += f.size;
+                }
+            }
+        } while(FindNextFile(fhandle, &file_data) != 0);
     }
 
     return(res);

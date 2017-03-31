@@ -22,8 +22,10 @@ Void *system_realloc(Void *ptr, PtrSize size);
 // File IO.
 struct File;
 File system_read_entire_file_and_null_terminate(Char *fname, Void *memory);
-Bool system_write_to_file(Char *fname, Void *data, PtrSize data_size);
+Bool system_write_to_file(Char *fname, File file);
 PtrSize system_get_file_size(Char *fname);
+
+File system_read_multiple_files_into_one(Char **fnames, Int cnt);
 
 //Bool system_create_folder(Char *name);
 
