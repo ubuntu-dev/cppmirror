@@ -25,8 +25,6 @@
     #define MAKE_GUID GUID(__FILE__, __LINE__)
 #endif
 
-#define dir_name "pp_generated" // The directory the generated code goes in.
-
 //
 // Error stuff.
 //
@@ -81,11 +79,6 @@ Bool print_errors(void);
 #else
 #define assert(Expression) {}
 #endif
-
-struct File {
-    Char *data;
-    PtrSize size;
-};
 
 //
 // Scratch memory
@@ -161,6 +154,10 @@ Bool compare_variable_array(Variable *a, Variable *b, Int count);
 //
 // Utils.
 //
+#define kilobytes(v) ((v)            * (1024LL))
+#define megabytes(v) ((kilobytes(v)) * (1024LL))
+#define gigabytes(v) ((megabytes(v)) * (1024LL))
+
 Char to_caps(Char c);
 
 const Int max_ptr_size = 4;

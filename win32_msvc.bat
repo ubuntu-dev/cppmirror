@@ -31,7 +31,7 @@ rem Run after building.
 rem Test code.
 if "%RUN_TEST%"=="true" (
     pushd "test"
-    "../build/mirror.exe" test_code.cpp -e
+    "../build/mirror.exe" *.cpp
     popd
 
     pushd "build"

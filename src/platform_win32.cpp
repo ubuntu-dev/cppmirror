@@ -139,30 +139,56 @@ PtrSize system_get_file_size(Char *fname) {
     return(res);
 }
 
+internal Bool is_valid_cpp_file(Char *fname) {
+    Bool res = false;
+
+    Int len = string_length(fname);
+    if((fname[len - 1] == 'p') && (fname[len - 2] == 'p') && (fname[len - 3] == 'c') && (fname[len - 4] == '.')) {
+        res = true;
+    } else if((fname[len - 1] == 'c') && (fname[len - 2] == 'c') && (fname[len - 3] == '.')) {
+        res = true;
+    }
+
+    return(res);
+}
+
 File system_read_multiple_files_into_one(Char **fnames, Int cnt) {
     File res = {};
 
-    WIN32_FIND_DATA file_data = {};
+    // Allocate 10 megabytes, because I've no idea how to big all the files will me. But if I can't allocate 10 megabytes,
+    // then just set the size to 0 and attempt to realloc for each file.
+    PtrSize mem_size = megabytes(10);
+    res.data = system_alloc(Char, mem_size);
+    if(!res.data) {
+        mem_size = 0;
+    }
+
+    WIN32_FIND_DATA find_data = {};
     HANDLE fhandle = {};
 
+    // Go through each file passed in, and then do a FindFirstFile on each of them.
     for(Int i = 0; (i < cnt); ++i) {
-        fhandle = FindFirstFile(fnames[i], &file_data);
+        fhandle = FindFirstFile(fnames[i], &find_data);
 
         do {
-            Char *tmp_fname = file_data.cFileName;
-            Int len = string_length(tmp_fname);
-            if((tmp_fname[len - 1] == 'p') && (tmp_fname[len - 2] == 'p') && (tmp_fname[len - 3] == 'c') && (tmp_fname[len - 4] == '.')) {
+            if(is_valid_cpp_file(find_data.cFileName)) {
                 LARGE_INTEGER file_size;
-                file_size.HighPart = file_data.nFileSizeHigh;
-                file_size.LowPart = file_data.nFileSizeLow;
-                void *p = system_realloc(res.data, res.size + file_size.QuadPart + 1);
-                if(p) {
-                    res.data = cast(Char *)p;
-                    File f = system_read_entire_file_and_null_terminate(tmp_fname, res.data + res.size);
-                    res.size += f.size;
+                file_size.HighPart = find_data.nFileSizeHigh;
+                file_size.LowPart = find_data.nFileSizeLow;
+
+                PtrSize fsize = system_get_file_size(find_data.cFileName) + 1;
+                if(res.size + fsize >= mem_size) {
+                    mem_size = (mem_size + res.size + fsize) * 2;
+                    void *p = system_realloc(res.data, mem_size);
+                    if(p) {
+                        res.data = cast(Char *)p;
+                    }
                 }
+
+                File file = system_read_entire_file_and_null_terminate(find_data.cFileName, res.data + res.size);
+                res.size += file.size;
             }
-        } while(FindNextFile(fhandle, &file_data) != 0);
+        } while(FindNextFile(fhandle, &find_data) != 0);
     }
 
     return(res);

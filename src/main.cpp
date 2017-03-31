@@ -84,7 +84,8 @@ internal SwitchType get_switch_type(Char *str) {
             res = SwitchType_source_file;
         } else if((str[len - 1] == 'c') && (str[len - 2] == '.')) {
             res = SwitchType_source_file;
-        } else if((str[len - 1] == 'p') && (str[len - 2] == 'p') && (str[len - 3] == 'c') && (str[len - 4] == '.') ) {
+        } else {
+            // If it's not a flag, assume it's a source file. This may not actually be true though...
             res = SwitchType_source_file;
         }
     }
@@ -93,40 +94,7 @@ internal SwitchType get_switch_type(Char *str) {
 }
 
 internal Bool should_write_to_file = false;
-#if 0
-internal Void parse_and_write_file(Char *fdata) {
-    ParseResult parse_res = parse_stream(fdata);
 
-    File file_to_write = write_data(parse_res);
-
-    if(should_write_to_file) {
-        Char *generated_file_name = "pp_generated.hpp";
-
-        Bool header_write_success = system_write_to_file(generated_file_name, file_to_write.data, file_to_write.size);
-        if(!header_write_success) {
-            push_error(ErrorType_could_not_write_to_disk);
-        }
-
-        system_free(file_to_write.data);
-    }
-
-    for(Int i = 0; (i < parse_res.structs.cnt); ++i) {
-        system_free(parse_res.structs.e[i].members);
-        system_free(parse_res.structs.e[i].inherited);
-    }
-    system_free(parse_res.structs.e);
-
-    for(Int i = 0; (i < parse_res.enums.cnt); ++i) {
-        system_free(parse_res.enums.e[i].values);
-    }
-    system_free(parse_res.enums.e);
-
-    for(Int i = 0; (i < parse_res.funcs.cnt); ++i) {
-        system_free(parse_res.funcs.e[i].params);
-    }
-    system_free(parse_res.funcs.e);
-}
-#endif
 internal Void print_help(void) {
     Char *help = "    List of Commands.\n"
                  "        -e - Print errors to the console.\n"
@@ -141,11 +109,7 @@ internal Void print_help(void) {
     system_write_to_console(help);
 }
 
-internal ParseResult merge_parse_results(ParseResult a, ParseResult b) {
-
-}
-
-Int main(Int argc, Char **argv) {// TODO(Jonny): Support wildcards.
+Int main(Int argc, Char **argv) {
     Int res = 0;
 
     system_write_to_console("Starting Mirror...");
@@ -183,20 +147,6 @@ Int main(Int argc, Char **argv) {// TODO(Jonny): Support wildcards.
                         }
 
                         fnames[number_of_files++] = switch_name;
-#if 0
-                        if(!string_contains(switch_name, dir_name)) {
-                            PtrSize file_size = system_get_file_size(switch_name);
-                            if(!file_size) {
-                                push_error(ErrorType_cannot_find_file);
-                            } else {
-                                ++number_of_files;
-
-                                if(file_size > largest_source_file_size) {
-                                    largest_source_file_size = file_size + 1; // We read the nul-terminator, so this has to be one greater.
-                                }
-                            }
-                        }
-#endif
                     } break;
                 }
             }
@@ -218,40 +168,6 @@ Int main(Int argc, Char **argv) {// TODO(Jonny): Support wildcards.
 
                         system_free(file.data);
                     }
-
-
-
-#if 0
-                    ParseResult full_parse_result = {};
-                    for(Int i = 0; (i < number_of_files); ++i) {
-                        File file = system_read_entire_file_and_null_terminate(fnames[i], file_memory);
-                        ParseResult local = parse_stream(file.data);
-                        full_parse_result = merge_parse_results(full_parse_result, local);
-                    }
-
-                    File file_to_write = write_data(full_parse_result);
-                    Bool write_success = system_write_to_file("pp_generated.hpp", )
-#endif
-
-#if 0
-                                         Byte *file_memory = system_alloc(Byte, largest_source_file_size);
-                    if(file_memory) {
-                        // Parse files
-                        for(Int i = 1; (i < argc); ++i) {
-                            Char *file_name = argv[i];
-
-                            SwitchType type = get_switch_type(file_name);
-                            if(type == SwitchType_source_file) {
-                                File file = system_read_entire_file_and_null_terminate(file_name, file_memory);
-
-                                if(file.data) parse_and_write_file(file.data);
-                                else          push_error(ErrorType_could_not_load_file);
-                            }
-                        }
-
-                        system_free(file_memory);
-                    }
-#endif
                 }
             }
 

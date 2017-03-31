@@ -13,6 +13,8 @@
 
 #include "shared.h"
 
+
+
 // Memory.
 #define system_alloc(Type, ...) (Type *)system_malloc(sizeof(Type), ##__VA_ARGS__)
 Void *system_malloc(PtrSize size, PtrSize cnt = 1);
@@ -20,14 +22,13 @@ Bool system_free(Void *ptr);
 Void *system_realloc(Void *ptr, PtrSize size);
 
 // File IO.
-struct File;
-File system_read_entire_file_and_null_terminate(Char *fname, Void *memory);
+struct File {
+    Char *data;
+    PtrSize size;
+};
+
 Bool system_write_to_file(Char *fname, File file);
-PtrSize system_get_file_size(Char *fname);
-
 File system_read_multiple_files_into_one(Char **fnames, Int cnt);
-
-//Bool system_create_folder(Char *name);
 
 // Utility stuff.
 Uint64 system_get_performance_counter(void);
