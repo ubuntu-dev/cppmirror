@@ -203,7 +203,14 @@ Bool string_compare(String a, String b) {
 }
 
 Bool string_compare(String a, Char *b) {
-    Bool res = string_compare(a, create_string(b));
+    Bool res = true;
+
+    for(Int i = 0; (i < a.len); ++i) {
+        if(a.e[i] != b[i]) {
+            res = false;
+            break;
+        }
+    }
 
     return(res);
 }
