@@ -44,7 +44,6 @@ enum TokenType {
     TokenType_not,
     TokenType_var_args,
 
-
     TokenType_plus,
     TokenType_minus,
     TokenType_divide,
@@ -287,6 +286,7 @@ internal Void eat_whitespace(Tokenizer *tokenizer) {
                     }
                 }
             } else if(string_compare(hash_if_one, tokenizer->at)) { // #if 1 #else blocks.
+                Tokenizer cpy = *tokenizer;
                 tokenizer->at += hash_if_one.len;
 
                 String hash_else = create_string("#else");
@@ -337,7 +337,10 @@ internal Void eat_whitespace(Tokenizer *tokenizer) {
                             }
                         }
                     }
+
                 }
+
+                *tokenizer = cpy;
             }
 
             break; // for
