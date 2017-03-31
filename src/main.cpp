@@ -97,9 +97,7 @@ internal Bool should_write_to_file = false;
 internal Void parse_and_write_file(Char *fdata) {
     ParseResult parse_res = parse_stream(fdata);
 
-    File file_to_write = write_data(parse_res.struct_data, parse_res.struct_cnt,
-                                    parse_res.enum_data, parse_res.enum_cnt,
-                                    parse_res.func_data, parse_res.func_cnt);
+    File file_to_write = write_data(parse_res);
 
     if(should_write_to_file) {
         Char *generated_file_name = "pp_generated.hpp";
@@ -112,21 +110,21 @@ internal Void parse_and_write_file(Char *fdata) {
         system_free(file_to_write.data);
     }
 
-    for(Int i = 0; (i < parse_res.struct_cnt); ++i) {
-        system_free(parse_res.struct_data[i].members);
-        system_free(parse_res.struct_data[i].inherited);
+    for(Int i = 0; (i < parse_res.structs.cnt); ++i) {
+        system_free(parse_res.structs.e[i].members);
+        system_free(parse_res.structs.e[i].inherited);
     }
-    system_free(parse_res.struct_data);
+    system_free(parse_res.structs.e);
 
-    for(Int i = 0; (i < parse_res.enum_cnt); ++i) {
-        system_free(parse_res.enum_data[i].values);
+    for(Int i = 0; (i < parse_res.enums.cnt); ++i) {
+        system_free(parse_res.enums.e[i].values);
     }
-    system_free(parse_res.enum_data);
+    system_free(parse_res.enums.e);
 
-    for(Int i = 0; (i < parse_res.func_cnt); ++i) {
-        system_free(parse_res.func_data[i].params);
+    for(Int i = 0; (i < parse_res.funcs.cnt); ++i) {
+        system_free(parse_res.funcs.e[i].params);
     }
-    system_free(parse_res.func_data);
+    system_free(parse_res.funcs.e);
 }
 
 internal Void print_help(void) {
@@ -229,4 +227,3 @@ Int main(Int argc, Char **argv) {// TODO(Jonny): Support wildcards.
 
     return(res);
 }
-

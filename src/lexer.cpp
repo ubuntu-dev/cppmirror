@@ -1115,25 +1115,27 @@ ParseResult parse_stream(Char *stream) {
     ParseResult res = {};
 
     Int enum_max = 8;
-    res.enum_data = system_alloc(EnumData, enum_max);
+    res.enums.e = system_alloc(EnumData, enum_max);
 
     Int struct_max = 32;
-    res.struct_data = system_alloc(StructData, struct_max);
+    res.structs.e = system_alloc(StructData, struct_max);
+
+    Int func_max = 128;
+    res.funcs.e = system_alloc(FunctionData, func_max);
 
     Int macro_max = 32;
     macro_data = system_alloc(MacroData, macro_max);
 
-    Int func_max = 128;
-    res.func_data = system_alloc(FunctionData, func_max);
-
-    if((res.enum_data)  && (res.struct_data) && (macro_data)) {
+    if((res.enums.e)  && (res.structs.e) && (res.funcs.e) && (macro_data)) {
         Tokenizer tokenizer = { stream };
 
         Bool parsing = true;
         while(parsing) {
             Token token = get_token(&tokenizer);
             switch(token.type) {
-                case TokenType_end_of_stream: { parsing = false; } break;
+                case TokenType_end_of_stream: {
+                    parsing = false;
+                } break;
 
                 case TokenType_hash: {
                     if(peak_require_token(&tokenizer, "define")) {
@@ -1162,46 +1164,48 @@ ParseResult parse_stream(Char *stream) {
                     } else if((token_equals(token, "struct")) || (token_equals(token, "class")) || (token_equals(token, "union"))) {
                         StructType struct_type = StructType_unknown;
 
-                        if(token_equals(token, "struct"))     struct_type = StructType_struct;
-                        else if(token_equals(token, "class")) struct_type = StructType_class;
-                        else if(token_equals(token, "union")) struct_type = StructType_union;
+                        if(token_equals(token, "struct"))     { struct_type = StructType_struct; }
+                        else if(token_equals(token, "class")) { struct_type = StructType_class;  }
+                        else if(token_equals(token, "union")) { struct_type = StructType_union;  }
 
-                        if(res.struct_cnt + 1 >= struct_max) {
+                        if(res.structs.cnt + 1 >= struct_max) {
                             struct_max *= 2;
-                            Void *p = system_realloc(res.struct_data, struct_max);
-                            if(p) res.struct_data = cast(StructData *)p;
+                            Void *p = system_realloc(res.structs.e, struct_max);
+                            if(p) {
+                                res.structs.e = cast(StructData *)p;
+                            }
                         }
 
                         ParseStructResult r = parse_struct(&tokenizer, struct_type);
 
                         // TODO(Jonny): This fails at a struct declared within a struct/union.
-                        if(r.success) { res.struct_data[res.struct_cnt++] = r.sd; }
+                        if(r.success) { res.structs.e[res.structs.cnt++] = r.sd; }
                     } else if(token_equals(token, "enum")) {
-                        if(res.enum_cnt + 1 >= enum_max) {
+                        if(res.enums.cnt + 1 >= enum_max) {
                             enum_max *= 2;
-                            Void *p = system_realloc(res.enum_data, enum_max);
-                            if(p) res.enum_data = cast(EnumData *)p;
+                            Void *p = system_realloc(res.enums.e, enum_max);
+                            if(p) {
+                                res.enums.e = cast(EnumData *)p;
+                            }
                         }
 
                         ParseEnumResult r = parse_enum(&tokenizer);
-                        if(r.success) { res.enum_data[res.enum_cnt++] = r.ed; }
-                    } else if(token_equals(token, "union")) {
-                        StructType struct_or_class = token_equals(token, "struct") ? StructType_struct : StructType_class;
-                        if(res.struct_cnt + 1 >= struct_max) {
-                            struct_max *= 2;
-                            Void *p = system_realloc(res.struct_data, struct_max);
-                            if(p) res.struct_data = cast(StructData *)p;
+                        if(r.success) {
+                            res.enums.e[res.enums.cnt++] = r.ed;
                         }
-
-                        ParseStructResult r = parse_struct(&tokenizer, struct_or_class);
-
-                        // TODO(Jonny): This fails at a struct declared within a struct/union.
-                        if(r.success) res.struct_data[res.struct_cnt++] = r.sd;
                     } else {
                         AttemptFunctionResult r = attempt_to_parse_function(token, &tokenizer);
                         if(r.success) {
-                            // TODO(Jonny): Add to functions.
-                            res.func_data[res.func_cnt++] = r.fd;
+                            if(res.funcs.cnt + 1 >= func_max) {
+                                func_max *= 2;
+                                Void *p = system_realloc(res.funcs.e, func_max);
+                                if(p) {
+                                    res.funcs.e = cast(FunctionData *)p;
+                                }
+                            }
+
+                            // TODO(Jonny): Realloc if nessessary.
+                            res.funcs.e[res.funcs.cnt++] = r.fd;
                         }
                     }
                 } break;

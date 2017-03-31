@@ -60,12 +60,12 @@ internal Int set_primitive_type(String *array) {
     return(res);
 }
 
-internal StructData *find_struct(String str, StructData *structs, Int struct_count) {
+internal StructData *find_struct(String str, Structs structs) {
     StructData *res = 0;
 
     if(str.len) {
-        for(Int i = 0; (i < struct_count); ++i) {
-            StructData *sd = structs + i;
+        for(Int i = 0; (i < structs.cnt); ++i) {
+            StructData *sd = structs.e + i;
 
             if(string_compare(str, sd->name)) {
                 res = sd;
@@ -90,12 +90,12 @@ internal Bool is_meta_type_already_in_array(String *array, Int len, String test)
     return(res);
 }
 
-internal Int get_actual_type_count(String *types, StructData *struct_data, Int struct_count) {
+internal Int get_actual_type_count(String *types, Structs structs) {
     Int res = set_primitive_type(types);
 
     // Fill out the enum meta type enum.
-    for(Int i = 0; (i < struct_count); ++i) {
-        StructData *sd = struct_data + i;
+    for(Int i = 0; (i < structs.cnt); ++i) {
+        StructData *sd = structs.e + i;
 
         if(!is_meta_type_already_in_array(types, res, sd->name)) {
             types[res++] = sd->name;
@@ -190,14 +190,13 @@ internal Void write_type_info(OutputBuffer *ob, DataType type, String name, Stri
     }
 }
 
-internal Void write_out_type_specification_struct(OutputBuffer *ob, StructData *struct_data, Int struct_count,
-                                                  EnumData *enum_data, Int enum_count) {
+internal Void write_out_type_specification_struct(OutputBuffer *ob, Structs structs, Enums enums) {
     PtrSize size = 128;
     String *written_members = system_alloc(String, size);
     Int member_cnt = 0;
 
-    for(Int i = 0; (i < enum_count); ++i) {
-        EnumData *ed = enum_data + i;
+    for(Int i = 0; (i < enums.cnt); ++i) {
+        EnumData *ed = enums.e + i;
 
         if(member_cnt >= size) {
             size *= 2;
@@ -237,8 +236,8 @@ internal Void write_out_type_specification_struct(OutputBuffer *ob, StructData *
         }
     }
 
-    for(Int i = 0; (i < struct_count); ++i) {
-        StructData *sd = struct_data + i;
+    for(Int i = 0; (i < structs.cnt); ++i) {
+        StructData *sd = structs.e + i;
 
         if(!is_in_string_array(sd->name, written_members, member_cnt)) {
             if(member_cnt >= size) {
@@ -269,12 +268,12 @@ internal Void write_out_type_specification_struct(OutputBuffer *ob, StructData *
                     written_members[member_cnt++] = md->type;
 
                     Int number_of_members = 0;
-                    StructData *members_struct_data = find_struct(md->type, struct_data, struct_count);
+                    StructData *members_struct_data = find_struct(md->type, structs);
                     if(members_struct_data) {
                         number_of_members = members_struct_data->member_count;
                     }
 
-                    StructData *member_data = find_struct(md->type, struct_data, struct_count);
+                    StructData *member_data = find_struct(md->type, structs);
                     assert(member_data); // TODO(Jonny): Better error handling.
                     write_type_info(ob, DataType_struct, member_data->name,
                                     (member_data->inherited_count) ? member_data->inherited[0] : create_string("void"),
@@ -287,8 +286,7 @@ internal Void write_out_type_specification_struct(OutputBuffer *ob, StructData *
     system_free( written_members);
 }
 
-File write_data(StructData *struct_data, Int struct_count, EnumData *enum_data, Int enum_count,
-                FunctionData *func_data, Int func_count) {
+File write_data(ParseResult pr) {
     File res = {};
 
     OutputBuffer ob = {};
@@ -448,8 +446,8 @@ File write_data(StructData *struct_data, Int struct_count, EnumData *enum_data, 
                                    "// Forward declared structs, enums, and functions\n"
                                    "//\n");
 
-            for(Int i = 0; (i < struct_count); ++i) {
-                StructData *sd = struct_data + i;
+            for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                StructData *sd = pr.structs.e + i;
 
                 if(sd->struct_type == StructType_struct) {
                     write_to_output_buffer(&ob, "struct %.*s;\n", sd->name.len, sd->name.e);
@@ -463,8 +461,8 @@ File write_data(StructData *struct_data, Int struct_count, EnumData *enum_data, 
             }
 
             // Forward declared enums.
-            for(Int i = 0; (i < enum_count); ++i) {
-                EnumData *ed = enum_data + i;
+            for(Int i = 0; (i < pr.enums.cnt); ++i) {
+                EnumData *ed = pr.enums.e + i;
 
                 if(ed->type.len) {
                     write_to_output_buffer(&ob,
@@ -477,8 +475,8 @@ File write_data(StructData *struct_data, Int struct_count, EnumData *enum_data, 
             }
 
             // Forward declared functions.
-            for(Int i = 0; (i < func_count); ++i) {
-                FunctionData *fd = func_data + i;
+            for(Int i = 0; (i < pr.funcs.cnt); ++i) {
+                FunctionData *fd = pr.funcs.e + i;
 
                 Char result_ptr_buf[max_ptr_size] = {};
                 for(Int j = 0; (j < fd->return_type_ptr); ++j) {
@@ -520,11 +518,13 @@ File write_data(StructData *struct_data, Int struct_count, EnumData *enum_data, 
         // Get the absolute max number of meta types. This will be significantly bigger than the
         // actual number of unique types...
         Int max_type_count = get_num_of_primitive_types();
-        for(Int i = 0; (i < struct_count); ++i) max_type_count += struct_data[i].member_count + 1;
+        for(Int i = 0; (i < pr.structs.cnt); ++i) {
+            max_type_count += pr.structs.e[i].member_count + 1;
+        }
 
         String *types = system_alloc(String, max_type_count);
         if(types) {
-            Int type_count = get_actual_type_count(types, struct_data, struct_count);
+            Int type_count = get_actual_type_count(types, pr.structs);
             assert(type_count <= max_type_count);
 
             write_to_output_buffer(&ob, "\n\n");
@@ -567,8 +567,8 @@ File write_data(StructData *struct_data, Int struct_count, EnumData *enum_data, 
                                        "//\n"
                                        "// Recreated structs.\n"
                                        "//\n");
-                for(Int i = 0; (i < struct_count); ++i) {
-                    StructData *sd = struct_data + i;
+                for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                    StructData *sd = pr.structs.e + i;
 
                     write_to_output_buffer(&ob, "%s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
                                            sd->name.len, sd->name.e);
@@ -648,12 +648,12 @@ File write_data(StructData *struct_data, Int struct_count, EnumData *enum_data, 
                                    "    static bool const is_enum;\n"
                                    "};\n");
 
-            write_out_type_specification_struct(&ob, struct_data, struct_count, enum_data, enum_count);
+            write_out_type_specification_struct(&ob, pr.structs, pr.enums);
 
             // pp::TypeInfo for enums.
             {
-                for(Int i = 0; (i < enum_count); ++i) {
-                    EnumData *ed = enum_data + i;
+                for(Int i = 0; (i < pr.enums.cnt); ++i) {
+                    EnumData *ed = pr.enums.e + i;
 
                     write_type_info(&ob, DataType_enum, ed->name, ed->type, ed->no_of_values);
                 }
@@ -666,8 +666,8 @@ File write_data(StructData *struct_data, Int struct_count, EnumData *enum_data, 
                                        "#define pp_get_member(variable, index) pp_GetMember<decltype(variable), index>::get(variable)\n"
                                        "template<typename T, int index> struct pp_GetMember { };\n");
 
-                for(Int i = 0; (i < struct_count); ++i) {
-                    StructData *sd = struct_data + i;
+                for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                    StructData *sd = pr.structs.e + i;
                     write_to_output_buffer(&ob, "\n");
 
                     for(Int j = 0; (j < sd->member_count); ++j) {
@@ -704,8 +704,8 @@ File write_data(StructData *struct_data, Int struct_count, EnumData *enum_data, 
             {
                 write_to_output_buffer(&ob,
                                        "template<typename T>static char const * pp_get_member_name(int index){return(0);}\n");
-                for(Int i = 0; (i < struct_count); ++i) {
-                    StructData *sd = struct_data + i;
+                for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                    StructData *sd = pr.structs.e + i;
 
                     if(sd->member_count) {
                         write_to_output_buffer(&ob,
@@ -737,12 +737,12 @@ File write_data(StructData *struct_data, Int struct_count, EnumData *enum_data, 
                                        "#define pp_get_base(variable, index) pp_GetBase<decltype(variable), index>::get(variable)\n"
                                        "template<typename T, int index> struct pp_GetBase {};\n");
 
-                for(Int i = 0; (i < struct_count); ++i) {
-                    StructData *sd = struct_data + i;
+                for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                    StructData *sd = pr.structs.e + i;
 
                     if(sd->inherited_count) {
                         for(Int j = 0; (j < sd->inherited_count); ++j) {
-                            StructData *base = find_struct(sd->inherited[j], struct_data, struct_count);
+                            StructData *base = find_struct(sd->inherited[j], pr.structs);
                             assert(base); // TODO(Jonny): Better error handling!
 
                             write_to_output_buffer(&ob,
@@ -789,8 +789,8 @@ File write_data(StructData *struct_data, Int struct_count, EnumData *enum_data, 
                                            access);
                 };
 
-                for(Int i = 0; (i < struct_count); ++i) {
-                    StructData *sd = struct_data + i;
+                for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                    StructData *sd = pr.structs.e + i;
 
                     write_to_output_buffer(&ob,
                                            "\n"
@@ -839,10 +839,10 @@ File write_data(StructData *struct_data, Int struct_count, EnumData *enum_data, 
                                "template<typename T>static char const *pp_enum_to_string(T element) { return(0); }\n"
                                "template<typename T>static T pp_string_to_enum(char const *str) { return(0); }\n"
                                "\n");
-        for(Int i = 0; (i < enum_count); ++i) {
-            EnumData *ed = enum_data + i;
+        for(Int i = 0; (i < pr.enums.cnt); ++i) {
+            EnumData *ed = pr.enums.e + i;
 
-            if(enum_data[i].type.len) {
+            if(ed->type.len) {
                 write_to_output_buffer(&ob,
                                        "// %.*s.\n",
                                        ed->name.len, ed->name.e);
@@ -918,6 +918,7 @@ File write_data(StructData *struct_data, Int struct_count, EnumData *enum_data, 
         // Functors
         //
         {
+#if 0
             write_to_output_buffer(&ob,
                                    "\n"
                                    "//\n"
@@ -1006,6 +1007,7 @@ File write_data(StructData *struct_data, Int struct_count, EnumData *enum_data, 
 
                 clear_scratch_memory();
             }
+#endif
         }
 
         //
