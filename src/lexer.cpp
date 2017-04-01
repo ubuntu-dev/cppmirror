@@ -217,14 +217,17 @@ internal Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
             case TokenType_open_bracket: {
                 Token size_token = get_token(tokenizer);
                 if(size_token.type == TokenType_number) {
-                    Char *buffer = cast(Char *)push_scratch_memory();
+                    TempMemory tm = push_temp_memory(32);
 
-                    token_to_string(size_token, buffer, scratch_memory_size);
-                    ResultInt arr_count = string_to_int(buffer);
-                    if(arr_count.success) res.array_count = arr_count.e;
-                    else                  push_error(ErrorType_failed_to_find_size_of_array);
+                    token_to_string(size_token, cast(Char *)tm.e, tm.size);
+                    ResultInt arr_count = string_to_int(cast(Char *)tm.e);
+                    if(arr_count.success) {
+                        res.array_count = arr_count.e;
+                    } else {
+                        push_error(ErrorType_failed_to_find_size_of_array);
+                    }
 
-                    clear_scratch_memory();
+                    pop_temp_memory(&tm);
                 } else {
                     // TODO(Jonny): Something _bad_ happened...
                 }

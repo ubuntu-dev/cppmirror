@@ -98,6 +98,7 @@ Bool print_errors(void) {
 //
 // Scratch memory.
 //
+#if 0
 // A quick-to-access temp region of memory. Should be frequently cleared.
 internal Int scratch_memory_index = 0;
 internal Void *global_scratch_memory = 0;
@@ -126,6 +127,55 @@ Void clear_scratch_memory(void) {
 
 Void free_scratch_memory() {
     system_free(global_scratch_memory);
+}
+#endif
+
+//
+// Temp Memory.
+//
+internal Void *global_temp_memory = 0;
+internal PtrSize global_temp_index = 0;
+internal PtrSize global_temp_max = 0;
+
+PtrSize get_alignment(void *mem, PtrSize desired_alignment) {
+    PtrSize res = 0;
+
+    PtrSize alignment_mask = desired_alignment - 1;
+    if(cast(PtrSize)mem & alignment_mask) {
+        res = desired_alignment - (cast(PtrSize)mem & alignment_mask);
+    }
+
+    return(res);
+}
+
+
+Bool allocate_temp_memory(PtrSize size) {
+    global_temp_max = size;
+    global_temp_memory = system_malloc(global_temp_max);
+
+    Bool res = global_temp_memory != 0;
+    return(res);
+}
+
+TempMemory push_temp_memory(PtrSize size, PtrSize alignment/*= default_mem_alignment*/) {
+    TempMemory res = {};
+
+    PtrSize alignment_offset = get_alignment(cast(Byte *)global_temp_memory + global_temp_index, alignment);
+    if(global_temp_index + alignment_offset + size < global_temp_max) {
+        res.e = cast(Byte *)global_temp_memory + global_temp_index + alignment_offset;
+        res.size = size;
+        res.alignment_offset = alignment_offset;
+
+        global_temp_index += (res.size + alignment);;
+        zero(res.e, res.size);
+    }
+
+    return(res);
+}
+
+Void pop_temp_memory(TempMemory *temp_memory) {
+    global_temp_index -= temp_memory->size + temp_memory->alignment_offset;
+    zero(temp_memory, sizeof(*temp_memory));
 }
 
 //

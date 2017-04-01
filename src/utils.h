@@ -81,13 +81,23 @@ Bool print_errors(void);
 #endif
 
 //
-// Scratch memory
+// Temp memory.
 //
-// A quick-to-access temp region of memory. Should be frequently cleared.
-static Int const scratch_memory_size = 256 * 256;
-Void *push_scratch_memory(Int size = scratch_memory_size);
-Void clear_scratch_memory(void);
-Void free_scratch_memory();
+struct TempMemory {
+    Void *e;
+    PtrSize size;
+    PtrSize alignment_offset;
+    PtrSize used;
+
+    // TODO(Jonny): Pop memory in destructor??
+};
+
+Int const default_mem_alignment = 4; // TODO(Jonny): Should this be 8?
+
+Bool allocate_temp_memory(PtrSize size);
+TempMemory push_temp_memory(PtrSize size, PtrSize alignment = default_mem_alignment);
+Void pop_temp_memory(TempMemory *temp_memory);
+Void free_temp_memory();
 
 //
 // String
