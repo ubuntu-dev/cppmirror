@@ -96,41 +96,6 @@ Bool print_errors(void) {
 }
 
 //
-// Scratch memory.
-//
-#if 0
-// A quick-to-access temp region of memory. Should be frequently cleared.
-internal Int scratch_memory_index = 0;
-internal Void *global_scratch_memory = 0;
-Void *push_scratch_memory(Int size/*= scratch_memory_size*/) {
-    if(!global_scratch_memory) {
-        global_scratch_memory = system_alloc(Byte, scratch_memory_size + 1);
-        zero(global_scratch_memory, scratch_memory_size + 1);
-    }
-
-    Void *res = 0;
-    if(global_scratch_memory) {
-        assert(scratch_memory_size + 1 > scratch_memory_index + size);
-        res = cast(Byte *)global_scratch_memory + scratch_memory_index;
-        scratch_memory_index += size;
-    }
-
-    return(res);
-}
-
-Void clear_scratch_memory(void) {
-    if(global_scratch_memory) {
-        zero(global_scratch_memory, scratch_memory_index);
-        scratch_memory_index = 0;
-    }
-}
-
-Void free_scratch_memory() {
-    system_free(global_scratch_memory);
-}
-#endif
-
-//
 // Temp Memory.
 //
 internal Void *global_temp_memory = 0;
@@ -201,8 +166,8 @@ Bool string_concat(Char *dest, Int len, Char *a, Int a_len, Char *b, Int b_len) 
     Bool res = false;
 
     if(len > a_len + b_len) {
-        for(Int i = 0; (i < a_len); ++i) *dest++ = *a++;
-        for(Int i = 0; (i < b_len); ++i) *dest++ = *b++;
+        for(Int i = 0; (i < a_len); ++i) { *dest++ = *a++; }
+        for(Int i = 0; (i < b_len); ++i) { *dest++ = *b++; }
 
         res = true;
     }

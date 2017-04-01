@@ -74,11 +74,20 @@ struct Tokenizer {
     Int line;
 };
 
-internal Bool is_end_of_line(Char c, Tokenizer *tokenizer) {
+// TODO(Jonny): Line numbers won't match now, remove tokenizer.
+internal Bool is_end_of_line(Char c, Tokenizer *tokenizer = 0) {
     Bool res = ((c == '\n') || (c == '\r'));
     if(c == '\n') {
-        ++tokenizer->line;
+        if(tokenizer) {
+            ++tokenizer->line;
+        }
     }
+
+    return(res);
+}
+
+Bool is_whitespace(Char c) {
+    Bool res = ((c == ' ') || (c == '\t') || (c == '\v') || (c == '\f') || (is_end_of_line(c)));
 
     return(res);
 }
@@ -217,17 +226,15 @@ internal Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
             case TokenType_open_bracket: {
                 Token size_token = get_token(tokenizer);
                 if(size_token.type == TokenType_number) {
-                    TempMemory tm = push_temp_memory(32);
+                    char buf[32] = {};
 
-                    token_to_string(size_token, cast(Char *)tm.e, tm.size);
-                    ResultInt arr_count = string_to_int(cast(Char *)tm.e);
+                    token_to_string(size_token, buf, array_count(buf));
+                    ResultInt arr_count = string_to_int(buf);
                     if(arr_count.success) {
                         res.array_count = arr_count.e;
                     } else {
                         push_error(ErrorType_failed_to_find_size_of_array);
                     }
-
-                    pop_temp_memory(&tm);
                 } else {
                     // TODO(Jonny): Something _bad_ happened...
                 }
@@ -433,7 +440,11 @@ internal Void skip_to_matching_bracket(Tokenizer *tokenizer) {
     }
 }
 
-internal Void parse_template(Tokenizer *tokenizer) {
+internal String parse_template(Tokenizer *tokenizer) {
+    String res = {};
+
+    res.e = tokenizer->at;
+    eat_token(tokenizer);
     Int angle_bracket_count = 1;
     Token token;
     Bool should_loop = true;
@@ -448,10 +459,13 @@ internal Void parse_template(Tokenizer *tokenizer) {
                 --angle_bracket_count;
                 if(!angle_bracket_count) {
                     should_loop = false;
+                    res.len = (tokenizer->at - res.e);
                 }
             } break;
         }
     }
+
+    return(res);
 }
 
 struct ParseVariableRes {
@@ -542,10 +556,14 @@ struct ParseStructResult {
     StructData sd;
     Bool success;
 };
-internal ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_type) {
+internal ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_type, String template_header = create_string("") ) {
     ParseStructResult res = {};
 
     if(!is_forward_declared(tokenizer)) {
+        if(template_header.len) {
+            res.sd.template_header = template_header;
+        }
+
         Tokenizer start = *tokenizer;
 
         Access current_access = ((struct_type == StructType_struct) || (struct_type == StructType_union)) ? Access_public : Access_private;
@@ -1192,6 +1210,7 @@ ParseResult parse_stream(Char *stream) {
     if((res.enums.e)  && (res.structs.e) && (res.funcs.e) && (macro_data)) {
         Tokenizer tokenizer = { stream, 1 };
 
+        String template_header = {};
         Bool parsing = true;
         while(parsing) {
             Token token = get_token(&tokenizer);
@@ -1222,8 +1241,7 @@ ParseResult parse_stream(Char *stream) {
                 case TokenType_identifier: {
                     // TODO(Jonny): I may need to keep the template header, so that the generated structs still work.
                     if(token_equals(token, "template")) {
-                        eat_token(&tokenizer);
-                        parse_template(&tokenizer);
+                        template_header = parse_template(&tokenizer);
                     } else if((token_equals(token, "struct")) || (token_equals(token, "class")) || (token_equals(token, "union"))) {
                         StructType struct_type = StructType_unknown;
 
@@ -1239,7 +1257,8 @@ ParseResult parse_stream(Char *stream) {
                             }
                         }
 
-                        ParseStructResult r = parse_struct(&tokenizer, struct_type);
+                        ParseStructResult r = parse_struct(&tokenizer, struct_type, template_header);
+                        template_header.e = 0; template_header.len = 0;
 
                         // TODO(Jonny): This fails at a struct declared within a struct/union.
                         if(r.success) { res.structs.e[res.structs.cnt++] = r.sd; }

@@ -274,10 +274,11 @@ internal Void write_out_type_specification_struct(OutputBuffer *ob, Structs stru
                     }
 
                     StructData *member_data = find_struct(md->type, structs);
-                    assert(member_data); // TODO(Jonny): Better error handling.
-                    write_type_info(ob, DataType_struct, member_data->name,
-                                    (member_data->inherited_count) ? member_data->inherited[0] : create_string("void"),
-                                    member_data->member_count, member_data->inherited_count);
+                    if(member_data) {
+                        write_type_info(ob, DataType_struct, member_data->name,
+                                        (member_data->inherited_count) ? member_data->inherited[0] : create_string("void"),
+                                        member_data->member_count, member_data->inherited_count);
+                    }
                 }
             }
         }
@@ -449,6 +450,10 @@ File write_data(ParseResult pr) {
             for(Int i = 0; (i < pr.structs.cnt); ++i) {
                 StructData *sd = pr.structs.e + i;
 
+                //if(sd->template_header.len) {
+                //    write_to_output_buffer(&ob, "template%.*s", sd->template_header.len, sd->template_header.e);
+                //}
+
                 if(sd->struct_type == StructType_struct) {
                     write_to_output_buffer(&ob, "struct %.*s;\n", sd->name.len, sd->name.e);
                 } else if(sd->struct_type == StructType_class) {
@@ -566,9 +571,45 @@ File write_data(ParseResult pr) {
                 write_to_output_buffer(&ob,
                                        "//\n"
                                        "// Recreated structs.\n"
-                                       "//\n");
+                                       "//\n",
+                                       "namespace recreated {");
                 for(Int i = 0; (i < pr.structs.cnt); ++i) {
                     StructData *sd = pr.structs.e + i;
+
+                    /*if(sd->template_header.len) {
+                        //write_to_output_buffer(&ob, "template%.*s ", sd->template_header.len, sd->template_header.e);
+                        TempMemory tm = push_temp_memory(sd->template_header.len * 2);
+                        Char *buf = cast(Char *)tm.e;
+                        Int iter = 0;
+                        Char *typename_str = "typename";
+                        Int typename_len =  string_length(typename_str);
+
+                        for(Int i = 0; (i < sd->template_header.len); ++i, ++iter) {
+                            if(string_compare(sd->template_header.e + i, typename_str, typename_len)) {
+                                i += typename_len;
+                                for(Int j = 0; (j < typename_len); ++j) {
+                                    buf[iter++] = typename_str[j];
+                                }
+
+                                while(is_whitespace(sd->template_header.e[i])) {
+                                    buf[iter++] = sd->template_header.e[i++];
+                                }
+
+                                buf[iter++] = 'p';
+                                buf[iter++] = 'p';
+                                buf[iter++] = '_';
+                                --iter;
+                                --i;
+
+                            } else {
+                                buf[iter] = sd->template_header.e[i];
+                            }
+                        }
+
+                        write_to_output_buffer(&ob, "template%.*s", iter, buf);
+
+                        pop_temp_memory(&tm);
+                    }*/
 
                     write_to_output_buffer(&ob, "%s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
                                            sd->name.len, sd->name.e);
@@ -578,7 +619,9 @@ File write_data(ParseResult pr) {
                         for(Int j = 0; (j < sd->inherited_count); ++j) {
                             String *inherited = sd->inherited + j;
 
-                            if(j > 0) write_to_output_buffer(&ob, ",");
+                            if(j > 0) {
+                                write_to_output_buffer(&ob, ",");
+                            }
 
                             write_to_output_buffer(&ob, " public pp_%.*s", inherited->len, inherited->e);
                         }

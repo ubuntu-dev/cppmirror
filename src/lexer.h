@@ -24,6 +24,7 @@ enum StructType {
 };
 
 struct StructData {
+    String template_header;
     String name;
     Int member_count;
     Variable *members;
@@ -80,6 +81,7 @@ struct ParseResult {
 };
 
 ParseResult parse_stream(Char *stream);
+Bool is_whitespace(Char c);
 
 #define _LEXER_H
 #endif
