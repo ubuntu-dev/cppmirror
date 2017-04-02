@@ -55,19 +55,6 @@ internal Void write_to_output_buffer_no_var_args(OutputBuffer *ob, Char *format)
 
 internal Char *primitive_types[] = {"char", "short", "int", "long", "float", "double", "bool"};
 
-internal Int set_primitive_type(String *array) {
-    Int res = array_count(primitive_types);
-
-    for(Int i = 0; (i < res); ++i) {
-        String *index = array + i;
-
-        index->e = primitive_types[i];
-        index->len = string_length(primitive_types[i]);
-    }
-
-    return(res);
-}
-
 internal StructData *find_struct(String str, Structs structs) {
     StructData *res = 0;
 
@@ -91,7 +78,7 @@ internal Bool is_meta_type_already_in_array(String *array, Int len, String test)
     for(Int i = 0; (i < len); ++i) {
         if(string_comp(array[i], test)) {
             res = true;
-            break; // for
+            break;
         }
     }
 
@@ -99,7 +86,10 @@ internal Bool is_meta_type_already_in_array(String *array, Int len, String test)
 }
 
 internal Int get_actual_type_count(String *types, Structs structs) {
-    Int res = set_primitive_type(types);
+    Int res = 0;
+    for(Int i = 0; (i < array_count(primitive_types)); ++i) {
+        types[res++] = create_string(primitive_types[i]);
+    }
 
     // Fill out the enum meta type enum.
     for(Int i = 0; (i < structs.cnt); ++i) {
