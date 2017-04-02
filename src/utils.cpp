@@ -122,7 +122,7 @@ Bool allocate_temp_memory(PtrSize size) {
     return(res);
 }
 
-TempMemory push_temp_memory(PtrSize size, PtrSize alignment/*= default_mem_alignment*/) {
+TempMemory push_temp_memory(PtrSize size, PtrSize alignment/*=default_memory_alignment*/) {
     TempMemory res = {};
 
     PtrSize alignment_offset = get_alignment(cast(Byte *)global_temp_memory + global_temp_index, alignment);
@@ -175,7 +175,7 @@ Bool string_concat(Char *dest, Int len, Char *a, Int a_len, Char *b, Int b_len) 
     return(res);
 }
 
-Bool string_compare(Char *a, Char *b, Int len) {
+Bool string_comp_len(Char *a, Char *b, Int len) {
     for(Int i = 0; (i < len); ++i, ++a, ++b) {
         if(*a != *b) {
             return(false);
@@ -183,13 +183,6 @@ Bool string_compare(Char *a, Char *b, Int len) {
     }
 
     return(true);
-}
-
-Bool string_compare(Char *a, Char *b) {
-    for(;; ++a, ++b) {
-        if((*a == 0) && (*b == 0)) return(true);
-        else if(*a != *b)          return(false);
-    }
 }
 
 Void string_copy(Char *dest, Char *src) {
@@ -200,7 +193,7 @@ Void string_copy(Char *dest, Char *src) {
     }
 }
 
-Bool string_compare(String a, String b) {
+Bool string_comp(String a, String b) {
     Bool res = false;
 
     if(a.len == b.len) {
@@ -217,7 +210,7 @@ Bool string_compare(String a, String b) {
     return(res);
 }
 
-Bool string_compare(String a, Char *b) {
+Bool string_comp(String a, Char *b) {
     Bool res = true;
 
     for(Int i = 0; (i < a.len); ++i) {
@@ -230,10 +223,10 @@ Bool string_compare(String a, Char *b) {
     return(res);
 }
 
-Bool string_compare_array(String *a, String *b, Int cnt) {
+Bool string_comp_array(String *a, String *b, Int cnt) {
     Bool res = true;
     for(Int i = 0; (i < cnt); ++i) {
-        if(!string_compare(a[i], b[i])) {
+        if(!string_comp(a[i], b[i])) {
             res = false;
             break;
         }
@@ -370,7 +363,7 @@ clean_up:;
 Bool is_in_string_array(String target, String *arr, Int arr_cnt) {
     Bool res = false;
     for(int i = 0; (i < arr_cnt); ++i) {
-        if(string_compare(target, arr[i])) {
+        if(string_comp(target, arr[i])) {
             res = true;
             break;
         }
@@ -399,8 +392,8 @@ Variable create_variable(Char *type, Char *name, Int ptr/*= 0*/, Int array_count
 Bool compare_variable(Variable a, Variable b) {
     Bool res = true;
 
-    if(!string_compare(a.type, b.type))      res = false;
-    else if(!string_compare(a.name, b.name)) res = false;
+    if(!string_comp(a.type, b.type))      res = false;
+    else if(!string_comp(a.name, b.name)) res = false;
     else if(a.ptr != b.ptr)                  res = false;
     else if(a.array_count != b.array_count)  res = false;
 

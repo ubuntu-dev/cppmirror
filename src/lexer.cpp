@@ -151,7 +151,7 @@ internal Bool token_equals(Token token, Char *str) {
 
     Int len = string_length(str);
     if(len == token.len) {
-        res = string_compare(token.e, str, len);
+        res = string_comp_len(token.e, str, len);
     }
 
     return(res);
@@ -271,7 +271,7 @@ internal Void eat_whitespace(Tokenizer *tokenizer) {
             String hash_if_zero = create_string("#if 0");
             String hash_if_one = create_string("#if 1");
 
-            if(string_compare(hash_if_zero, tokenizer->at)) {
+            if(string_comp(hash_if_zero, tokenizer->at)) {
                 tokenizer->at += hash_if_zero.len;
 
                 String hash_end_if = create_string("#endif");
@@ -284,7 +284,7 @@ internal Void eat_whitespace(Tokenizer *tokenizer) {
                         if((tokenizer->at[1] == 'i') && (tokenizer->at[2] == 'f')) {
                             ++level;
 
-                        } else if(string_compare(hash_end_if, tokenizer->at)) {
+                        } else if(string_comp(hash_end_if, tokenizer->at)) {
                             if(level) {
                                 --level;
                             } else {
@@ -299,7 +299,7 @@ internal Void eat_whitespace(Tokenizer *tokenizer) {
 
                 // For #if 1 #else blocks, write everything between #else and #endif into whitespace, then
                 // jump back to the beginning of the beginning of the #if 1 block to parse stuff in it.
-            } else if(string_compare(hash_if_one, tokenizer->at)) { // #if 1 #else blocks.
+            } else if(string_comp(hash_if_one, tokenizer->at)) { // #if 1 #else blocks.
                 tokenizer->at += hash_if_one.len;
                 Tokenizer cpy = *tokenizer;
 
@@ -315,14 +315,14 @@ internal Void eat_whitespace(Tokenizer *tokenizer) {
                     if(tokenizer->at[0] == '#') {
                         if((tokenizer->at[1] == 'i') && (tokenizer->at[2] == 'f')) {
                             ++level;
-                        } else if(string_compare(hash_end_if, tokenizer->at)) {
+                        } else if(string_comp(hash_end_if, tokenizer->at)) {
                             if(level != 0) {
                                 --level;
                             } else {
                                 tokenizer->at += hash_end_if.len;
                                 break; // for
                             }
-                        } else if(string_compare(hash_else, tokenizer->at)) {
+                        } else if(string_comp(hash_else, tokenizer->at)) {
                             if(level == 0) {
                                 tokenizer->at += hash_else.len;
                                 Int Level2 = 0;
@@ -332,7 +332,7 @@ internal Void eat_whitespace(Tokenizer *tokenizer) {
                                         if((tokenizer->at[1] == 'i') && (tokenizer->at[2] == 'f')) {
                                             ++Level2;
 
-                                        } else if(string_compare(hash_end_if, tokenizer->at)) {
+                                        } else if(string_comp(hash_end_if, tokenizer->at)) {
                                             if(Level2 != 0) {
                                                 --Level2;
                                             } else {
@@ -399,7 +399,7 @@ internal Bool peak_require_token(Tokenizer *tokenizer, Char *str) {
     Tokenizer cpy = *tokenizer;
     Token token = get_token(&cpy);
 
-    if(string_compare(token.e, str, token.len)) {
+    if(string_comp_len(token.e, str, token.len)) {
         res = true;
     }
 
@@ -410,7 +410,7 @@ internal Bool is_stupid_class_keyword(Token t) {
     Bool res = false;
     Char *keywords[] = { "private", "public", "protected" };
     for(Int i = 0, cnt = array_count(keywords); (i < cnt); ++i) {
-        if(string_compare(keywords[i], t.e, t.len)) {
+        if(string_comp_len(keywords[i], t.e, t.len)) {
             res = true;
             goto func_exit;
         }
@@ -620,11 +620,11 @@ internal ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_
                     Token token = get_token(tokenizer);
                     if(is_stupid_class_keyword(token)) {
                         String access_as_string = token_to_string(token);
-                        if(string_compare(access_as_string, create_string("public"))) {
+                        if(string_comp(access_as_string, create_string("public"))) {
                             current_access = Access_public;
-                        } else if(string_compare(access_as_string, create_string("private"))) {
+                        } else if(string_comp(access_as_string, create_string("private"))) {
                             current_access = Access_private;
-                        } else if(string_compare(access_as_string, create_string("protected"))) {
+                        } else if(string_comp(access_as_string, create_string("protected"))) {
                             current_access = Access_protected;
                         }
                     } else {
@@ -1053,7 +1053,7 @@ internal Token get_token(Tokenizer *tokenizer) {
                 MacroData *md = macro_data + i;
 
                 String token_as_string = token_to_string(res);
-                if(string_compare(token_as_string, md->iden)) {
+                if(string_comp(token_as_string, md->iden)) {
                     res = string_to_token(md->res);
                     changed = true;
                 }

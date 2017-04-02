@@ -75,7 +75,7 @@ internal StructData *find_struct(String str, Structs structs) {
         for(Int i = 0; (i < structs.cnt); ++i) {
             StructData *sd = structs.e + i;
 
-            if(string_compare(str, sd->name)) {
+            if(string_comp(str, sd->name)) {
                 res = sd;
                 break; // for
             }
@@ -89,7 +89,7 @@ internal Bool is_meta_type_already_in_array(String *array, Int len, String test)
     Bool res = false;
 
     for(Int i = 0; (i < len); ++i) {
-        if(string_compare(array[i], test)) {
+        if(string_comp(array[i], test)) {
             res = true;
             break; // for
         }
@@ -142,7 +142,7 @@ internal Void write_type_info(OutputBuffer *ob, DataType type, String name, Stri
         }
 
         for(Int j = 0; (j < 2); ++j) {
-            if((!j) || (!string_compare(name, "void"))) {
+            if((!j) || (!string_comp(name, "void"))) {
                 Char const *ref = (j) ? "&" : "";
 
                 Int ptr_count = 0;
@@ -448,14 +448,6 @@ File write_data(ParseResult pr) {
                                "    #endif\n"
                                "#endif\n"
                                "\n"
-                               "//\n"
-                               "// Type compare and weak type compare.\n"
-                               "//\n"
-                               //"template<class T, class U>struct pp_TypeCompare_{ static bool const e = false; };\n"
-                               //"template<class T>struct pp_TypeCompare_<T, T>{ static bool const e = true; };\n"
-                               //"#define pp_type_compare(A, B) pp_TypeCompare_<A, B>::e\n"
-                               //"#define pp_weak_type_compare(A, B) pp_type_compare(pp_TypeInfo<A>::weak_type, pp_TypeInfo<B>::weak_type)\n"
-                               "\n"
                                "static pp_bool pp_string_compare(char const *a, char const *b) {\n"
                                "    for(;; ++a, ++b) {\n"
                                "        if((*a == 0) && (*b == 0)) {\n"
@@ -555,41 +547,6 @@ File write_data(ParseResult pr) {
                     for(Int i = 0; (i < pr.structs.cnt); ++i) {
                         StructData *sd = pr.structs.e + i;
 
-                        /*if(sd->template_header.len) {
-                            //write_to_output_buffer(&ob, "template%.*s ", sd->template_header.len, sd->template_header.e);
-                            TempMemory tm = push_temp_memory(sd->template_header.len * 2);
-                            Char *buf = cast(Char *)tm.e;
-                            Int iter = 0;
-                            Char *typename_str = "typename";
-                            Int typename_len =  string_length(typename_str);
-
-                            for(Int i = 0; (i < sd->template_header.len); ++i, ++iter) {
-                                if(string_compare(sd->template_header.e + i, typename_str, typename_len)) {
-                                    i += typename_len;
-                                    for(Int j = 0; (j < typename_len); ++j) {
-                                        buf[iter++] = typename_str[j];
-                                    }
-
-                                    while(is_whitespace(sd->template_header.e[i])) {
-                                        buf[iter++] = sd->template_header.e[i++];
-                                    }
-
-                                    buf[iter++] = 'p';
-                                    buf[iter++] = 'p';
-                                    buf[iter++] = '_';
-                                    --iter;
-                                    --i;
-
-                                } else {
-                                    buf[iter] = sd->template_header.e[i];
-                                }
-                            }
-
-                            write_to_output_buffer(&ob, "template%.*s", iter, buf);
-
-                            pop_temp_memory(&tm);
-                        }*/
-
                         write_to_output_buffer(&ob, "typedef %s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
                                                sd->name.len, sd->name.e);
 
@@ -617,7 +574,9 @@ File write_data(ParseResult pr) {
                             }
 
                             char ptr_buf[max_ptr_size] = {};
-                            for(Int k = 0; (k < md->ptr); ++k) ptr_buf[k] = '*';
+                            for(Int k = 0; (k < md->ptr); ++k) {
+                                ptr_buf[k] = '*';
+                            }
 
                             write_to_output_buffer(&ob, " pp_%.*s %s%.*s%s; ",
                                                    md->type.len, md->type.e,
@@ -906,545 +865,93 @@ File write_data(ParseResult pr) {
         }
 
 
-
-#if 0
-        //
-        // Types enum.
-        //
-
-        // Get the absolute max number of meta types. This will be significantly bigger than the
-        // actual number of unique types...
-        Int max_type_count = array_count(primitive_types);
-        for(Int i = 0; (i < pr.structs.cnt); ++i) {
-            max_type_count += pr.structs.e[i].member_count + 1;
-        }
-
-        String *types = system_alloc(String, max_type_count);
-        if(types) {
-            Int type_count = get_actual_type_count(types, pr.structs);
-            assert(type_count <= max_type_count);
-
-            write_to_output_buffer(&ob, "\n\n");
-
-            // Recreated enums.
-            {
-                // TODO(Jonny): I don't think these are actually nessessary for anything. I'm leaving it in just in case
-                //              that changes though.
-#if 0
-                write_to_output_buffer(&ob, "// Recreated structs/enums.\n");
-
-                for(Int i = 0; (i < enum_count); ++i) {
-                    EnumData *ed = enum_data + i;
-
-                    write_to_output_buffer(&ob, "enum %s pp_%.*s",
-                                           (ed->is_struct) ? "class" : "",
-                                           ed->name.len, ed->name.e);
-                    if(ed->type.len) {
-                        write_to_output_buffer(&ob, " : %.*s",
-                                               ed->type.len, ed->type.e);
-                    }
-                    write_to_output_buffer(&ob, " { ");
-
-                    for(Int j = 0; (j < ed->no_of_values); ++j) {
-                        EnumValue *v = ed->values + j;
-
-                        write_to_output_buffer(&ob, "%.*s = %d, ",
-                                               v->name.len, v->name.e,
-                                               v->value);
-                    }
-
-                    write_to_output_buffer(&ob, " };\n");
-                }
-#endif
-            }
-
-            // Recreated structs.
-            {
-                write_to_output_buffer(&ob,
-                                       "//\n"
-                                       "// Recreated structs.\n"
-                                       "//\n",
-                                       "namespace recreated {");
-                for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                    StructData *sd = pr.structs.e + i;
-
-                    /*if(sd->template_header.len) {
-                        //write_to_output_buffer(&ob, "template%.*s ", sd->template_header.len, sd->template_header.e);
-                        TempMemory tm = push_temp_memory(sd->template_header.len * 2);
-                        Char *buf = cast(Char *)tm.e;
-                        Int iter = 0;
-                        Char *typename_str = "typename";
-                        Int typename_len =  string_length(typename_str);
-
-                        for(Int i = 0; (i < sd->template_header.len); ++i, ++iter) {
-                            if(string_compare(sd->template_header.e + i, typename_str, typename_len)) {
-                                i += typename_len;
-                                for(Int j = 0; (j < typename_len); ++j) {
-                                    buf[iter++] = typename_str[j];
-                                }
-
-                                while(is_whitespace(sd->template_header.e[i])) {
-                                    buf[iter++] = sd->template_header.e[i++];
-                                }
-
-                                buf[iter++] = 'p';
-                                buf[iter++] = 'p';
-                                buf[iter++] = '_';
-                                --iter;
-                                --i;
-
-                            } else {
-                                buf[iter] = sd->template_header.e[i];
-                            }
-                        }
-
-                        write_to_output_buffer(&ob, "template%.*s", iter, buf);
-
-                        pop_temp_memory(&tm);
-                    }*/
-
-                    write_to_output_buffer(&ob, "%s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
-                                           sd->name.len, sd->name.e);
-                    if(sd->inherited) {
-                        write_to_output_buffer(&ob, " :");
-
-                        for(Int j = 0; (j < sd->inherited_count); ++j) {
-                            String *inherited = sd->inherited + j;
-
-                            if(j > 0) {
-                                write_to_output_buffer(&ob, ",");
-                            }
-
-                            write_to_output_buffer(&ob, " public pp_%.*s", inherited->len, inherited->e);
-                        }
-                    }
-                    write_to_output_buffer(&ob, " { ");
-
-                    Bool is_inside_anonymous_struct = false;
-                    for(Int j = 0; (j < sd->member_count); ++j) {
-                        Variable *md = sd->members + j;
-
-                        if(md->is_inside_anonymous_struct != is_inside_anonymous_struct) {
-                            is_inside_anonymous_struct = !is_inside_anonymous_struct;
-
-                            if(is_inside_anonymous_struct) {
-                                write_to_output_buffer(&ob, " struct {");
-                            } else {
-                                write_to_output_buffer(&ob, "};");
-                            }
-                        }
-
-                        Char *arr = "";
-                        Char arr_buffer[256] = {};
-                        if(md->array_count > 1) {
-                            stbsp_snprintf(arr_buffer, 256, "[%u]", md->array_count);
-                            arr = arr_buffer;
-                        }
-
-                        char ptr_buf[max_ptr_size] = {};
-                        for(Int k = 0; (k < md->ptr); ++k) ptr_buf[k] = '*';
-
-                        write_to_output_buffer(&ob, " pp_%.*s %s%.*s%s; ",
-                                               md->type.len, md->type.e,
-                                               ptr_buf,
-                                               md->name.len, md->name.e,
-                                               (md->array_count > 1) ? arr_buffer : arr);
-
-                    }
-
-                    if(is_inside_anonymous_struct) write_to_output_buffer(&ob, " };");
-
-                    write_to_output_buffer(&ob, " };\n");
-                }
-            }
-
-            // Type info definition.
-            write_to_output_buffer(&ob,
-                                   "\n"
-                                   "//\n"
-                                   "// Type info definition.\n"
-                                   "//\n"
-                                   "template<typename T> struct pp_TypeInfo {\n"
-                                   "    using type      = void;\n"
-                                   "    using weak_type = void;\n"
-                                   "    using base      = void;\n"
-                                   "\n"
-                                   "    static char const * const name;\n"
-                                   "    static char const * const weak_name;\n"
-                                   "\n"
-                                   "    static size_t const member_count;\n"
-                                   "    static size_t const base_count;\n"
-                                   "\n"
-                                   "    static bool const ptr_level;\n"
-                                   "    static bool const is_ref;\n"
-                                   "\n"
-                                   "    static bool const is_primitive;\n"
-                                   "    static bool const is_class;\n"
-                                   "    static bool const is_enum;\n"
-                                   "};\n");
-
-            write_out_type_specification_struct(&ob, pr.structs, pr.enums);
-
-            // pp::TypeInfo for enums.
-            {
-                for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                    EnumData *ed = pr.enums.e + i;
-
-                    write_type_info(&ob, DataType_enum, ed->name, ed->type, ed->no_of_values);
-                }
-            }
-
-            // Get member at index.
-            {
-                write_to_output_buffer(&ob,
-                                       "// Get at index.\n"
-                                       "#define pp_get_member(variable, index) pp_GetMember<decltype(variable), index>::get(variable)\n"
-                                       "template<typename T, int index> struct pp_GetMember { };\n");
-
-                for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                    StructData *sd = pr.structs.e + i;
-                    write_to_output_buffer(&ob, "\n");
-
-                    for(Int j = 0; (j < sd->member_count); ++j) {
-                        Variable *md = sd->members + j;
-
-                        Char ptr_buf[max_ptr_size] = {};
-                        for(Int k = 0; (k < md->ptr); ++k) {
-                            ptr_buf[k] = '*';
-                        }
-
-                        // Because get_member _requires_ a pointer, only generate code for the pointer version.
-                        write_to_output_buffer(&ob,
-                                               "template<> struct pp_GetMember<%.*s *, %d> {\n"
-                                               "    static %.*s%s *get(%.*s *ptr) {\n"
-                                               "        pp_%.*s *cpy = (pp_%.*s *)ptr;\n"
-                                               "        %.*s%s * res = (%.*s%s *)&cpy->%.*s;\n"
-                                               "        return(res);\n"
-                                               "    };\n"
-                                               "};\n",
-                                               sd->name.len, sd->name.e,
-                                               j,
-                                               md->type.len, md->type.e, ptr_buf,
-                                               sd->name.len, sd->name.e,
-                                               sd->name.len, sd->name.e,
-                                               sd->name.len, sd->name.e,
-                                               md->type.len, md->type.e, ptr_buf,
-                                               md->type.len, md->type.e, ptr_buf,
-                                               md->name.len, md->name.e);
-                    }
-                }
-            }
-
-            // Get member name at index.
-            {
-                write_to_output_buffer(&ob,
-                                       "template<typename T>static char const * pp_get_member_name(int index){return(0);}\n");
-                for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                    StructData *sd = pr.structs.e + i;
-
-                    if(sd->member_count) {
-                        write_to_output_buffer(&ob,
-                                               "template<>char const * pp_get_member_name<%.*s>(int index){\n"
-                                               "    switch(index) {\n",
-                                               sd->name.len, sd->name.e);
-
-                        for(Int j = 0; (j < sd->member_count); ++j) {
-                            Variable *md = sd->members + j;
-
-                            write_to_output_buffer(&ob,
-                                                   "        case %d: { return(\"%.*s\"); } break;\n",
-                                                   j,
-                                                   md->name.len, md->name.e);
-                        }
-
-                        write_to_output_buffer(&ob,
-                                               "    }\n"
-                                               "    return(0); // Not found.\n"
-                                               "}\n");
-                    }
-                }
-            }
-
-            // Get base at index.
-            {
-                write_to_output_buffer(&ob,
-                                       "// Get at index.\n"
-                                       "#define pp_get_base(variable, index) pp_GetBase<decltype(variable), index>::get(variable)\n"
-                                       "template<typename T, int index> struct pp_GetBase {};\n");
-
-                for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                    StructData *sd = pr.structs.e + i;
-
-                    if(sd->inherited_count) {
-                        for(Int j = 0; (j < sd->inherited_count); ++j) {
-                            StructData *base = find_struct(sd->inherited[j], pr.structs);
-                            assert(base); // TODO(Jonny): Better error handling!
-
-                            write_to_output_buffer(&ob,
-                                                   "template<> struct pp_GetBase<%.*s *, %d> {\n"
-                                                   "    static %.*s *get(%.*s *ptr) {\n"
-                                                   "        pp_%.*s *cpy = (pp_%.*s *)ptr;\n"
-                                                   "        pp_%.*s *b = dynamic_cast<pp_%.*s *>(cpy);\n"
-                                                   "\n"
-                                                   "        return((%.*s *)b);\n"
-                                                   "    }\n"
-                                                   "};\n"
-                                                   "\n",
-                                                   sd->name.len, sd->name.e, j,
-                                                   base->name.len, base->name.e, sd->name.len, sd->name.e,
-                                                   sd->name.len, sd->name.e, sd->name.len, sd->name.e,
-                                                   base->name.len, base->name.e, base->name.len, base->name.e,
-                                                   base->name.len, base->name.e);
-                        }
-                    }
-                }
-            }
-
-            // Get access at index.
-            {
-                write_to_output_buffer(&ob,
-                                       "//\n"
-                                       "// Get access at index.\n"
-                                       "//\n"
-                                       "enum pp_Access : int {\n"
-                                       "    pp_Access_unknown,\n"
-                                       "    pp_Access_public,\n"
-                                       "    pp_Access_private,\n"
-                                       "    pp_Access_protected,\n"
-                                       "\n"
-                                       "    pp_Access_count,\n"
-                                       "};\n"
-                                       "template<typename T, int index> pp_Access pp_get_access_at_index() { return(pp_Access_unknown); }\n");
-
-                auto write_func = [](OutputBuffer *ob, StructData *sd, Int j, char *access, Char *modifier) {
-                    write_to_output_buffer(ob,
-                                           "template<> pp_Access pp_get_access_at_index<%.*s%s, %d>() { return(pp_Access_%s); }\n",
-                                           sd->name.len, sd->name.e, modifier,
-                                           j,
-                                           access);
-                };
-
-                for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                    StructData *sd = pr.structs.e + i;
-
-                    write_to_output_buffer(&ob,
-                                           "\n"
-                                           "//\n"
-                                           "// %.*s\n"
-                                           "//\n",
-                                           sd->name.len, sd->name.e);
-
-                    for(Int j = 0; (j < sd->member_count); ++j) {
-                        Variable *md = sd->members + j;
-
-                        Char *access = 0;
-                        if(md->access == Access_public)         { access = "public";    }
-                        else if(md->access == Access_private)   { access = "private";   }
-                        else if(md->access == Access_protected) { access = "protected"; }
-                        else                                    { assert(0);            }
-
-                        write_to_output_buffer(&ob,
-                                               "\n"
-                                               "// %.*s::%.*s\n",
-                                               sd->name.len, sd->name.e,
-                                               md->name.len, md->name.e);
-                        write_func(&ob, sd, j, access, "");
-                        write_func(&ob, sd, j, access, " *");
-                        write_func(&ob, sd, j, access, " **");
-                        write_func(&ob, sd, j, access, " ***");
-                        write_func(&ob, sd, j, access, " &");
-                        write_func(&ob, sd, j, access, " *&");
-                        write_func(&ob, sd, j, access, " **&");
-                        write_func(&ob, sd, j, access, " ***&");
-                    }
-                }
-            }
-
-
-            system_free(types);
-        }
-
-        write_to_output_buffer(&ob,
-                               "\n"
-                               "//\n"
-                               "// Enum Introspection data.\n"
-                               "//\n"
-                               "\n"
-                               "// Stub functions.\n"
-                               "template<typename T>static char const *pp_enum_to_string(T element) { return(0); }\n"
-                               "template<typename T>static T pp_string_to_enum(char const *str) { return(0); }\n"
-                               "\n");
-        for(Int i = 0; (i < pr.enums.cnt); ++i) {
-            EnumData *ed = pr.enums.e + i;
-
-            if(ed->type.len) {
-                write_to_output_buffer(&ob,
-                                       "// %.*s.\n",
-                                       ed->name.len, ed->name.e);
-                // Enum to string.
-                {
-                    write_to_output_buffer(&ob,
-                                           "template<>char const *pp_enum_to_string<%.*s>(%.*s element) {\n"
-                                           "    %.*s index = (%.*s)element;\n"
-                                           "    switch(index) {\n",
-                                           ed->name.len, ed->name.e,
-                                           ed->name.len, ed->name.e,
-                                           ed->type.len, ed->type.e,
-                                           ed->type.len, ed->type.e);
-                    for(Int j = 0; (j < ed->no_of_values); ++j) {
-                        EnumValue *v = ed->values + j;
-
-                        write_to_output_buffer(&ob,
-                                               "        case %d:  { return(\"%.*s\"); } break;\n",
-                                               v->value,
-                                               v->name.len, v->name.e);
-                    }
-
-                    write_to_output_buffer(&ob,
-                                           "\n"
-                                           "        default: { return(0); } break;\n"
-                                           "    }\n"
-                                           "}\n");
-                }
-
-                // String to enum.
-                {
-                    write_to_output_buffer(&ob,
-                                           "template<>%.*s pp_string_to_enum<%.*s>(char const *str) {\n"
-                                           "    %.*s res = 0;\n"
-                                           "\n",
-                                           ed->name.len, ed->name.e,
-                                           ed->name.len, ed->name.e,
-                                           ed->type.len, ed->type.e);
-                    for(Int j = 0; (j < ed->no_of_values); ++j) {
-                        EnumValue *v = ed->values + j;
-
-                        if(!j) {
-                            write_to_output_buffer(&ob,
-                                                   "    ");
-                        } else {
-                            write_to_output_buffer(&ob,
-                                                   "    else ");
-
-                        }
-
-                        write_to_output_buffer(&ob,
-                                               "if(!pp_string_compare(\"%.*s\", str)) {\n"
-                                               "        res = (%.*s)%d;\n"
-                                               "    }\n",
-                                               v->name.len, v->name.e,
-                                               ed->name.len, ed->name.e,
-                                               v->value);
-                    }
-
-                    write_to_output_buffer(&ob,
-                                           "\n"
-                                           "    return (%.*s)res; \n"
-                                           "}\n",
-                                           ed->name.len, ed->name.e);
-                }
-            }
-        }
-
-        // TODO(Jonny): A lot of the function stuff won't actually work if you pass a struct into a function. This may
-        //              be fixable if I generate a .hpp file and a .cpp file.
-
-        //
-        // Functors
-        //
+        // Enum size.
         {
-#if 0
             write_to_output_buffer(&ob,
                                    "\n"
                                    "//\n"
-                                   "// Function stuff.\n"
+                                   "// Number of members in an enum.\n"
                                    "//\n"
-                                   "#define pp_get_functor(func) pp_Functor_##func\n"
-                                   "\n"
-                                   "enum pp_Linkage : int {\n"
-                                   "    pp_Linkage_default,\n"
-                                   "    pp_Linkage_static,\n"
-                                   "    pp_Linkage_inline,\n"
-                                   "};\n"
-                                   "\n"
-                                   "struct pp_FunctionData {\n"
-                                   "    char const *return_type;\n"
-                                   "    pp_Linkage linkage;\n"
-                                   "};\n");
+                                   "#define pp_get_enum_size(Type) PP_CONCAT(pp_get_enum_size_, Type)\n");
 
-            for(Int i = 0; (i < func_count); ++i) {
-                FunctionData *fd = func_data + i;
-
-                PtrSize size = scratch_memory_size / 4;
-                Char *buf1 = cast(Char *)push_scratch_memory(size); Int wrtn1 = 0; // Param list.
-                Char *buf2 = cast(Char *)push_scratch_memory(size); Int wrtn2 = 0; // Calling func from param list.
-                Char *buf3 = cast(Char *)push_scratch_memory(size); Int wrtn3 = 0; // Calling func from param list with this.
-                Char *buf4 = cast(Char *)push_scratch_memory(size); Int wrtn4 = 0; // Params as member variables
-
-                for(Int j = 0; (j < fd->param_cnt); ++j) {
-                    Variable *param = fd->params + j;
-
-                    Char *write_comma = (j < fd->param_cnt - 1) ? ", " : "";
-
-                    Char ptr_buf[max_ptr_size] = {};
-                    for(Int k = 0; (k < param->ptr); ++k) {
-                        ptr_buf[k] = '*';
-                    }
-
-                    // buf1
-                    wrtn1 += stbsp_snprintf(buf1 + wrtn1, size - wrtn1,
-                                            "%.*s %s_%.*s%s",
-                                            param->type.len, param->type.e,
-                                            ptr_buf,
-                                            param->name.len, param->name.e,
-                                            write_comma);
-
-                    // buf2
-                    wrtn2 += stbsp_snprintf(buf2 + wrtn2, size - wrtn2,
-                                            "_%.*s%s",
-                                            param->name.len, param->name.e,
-                                            write_comma);
-
-                    // buf3
-                    wrtn3 += stbsp_snprintf(buf3 + wrtn3, size - wrtn3,
-                                            "this->%.*s%s",
-                                            param->name.len, param->name.e,
-                                            write_comma);
-
-                    // buf4
-                    wrtn4 += stbsp_snprintf(buf4 + wrtn4, size - wrtn4,
-                                            "    %.*s %s%.*s;\n",
-                                            param->type.len, param->type.e,
-                                            ptr_buf,
-                                            param->name.len, param->name.e);
-                }
-
+            for(Int i = 0; (i < pr.enums.cnt); ++i) {
+                EnumData *ed = pr.enums.e;
 
                 write_to_output_buffer(&ob,
-                                       "// %.*s\n"
-                                       "struct pp_Functor_%.*s {\n"
-                                       "    %.*s operator()(%s) { return %.*s(%s); }\n",
-                                       fd->name.len, fd->name.e,
-                                       fd->name.len, fd->name.e,
-                                       fd->return_type.len, fd->return_type.e, buf1, fd->name.len, fd->name.e, buf2);
-
-                if(fd->param_cnt) {
-                    write_to_output_buffer(&ob,
-                                           "    %.*s operator()() { return %.*s(%s); }\n"
-                                           "\n"
-                                           "%s",
-                                           fd->return_type.len, fd->return_type.e, fd->name.len, fd->name.e, buf3,
-                                           buf4);
-                }
-                write_to_output_buffer(&ob,
-                                       "};\n"
-                                       "\n");
-
-                clear_scratch_memory();
+                                       "#define pp_get_enum_size_%.*s %d\n",
+                                       ed->name.len, ed->name.e,
+                                       ed->no_of_values);
             }
-#endif
         }
-#endif
+
+        // String to enum.
+        {
+            write_to_output_buffer(&ob,
+                                   "\n"
+                                   "//\n"
+                                   "// String to enum.\n"
+                                   "//\n"
+                                   "#define pp_string_to_enum(Type, str) PP_CONCAT(pp_string_to_enum_, Type)(str)\n\n");
+
+            for(Int i = 0; (i < pr.enums.cnt); ++i) {
+                EnumData *ed = pr.enums.e + i;
+
+                write_to_output_buffer(&ob,
+                                       "static int pp_string_to_enum_%.*s(char const *str) {\n",
+                                       ed->name.len, ed->name.e);
+
+                for(Int j = 0; (j < ed->no_of_values); ++j) {
+                    EnumValue *ev = ed->values + j;
+
+                    if(!j) { write_to_output_buffer(&ob, "    ");      }
+                    else   { write_to_output_buffer(&ob, "    else "); }
+
+                    write_to_output_buffer(&ob,
+                                           "if(pp_string_compare(str, \"%.*s\")) { return(%d); }\n",
+                                           ev->name.len, ev->name.e, ev->value);
+                }
+
+                write_to_output_buffer(&ob,
+                                       "\n"
+                                       "    PP_ASSERT(0);\n"
+                                       "    return(0);\n"
+                                       "}\n");
+            }
+        }
+
+        // Enum to string.
+        {
+            write_to_output_buffer(&ob,
+                                   "\n"
+                                   "//\n"
+                                   "// Enum to string.\n"
+                                   "//\n"
+                                   "#define pp_enum_to_string(Type, i) PP_CONCAT(pp_enum_to_string, Type)(i)\n\n");
+
+            for(Int i = 0; (i < pr.enums.cnt); ++i) {
+                EnumData *ed = pr.enums.e + i;
+
+                write_to_output_buffer(&ob,
+                                       "static char const * pp_enum_to_string%.*s(int v) {\n"
+                                       "    switch(v) {\n",
+                                       ed->name.len, ed->name.e);
+
+                for(Int j = 0; (j < ed->no_of_values); ++j) {
+                    EnumValue *ev = ed->values + j;
+
+                    write_to_output_buffer(&ob, "        case %d: { return(\"%.*s\"); } break;\n",
+                                           ev->value, ev->name.len, ev->name.e);
+                }
+
+                write_to_output_buffer(&ob,
+                                       "    }\n"
+                                       "\n"
+                                       "    PP_ASSERT(0);\n"
+                                       "    return(0);\n"
+                                       "}");
+            }
+        }
+
         //
         // # Guard macro.
         //

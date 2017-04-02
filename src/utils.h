@@ -110,12 +110,11 @@ struct String {
 String create_string(Char *str, Int len = 0);
 Int string_length(Char *str);
 Bool string_concat(Char *dest, Int len, Char *a, Int a_len, Char *b, Int b_len);
-Bool string_compare(Char *a, Char *b, Int len);
-Bool string_compare(Char *a, Char *b);
-Bool string_compare(String a, Char *b);
 Void string_copy(Char *dest, Char *src);
-Bool string_compare(String a, String b);
-Bool string_compare_array(String *a, String *b, Int cnt);
+Bool string_comp(String a, Char *b);
+Bool string_comp(String a, String b);
+Bool string_comp_len(Char *a, Char *b, Int len);
+Bool string_comp_array(String *a, String *b, Int cnt);
 
 Bool string_contains(String str, Char *target);
 Bool string_contains(Char *str, Char *target);
