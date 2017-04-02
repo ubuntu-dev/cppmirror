@@ -96,36 +96,51 @@ Bool print_errors(void) {
 }
 
 //
-// Scratch memory.
+// Temp Memory.
 //
-// A quick-to-access temp region of memory. Should be frequently cleared.
-internal Int scratch_memory_index = 0;
-internal Void *global_scratch_memory = 0;
-Void *push_scratch_memory(Int size/*= scratch_memory_size*/) {
-    if(!global_scratch_memory) {
-        global_scratch_memory = system_alloc(Byte, scratch_memory_size + 1);
-        zero(global_scratch_memory, scratch_memory_size + 1);
-    }
+internal Void *global_temp_memory = 0;
+internal PtrSize global_temp_index = 0;
+internal PtrSize global_temp_max = 0;
 
-    Void *res = 0;
-    if(global_scratch_memory) {
-        assert(scratch_memory_size + 1 > scratch_memory_index + size);
-        res = cast(Byte *)global_scratch_memory + scratch_memory_index;
-        scratch_memory_index += size;
+PtrSize get_alignment(void *mem, PtrSize desired_alignment) {
+    PtrSize res = 0;
+
+    PtrSize alignment_mask = desired_alignment - 1;
+    if(cast(PtrSize)mem & alignment_mask) {
+        res = desired_alignment - (cast(PtrSize)mem & alignment_mask);
     }
 
     return(res);
 }
 
-Void clear_scratch_memory(void) {
-    if(global_scratch_memory) {
-        zero(global_scratch_memory, scratch_memory_index);
-        scratch_memory_index = 0;
-    }
+
+Bool allocate_temp_memory(PtrSize size) {
+    global_temp_max = size;
+    global_temp_memory = system_malloc(global_temp_max);
+
+    Bool res = global_temp_memory != 0;
+    return(res);
 }
 
-Void free_scratch_memory() {
-    system_free(global_scratch_memory);
+TempMemory push_temp_memory(PtrSize size, PtrSize alignment/*=default_memory_alignment*/) {
+    TempMemory res = {};
+
+    PtrSize alignment_offset = get_alignment(cast(Byte *)global_temp_memory + global_temp_index, alignment);
+    if(global_temp_index + alignment_offset + size < global_temp_max) {
+        res.e = cast(Byte *)global_temp_memory + global_temp_index + alignment_offset;
+        res.size = size;
+        res.alignment_offset = alignment_offset;
+
+        global_temp_index += (res.size + alignment);;
+        zero(res.e, res.size);
+    }
+
+    return(res);
+}
+
+Void pop_temp_memory(TempMemory *temp_memory) {
+    global_temp_index -= temp_memory->size + temp_memory->alignment_offset;
+    zero(temp_memory, sizeof(*temp_memory));
 }
 
 //
@@ -151,8 +166,8 @@ Bool string_concat(Char *dest, Int len, Char *a, Int a_len, Char *b, Int b_len) 
     Bool res = false;
 
     if(len > a_len + b_len) {
-        for(Int i = 0; (i < a_len); ++i) *dest++ = *a++;
-        for(Int i = 0; (i < b_len); ++i) *dest++ = *b++;
+        for(Int i = 0; (i < a_len); ++i) { *dest++ = *a++; }
+        for(Int i = 0; (i < b_len); ++i) { *dest++ = *b++; }
 
         res = true;
     }
@@ -160,7 +175,7 @@ Bool string_concat(Char *dest, Int len, Char *a, Int a_len, Char *b, Int b_len) 
     return(res);
 }
 
-Bool string_compare(Char *a, Char *b, Int len) {
+Bool string_comp_len(Char *a, Char *b, Int len) {
     for(Int i = 0; (i < len); ++i, ++a, ++b) {
         if(*a != *b) {
             return(false);
@@ -168,13 +183,6 @@ Bool string_compare(Char *a, Char *b, Int len) {
     }
 
     return(true);
-}
-
-Bool string_compare(Char *a, Char *b) {
-    for(;; ++a, ++b) {
-        if((*a == 0) && (*b == 0)) return(true);
-        else if(*a != *b)          return(false);
-    }
 }
 
 Void string_copy(Char *dest, Char *src) {
@@ -185,7 +193,7 @@ Void string_copy(Char *dest, Char *src) {
     }
 }
 
-Bool string_compare(String a, String b) {
+Bool string_comp(String a, String b) {
     Bool res = false;
 
     if(a.len == b.len) {
@@ -202,10 +210,23 @@ Bool string_compare(String a, String b) {
     return(res);
 }
 
-Bool string_compare_array(String *a, String *b, Int cnt) {
+Bool string_comp(String a, Char *b) {
+    Bool res = true;
+
+    for(Int i = 0; (i < a.len); ++i) {
+        if(a.e[i] != b[i]) {
+            res = false;
+            break;
+        }
+    }
+
+    return(res);
+}
+
+Bool string_comp_array(String *a, String *b, Int cnt) {
     Bool res = true;
     for(Int i = 0; (i < cnt); ++i) {
-        if(!string_compare(a[i], b[i])) {
+        if(!string_comp(a[i], b[i])) {
             res = false;
             break;
         }
@@ -342,7 +363,7 @@ clean_up:;
 Bool is_in_string_array(String target, String *arr, Int arr_cnt) {
     Bool res = false;
     for(int i = 0; (i < arr_cnt); ++i) {
-        if(string_compare(target, arr[i])) {
+        if(string_comp(target, arr[i])) {
             res = true;
             break;
         }
@@ -371,8 +392,8 @@ Variable create_variable(Char *type, Char *name, Int ptr/*= 0*/, Int array_count
 Bool compare_variable(Variable a, Variable b) {
     Bool res = true;
 
-    if(!string_compare(a.type, b.type))      res = false;
-    else if(!string_compare(a.name, b.name)) res = false;
+    if(!string_comp(a.type, b.type))      res = false;
+    else if(!string_comp(a.name, b.name)) res = false;
     else if(a.ptr != b.ptr)                  res = false;
     else if(a.array_count != b.array_count)  res = false;
 

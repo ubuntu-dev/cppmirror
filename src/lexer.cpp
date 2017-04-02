@@ -44,7 +44,6 @@ enum TokenType {
     TokenType_not,
     TokenType_var_args,
 
-
     TokenType_plus,
     TokenType_minus,
     TokenType_divide,
@@ -72,23 +71,35 @@ struct Token {
 
 struct Tokenizer {
     Char *at;
-    // TODO(Jonny): Might be nice to have a line variable in here.
+    Int line;
 };
 
-internal Bool is_end_of_line(Char c) {
+// TODO(Jonny): Line numbers won't match now, remove tokenizer.
+internal Bool is_end_of_line(Char c, Tokenizer *tokenizer = 0) {
     Bool res = ((c == '\n') || (c == '\r'));
+    if(c == '\n') {
+        if(tokenizer) {
+            ++tokenizer->line;
+        }
+    }
 
     return(res);
 }
 
-internal Bool is_whitespace(Char c) {
+Bool is_whitespace(Char c) {
     Bool res = ((c == ' ') || (c == '\t') || (c == '\v') || (c == '\f') || (is_end_of_line(c)));
 
     return(res);
 }
 
+internal Bool is_whitespace(Char c, Tokenizer *tokenizer) {
+    Bool res = ((c == ' ') || (c == '\t') || (c == '\v') || (c == '\f') || (is_end_of_line(c, tokenizer)));
+
+    return(res);
+}
+
 internal Void skip_to_end_of_line(Tokenizer *tokenizer) {
-    while(is_end_of_line(*tokenizer->at)) {
+    while(is_end_of_line(*tokenizer->at, tokenizer)) {
         ++tokenizer->at;
     }
 }
@@ -140,7 +151,7 @@ internal Bool token_equals(Token token, Char *str) {
 
     Int len = string_length(str);
     if(len == token.len) {
-        res = string_compare(token.e, str, len);
+        res = string_comp_len(token.e, str, len);
     }
 
     return(res);
@@ -215,14 +226,15 @@ internal Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
             case TokenType_open_bracket: {
                 Token size_token = get_token(tokenizer);
                 if(size_token.type == TokenType_number) {
-                    Char *buffer = cast(Char *)push_scratch_memory();
+                    char buf[32] = {};
 
-                    token_to_string(size_token, buffer, scratch_memory_size);
-                    ResultInt arr_count = string_to_int(buffer);
-                    if(arr_count.success) res.array_count = arr_count.e;
-                    else                  push_error(ErrorType_failed_to_find_size_of_array);
-
-                    clear_scratch_memory();
+                    token_to_string(size_token, buf, array_count(buf));
+                    ResultInt arr_count = string_to_int(buf);
+                    if(arr_count.success) {
+                        res.array_count = arr_count.e;
+                    } else {
+                        push_error(ErrorType_failed_to_find_size_of_array);
+                    }
                 } else {
                     // TODO(Jonny): Something _bad_ happened...
                 }
@@ -237,40 +249,46 @@ internal Void eat_whitespace(Tokenizer *tokenizer) {
     for(;;) {
         if(!tokenizer->at[0]) { // Nul terminator.
             break;
-        } else if(is_whitespace(tokenizer->at[0])) { // Whitespace
+        } else if(is_whitespace(tokenizer->at[0], tokenizer)) { // Whitespace
             ++tokenizer->at;
         } else if((tokenizer->at[0] == '/') && (tokenizer->at[1] == '/')) { // C++ comments.
             tokenizer->at += 2;
-            while((tokenizer->at[0]) && (!is_end_of_line(tokenizer->at[0]))) ++tokenizer->at;
+            while((tokenizer->at[0]) && (!is_end_of_line(tokenizer->at[0], tokenizer))) {
+                ++tokenizer->at;
+            }
+
         } else if((tokenizer->at[0] == '/') && (tokenizer->at[1] == '*')) { // C comments.
             tokenizer->at += 2;
-            while((tokenizer->at[0]) && !((tokenizer->at[0] == '*') && (tokenizer->at[1] == '/'))) ++tokenizer->at;
+            while((tokenizer->at[0]) && !((tokenizer->at[0] == '*') && (tokenizer->at[1] == '/'))) {
+                ++tokenizer->at;
+            }
+            if(tokenizer->at[0] == '*') {
+                tokenizer->at += 2;
+            }
 
-            if(tokenizer->at[0] == '*') { tokenizer->at += 2; }
+            // For #if 0 blocks, just ignore everything in them like a comment.
         } else if(tokenizer->at[0] == '#') { // #if 0 blocks.
-            Char *hash_if_zero = "#if 0";
-            Int hash_if_zero_length = string_length(hash_if_zero);
+            String hash_if_zero = create_string("#if 0");
+            String hash_if_one = create_string("#if 1");
 
-            Char *hash_if_one = "#if 1";
-            Int hash_if_one_length = string_length(hash_if_one);
+            if(string_comp(hash_if_zero, tokenizer->at)) {
+                tokenizer->at += hash_if_zero.len;
 
-            if(string_compare(tokenizer->at, hash_if_zero, hash_if_zero_length)) {
-                tokenizer->at += hash_if_zero_length;
-
-                Char *hash_end_if = "#endif";
-                Int hash_end_if_length = string_length(hash_end_if);
+                String hash_end_if = create_string("#endif");
 
                 Int level = 0;
                 while(++tokenizer->at) {
-                    if(tokenizer->at[0] == '#') {
+                    if(tokenizer->at[0] == '\n') {
+                        ++tokenizer->line;
+                    } else if(tokenizer->at[0] == '#') {
                         if((tokenizer->at[1] == 'i') && (tokenizer->at[2] == 'f')) {
                             ++level;
 
-                        } else if(string_compare(tokenizer->at, hash_end_if, hash_end_if_length)) {
+                        } else if(string_comp(hash_end_if, tokenizer->at)) {
                             if(level) {
                                 --level;
                             } else {
-                                tokenizer->at += hash_end_if_length;
+                                tokenizer->at += hash_end_if.len;
                                 eat_whitespace(tokenizer);
 
                                 break; // for
@@ -278,30 +296,35 @@ internal Void eat_whitespace(Tokenizer *tokenizer) {
                         }
                     }
                 }
-            } else if(string_compare(tokenizer->at, hash_if_one, hash_if_one_length)) { // #if 1 #else blocks.
-                tokenizer->at += hash_if_zero_length;
 
-                Char *hash_else = "#else";
-                Int hash_else_length = string_length(hash_else);
+                // For #if 1 #else blocks, write everything between #else and #endif into whitespace, then
+                // jump back to the beginning of the beginning of the #if 1 block to parse stuff in it.
+            } else if(string_comp(hash_if_one, tokenizer->at)) { // #if 1 #else blocks.
+                tokenizer->at += hash_if_one.len;
+                Tokenizer cpy = *tokenizer;
 
-                Char *hash_end_if = "#endif";
-                Int hash_end_if_length = string_length(hash_end_if);
+                String hash_else = create_string("#else");
+
+                String hash_end_if = create_string("#endif");
 
                 Int level = 0;
                 while(++tokenizer->at) {
+                    if(tokenizer->at[0] == '\n') {
+                        ++tokenizer->line;
+                    }
                     if(tokenizer->at[0] == '#') {
                         if((tokenizer->at[1] == 'i') && (tokenizer->at[2] == 'f')) {
                             ++level;
-                        } else if(string_compare(tokenizer->at, hash_end_if, hash_end_if_length)) {
+                        } else if(string_comp(hash_end_if, tokenizer->at)) {
                             if(level != 0) {
                                 --level;
                             } else {
-                                tokenizer->at += hash_end_if_length;
+                                tokenizer->at += hash_end_if.len;
                                 break; // for
                             }
-                        } else if(string_compare(tokenizer->at, hash_else, hash_else_length)) {
+                        } else if(string_comp(hash_else, tokenizer->at)) {
                             if(level == 0) {
-                                tokenizer->at += hash_else_length;
+                                tokenizer->at += hash_else.len;
                                 Int Level2 = 0;
 
                                 while(++tokenizer->at) {
@@ -309,11 +332,11 @@ internal Void eat_whitespace(Tokenizer *tokenizer) {
                                         if((tokenizer->at[1] == 'i') && (tokenizer->at[2] == 'f')) {
                                             ++Level2;
 
-                                        } else if(string_compare(tokenizer->at, hash_end_if, hash_end_if_length)) {
+                                        } else if(string_comp(hash_end_if, tokenizer->at)) {
                                             if(Level2 != 0) {
                                                 --Level2;
                                             } else {
-                                                tokenizer->at += hash_end_if_length;
+                                                tokenizer->at += hash_end_if.len;
                                                 eat_whitespace(tokenizer);
 
                                                 break; // for
@@ -328,7 +351,10 @@ internal Void eat_whitespace(Tokenizer *tokenizer) {
                             }
                         }
                     }
+
                 }
+
+                *tokenizer = cpy;
             }
 
             break; // for
@@ -373,7 +399,9 @@ internal Bool peak_require_token(Tokenizer *tokenizer, Char *str) {
     Tokenizer cpy = *tokenizer;
     Token token = get_token(&cpy);
 
-    if(string_compare(token.e, str, token.len)) { res = true; }
+    if(string_comp_len(token.e, str, token.len)) {
+        res = true;
+    }
 
     return(res);
 }
@@ -382,7 +410,7 @@ internal Bool is_stupid_class_keyword(Token t) {
     Bool res = false;
     Char *keywords[] = { "private", "public", "protected" };
     for(Int i = 0, cnt = array_count(keywords); (i < cnt); ++i) {
-        if(string_compare(keywords[i], t.e, t.len)) {
+        if(string_comp_len(keywords[i], t.e, t.len)) {
             res = true;
             goto func_exit;
         }
@@ -412,23 +440,32 @@ internal Void skip_to_matching_bracket(Tokenizer *tokenizer) {
     }
 }
 
-internal Void parse_template(Tokenizer *tokenizer) {
+internal String parse_template(Tokenizer *tokenizer) {
+    String res = {};
+
+    res.e = tokenizer->at;
+    eat_token(tokenizer);
     Int angle_bracket_count = 1;
     Token token;
     Bool should_loop = true;
     while(should_loop) {
         token = get_token(tokenizer);
         switch(token.type) {
-            case TokenType_open_angle_bracket: ++angle_bracket_count; break;
+            case TokenType_open_angle_bracket: {
+                ++angle_bracket_count;
+            } break;
 
             case TokenType_close_angle_bracket: {
                 --angle_bracket_count;
                 if(!angle_bracket_count) {
                     should_loop = false;
+                    res.len = (tokenizer->at - res.e);
                 }
             } break;
         }
     }
+
+    return(res);
 }
 
 struct ParseVariableRes {
@@ -436,7 +473,8 @@ struct ParseVariableRes {
     Bool success;
 };
 
-internal ParseVariableRes parse_variable(Tokenizer *tokenizer, TokenType end_token_type_1, TokenType end_token_type_2 = TokenType_unknown) {
+internal ParseVariableRes parse_variable(Tokenizer *tokenizer, TokenType end_token_type_1,
+                                         TokenType end_token_type_2 = TokenType_unknown) {
     ParseVariableRes res = {};
 
     // Return type.
@@ -476,9 +514,38 @@ internal ParseVariableRes parse_variable(Tokenizer *tokenizer, TokenType end_tok
 
             // Skip over any assignment at the end.
             // TODO(Jonny): This won't work if a variable is assigned to a function.
-            if(token.type == TokenType_assign) { eat_token(tokenizer); }
+            if(token.type == TokenType_assign) {
+                eat_token(tokenizer);
+            }
 
             res.success = true;
+        }
+    }
+
+    return(res);
+}
+
+Bool is_forward_declared(Tokenizer *tokenizer) {
+    Bool res = false;
+
+    Tokenizer cpy = *tokenizer;
+    Token token = {};
+    Bool loop = true;
+    while(loop) {
+        token = get_token(&cpy);
+        switch(token.type) {
+            case TokenType_open_brace: {
+                loop = false;
+            } break;
+
+            case TokenType_semi_colon: {
+                loop = false;
+                res = true;
+            } break;
+
+            case TokenType_end_of_stream: {
+                loop = false;
+            } break;
         }
     }
 
@@ -489,178 +556,165 @@ struct ParseStructResult {
     StructData sd;
     Bool success;
 };
-internal ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_type) {
+internal ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_type, String template_header = create_string("") ) {
     ParseStructResult res = {};
 
-    Tokenizer start = *tokenizer;
-
-    Access current_access = ((struct_type == StructType_struct) || (struct_type == StructType_union)) ? Access_public : Access_private;
-    res.sd.struct_type = struct_type;
-
-    Bool have_name = false;
-    Token name = peak_token(tokenizer);
-    if(name.type == TokenType_identifier) {
-        have_name = true;
-        res.sd.name = token_to_string(name);
-        eat_token(tokenizer);
-    }
-
-    Token peaked_token = peak_token(tokenizer);
-    if(peaked_token.type == TokenType_colon) {
-        res.sd.inherited = system_alloc(String, 8);
-
-        eat_token(tokenizer);
-
-        Token next = get_token(tokenizer);
-        while(next.type != TokenType_open_brace) {
-            if(!(is_stupid_class_keyword(next)) && (next.type != TokenType_comma)) {
-                // TODO(Jonny): Fix properly.
-                /*if(res.sd.inherited_count + 1 >= cast(Int)(get_alloc_size(res.sd.inherited) / sizeof(String))) {
-                    Void *p = system_realloc(res.sd.inherited);
-                    if(p) { res.sd.inherited = cast(String *)p; }
-                }*/
-
-                res.sd.inherited[res.sd.inherited_count++] = token_to_string(next);
-            }
-
-            next = peak_token(tokenizer);
-            if(next.type != TokenType_open_brace) { eat_token(tokenizer); }
+    if(!is_forward_declared(tokenizer)) {
+        if(template_header.len) {
+            res.sd.template_header = template_header;
         }
-    }
 
-    if(require_token(tokenizer, TokenType_open_brace)) {
-        res.success = true;
+        Tokenizer start = *tokenizer;
 
-        res.sd.member_count = 0;
-        Int member_cnt = 0;
+        Access current_access = ((struct_type == StructType_struct) || (struct_type == StructType_union)) ? Access_public : Access_private;
+        res.sd.struct_type = struct_type;
 
-        struct MemberInfo {
-            Char *pos;
-            Access access;
-            Bool is_inside_anonymous_struct;
-        };
+        Bool have_name = false;
+        Token name = peak_token(tokenizer);
+        if(name.type == TokenType_identifier) {
+            have_name = true;
+            res.sd.name = token_to_string(name);
+            eat_token(tokenizer);
+        }
 
-        PtrSize member_info_mem_cnt = 256;
-        MemberInfo *member_info = system_alloc(MemberInfo, member_info_mem_cnt);
-        if(member_info) {
-            Bool inside_anonymous_struct = false;
-            for(;;) {
-                Token token = get_token(tokenizer);
-                if(is_stupid_class_keyword(token)) {
-                    String access_as_string = token_to_string(token);
-                    if(string_compare(access_as_string, create_string("public"))) {
-                        current_access = Access_public;
-                    } else if(string_compare(access_as_string, create_string("private"))) {
-                        current_access = Access_private;
-                    } else if(string_compare(access_as_string, create_string("protected"))) {
-                        current_access = Access_protected;
-                    }
-                } else {
-                    // TODO(Jonny): This could be the end of an anonymous struct, so ignore it.
-                    if(token_equals(token, "struct")) {
-                        eat_token(tokenizer); // Eat the open brace.
-                        token = get_token(tokenizer);
-                        inside_anonymous_struct = true;
-                    }
+        Token peaked_token = peak_token(tokenizer);
+        if(peaked_token.type == TokenType_colon) {
+            res.sd.inherited = system_alloc(String, 8);
 
-                    if((token.type != TokenType_colon) && (token.type != TokenType_tilde)) {
-                        if(token.type == TokenType_close_brace) {
-                            if(inside_anonymous_struct) {
-                                inside_anonymous_struct = false;
-                                eat_token(tokenizer); // Eat semi colon.
-                                continue;
-                            } else if(!have_name) {
-                                name = get_token(tokenizer);
-                                if(name.type == TokenType_identifier) res.sd.name = token_to_string(name);
-                                else                                  push_error(ErrorType_could_not_detect_struct_name);
-                            }
+            eat_token(tokenizer);
 
-                            break; // for
-                        } else if(token.type == TokenType_hash) {
-                            // TODO(Jonny): Support macros with '/' to extend their lines?
-                            while(!is_end_of_line(tokenizer->at[0])) {
-                                ++tokenizer->at;
-                            }
-                        } else {
-                            Bool is_func = false;
+            Token next = get_token(tokenizer);
+            while(next.type != TokenType_open_brace) {
+                if(!(is_stupid_class_keyword(next)) && (next.type != TokenType_comma)) {
+                    // TODO(Jonny): Fix properly.
+                    /*if(res.sd.inherited_count + 1 >= cast(Int)(get_alloc_size(res.sd.inherited) / sizeof(String))) {
+                        Void *p = system_realloc(res.sd.inherited);
+                        if(p) { res.sd.inherited = cast(String *)p; }
+                    }*/
 
-                            Tokenizer tokenizer_copy = *tokenizer;
-                            Token temp = get_token(&tokenizer_copy);
-                            while(temp.type != TokenType_semi_colon) {
-
-                                // C++11 assignment within struct.
-                                if(temp.type == TokenType_assign) {
-                                    loop_until_token(&tokenizer_copy, TokenType_semi_colon);
-
-                                    break;
-                                }
-
-                                // Is a function.
-                                if(temp.type == TokenType_open_paren) {
-                                    is_func = true;
-                                    break; // while
-                                }
-
-                                temp = get_token(&tokenizer_copy);
-                            }
-
-                            if(!is_func) {
-                                if(member_cnt >= member_info_mem_cnt) {
-                                    member_info_mem_cnt *= 2;
-                                    Void *p = system_realloc(member_info, sizeof(MemberInfo) * member_info_mem_cnt);
-                                    if(p) {
-                                        member_info = cast(MemberInfo *)p;
-                                    }
-                                }
-
-                                MemberInfo *mi = member_info + member_cnt++;
-
-                                mi->pos = token.e;
-                                mi->is_inside_anonymous_struct = inside_anonymous_struct;
-                                mi->access = current_access;
-                            } else {
-                                // Skip to the end of the function.
-                                Bool eating_func = true;
-                                Bool inside_body = false;
-                                while(eating_func) {
-                                    Token t = get_token(&tokenizer_copy);
-                                    if((t.type == TokenType_semi_colon) && (!inside_body)) {
-                                        break;
-                                    } else if(t.type == TokenType_open_brace) {
-                                        inside_body = true;
-                                    } else if((t.type == TokenType_close_brace) && (inside_body)) {
-                                        break;
-                                    }
-                                }
-                            }
-
-                            *tokenizer = tokenizer_copy;
-                        }
-                    }
+                    res.sd.inherited[res.sd.inherited_count++] = token_to_string(next);
                 }
+
+                next = peak_token(tokenizer);
+                if(next.type != TokenType_open_brace) { eat_token(tokenizer); }
             }
+        }
 
-            if(member_cnt > 0) {
-                // Count the real number of members.
-                Int real_member_cnt = 0;
-                for(Int i = 0; (i < member_cnt); ++i) {
-                    Int var_cnt = 1;
-                    Char *at = member_info[i].pos;
-                    while(*at != ';') {
-                        if(*at == ',') {
-                            ++var_cnt;
+        if(require_token(tokenizer, TokenType_open_brace)) {
+            res.success = true;
+
+            res.sd.member_count = 0;
+            Int member_cnt = 0;
+
+            struct MemberInfo {
+                Char *pos;
+                Access access;
+                Bool is_inside_anonymous_struct;
+            };
+
+            PtrSize member_info_mem_cnt = 256;
+            MemberInfo *member_info = system_alloc(MemberInfo, member_info_mem_cnt);
+            if(member_info) {
+                Bool inside_anonymous_struct = false;
+                for(;;) {
+                    Token token = get_token(tokenizer);
+                    if(is_stupid_class_keyword(token)) {
+                        String access_as_string = token_to_string(token);
+                        if(string_comp(access_as_string, create_string("public"))) {
+                            current_access = Access_public;
+                        } else if(string_comp(access_as_string, create_string("private"))) {
+                            current_access = Access_private;
+                        } else if(string_comp(access_as_string, create_string("protected"))) {
+                            current_access = Access_protected;
+                        }
+                    } else {
+                        // This could be the end of an anonymous struct, so ignore it.
+                        if(token_equals(token, "struct")) {
+                            eat_token(tokenizer); // Eat the open brace.
+                            token = get_token(tokenizer);
+                            inside_anonymous_struct = true;
                         }
 
-                        ++at;
-                    }
+                        if((token.type != TokenType_colon) && (token.type != TokenType_tilde)) {
+                            if(token.type == TokenType_close_brace) {
+                                if(inside_anonymous_struct) {
+                                    inside_anonymous_struct = false;
+                                    eat_token(tokenizer); // Eat semi colon.
+                                    continue;
+                                } else if(!have_name) {
+                                    name = get_token(tokenizer);
+                                    if(name.type == TokenType_identifier) res.sd.name = token_to_string(name);
+                                    else                                  push_error(ErrorType_could_not_detect_struct_name);
+                                }
 
-                    real_member_cnt += var_cnt;
+                                break; // for
+                            } else if(token.type == TokenType_hash) {
+                                // TODO(Jonny): Support macros with '/' to extend their lines?
+                                while(!is_end_of_line(tokenizer->at[0], tokenizer)) {
+                                    ++tokenizer->at;
+                                }
+                            } else {
+                                Bool is_func = false;
+
+                                Tokenizer tokenizer_copy = *tokenizer;
+                                Token temp = get_token(&tokenizer_copy);
+                                while(temp.type != TokenType_semi_colon) {
+
+                                    // Handle C++11 assignment within struct.
+                                    if(temp.type == TokenType_assign) {
+                                        loop_until_token(&tokenizer_copy, TokenType_semi_colon);
+
+                                        break;
+                                    }
+
+                                    // Check if it is a function.
+                                    if(temp.type == TokenType_open_paren) {
+                                        is_func = true;
+                                        break; // while
+                                    }
+
+                                    temp = get_token(&tokenizer_copy);
+                                }
+
+                                if(!is_func) {
+                                    if(member_cnt >= member_info_mem_cnt) {
+                                        member_info_mem_cnt *= 2;
+                                        Void *p = system_realloc(member_info, sizeof(MemberInfo) * member_info_mem_cnt);
+                                        if(p) {
+                                            member_info = cast(MemberInfo *)p;
+                                        }
+                                    }
+
+                                    MemberInfo *mi = member_info + member_cnt++;
+
+                                    mi->pos = token.e;
+                                    mi->is_inside_anonymous_struct = inside_anonymous_struct;
+                                    mi->access = current_access;
+                                } else {
+                                    // Skip to the end of the function.
+                                    Bool eating_func = true;
+                                    Bool inside_body = false;
+                                    while(eating_func) {
+                                        Token t = get_token(&tokenizer_copy);
+                                        if((t.type == TokenType_semi_colon) && (!inside_body)) {
+                                            break;
+                                        } else if(t.type == TokenType_open_brace) {
+                                            inside_body = true;
+                                        } else if((t.type == TokenType_close_brace) && (inside_body)) {
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                *tokenizer = tokenizer_copy;
+                            }
+                        }
+                    }
                 }
 
-                // Now actually parse the member variables.
-                res.sd.members = system_alloc(Variable, real_member_cnt);
-                if(res.sd.members) {
-                    Int member_index = 0;
+                if(member_cnt > 0) {
+                    // Count the real number of members.
+                    Int real_member_cnt = 0;
                     for(Int i = 0; (i < member_cnt); ++i) {
                         Int var_cnt = 1;
                         Char *at = member_info[i].pos;
@@ -672,29 +726,48 @@ internal ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_
                             ++at;
                         }
 
-                        for(Int j = 0; (j < var_cnt); ++j) {
-                            Tokenizer fake_tokenizer = { member_info[i].pos };
-                            res.sd.members[member_index] = parse_member(&fake_tokenizer, j);
-                            res.sd.members[member_index].is_inside_anonymous_struct = member_info[i].is_inside_anonymous_struct;
-                            res.sd.members[member_index].access = member_info[i].access;
-                            ++member_index;
-                        }
+                        real_member_cnt += var_cnt;
                     }
 
-                    res.sd.member_count = member_index;
+                    // Now actually parse the member variables.
+                    res.sd.members = system_alloc(Variable, real_member_cnt);
+                    if(res.sd.members) {
+                        Int member_index = 0;
+                        for(Int i = 0; (i < member_cnt); ++i) {
+                            Int var_cnt = 1;
+                            Char *at = member_info[i].pos;
+                            while(*at != ';') {
+                                if(*at == ',') {
+                                    ++var_cnt;
+                                }
+
+                                ++at;
+                            }
+
+                            for(Int j = 0; (j < var_cnt); ++j) {
+                                Tokenizer fake_tokenizer = { member_info[i].pos };
+                                res.sd.members[member_index] = parse_member(&fake_tokenizer, j);
+                                res.sd.members[member_index].is_inside_anonymous_struct = member_info[i].is_inside_anonymous_struct;
+                                res.sd.members[member_index].access = member_info[i].access;
+                                ++member_index;
+                            }
+                        }
+
+                        res.sd.member_count = member_index;
+                    }
                 }
             }
+
+            system_free(member_info);
         }
 
-        system_free(member_info);
+
+        // Set the tokenizer to the end of the struct.
+        eat_tokens(&start, 2);
+        eat_tokens(&start, 3 * res.sd.inherited_count);
+        skip_to_matching_bracket(&start);
+        *tokenizer = start;
     }
-
-
-    // Set the tokenizer to the end of the struct.
-    eat_tokens(&start, 2);
-    eat_tokens(&start, 3 * res.sd.inherited_count);
-    skip_to_matching_bracket(&start);
-    *tokenizer = start;
 
     return(res);
 }
@@ -706,74 +779,82 @@ struct ParseEnumResult {
 internal ParseEnumResult parse_enum(Tokenizer *tokenizer) {
     ParseEnumResult res = {};
 
-    Token name = get_token(tokenizer);
-    Bool is_enum_struct = false;
-    if((token_equals(name, "class")) || (token_equals(name, "struct"))) {
-        is_enum_struct = true;
-        name = get_token(tokenizer);
-    }
-
-    if(name.type == TokenType_identifier) {
-        // If the enum has an underlying type, get it.
-        Token underlying_type = {};
-        Token next = get_token(tokenizer);
-        if(next.type == TokenType_colon) {
-            underlying_type = get_token(tokenizer);
-            next = get_token(tokenizer);
+    if(!is_forward_declared(tokenizer)) {
+        Token name = get_token(tokenizer);
+        Bool is_enum_struct = false;
+        if((token_equals(name, "class")) || (token_equals(name, "struct"))) {
+            is_enum_struct = true;
+            name = get_token(tokenizer);
         }
 
-        if(next.type == TokenType_open_brace) {
-            //res = add_token_to_enum(name, underlying_type, is_enum_struct, &tokenizer);
-            assert(name.type == TokenType_identifier);
-            assert((underlying_type.type == TokenType_identifier) || (underlying_type.type == TokenType_unknown));
-
-            Token token = {};
-
-            res.ed.is_struct = is_enum_struct;
-
-            // If I call token_to_string here, Visual Studio 2010 ends up generating code which uses MOVAPS on unaligned memory
-            // and crashes. So that's why I didn't...
-            res.ed.name.e = name.e; res.ed.name.len = name.len;
-
-            if(underlying_type.type == TokenType_identifier) { res.ed.type = token_to_string(underlying_type); }
-
-            Tokenizer copy = *tokenizer;
-            res.ed.no_of_values = 1;
-            token = get_token(&copy);
-            while(token.type != TokenType_close_brace) {
-                // TODO(Jonny): It was stupid to count the number of commas. Instead, actually count
-                //              the number of enums.
-                if(token.type == TokenType_comma) {
-                    Token tmp = get_token(&copy);
-                    if(tmp.type == TokenType_identifier)       { ++res.ed.no_of_values; }
-                    else if(tmp.type == TokenType_close_brace) { break;                 }
-                }
-
-                token = get_token(&copy);
+        if(name.type == TokenType_identifier) {
+            // If the enum has an underlying type, get it.
+            Token underlying_type = {};
+            Token next = get_token(tokenizer);
+            if(next.type == TokenType_colon) {
+                underlying_type = get_token(tokenizer);
+                next = get_token(tokenizer);
             }
 
-            res.ed.values = system_alloc(EnumValue, res.ed.no_of_values);
-            if(res.ed.values) {
-                for(Int i = 0, count = 0; (i < res.ed.no_of_values); ++i, ++count) {
-                    EnumValue *ev = res.ed.values + i;
+            if(next.type == TokenType_open_brace) {
+                //res = add_token_to_enum(name, underlying_type, is_enum_struct, &tokenizer);
+                assert(name.type == TokenType_identifier);
+                assert((underlying_type.type == TokenType_identifier) || (underlying_type.type == TokenType_unknown));
 
-                    Token temp_token = {};
-                    while(temp_token.type != TokenType_identifier) { temp_token = get_token(tokenizer); }
+                Token token = {};
 
-                    ev->name = token_to_string(temp_token);
-                    if(peak_token(tokenizer).type == TokenType_assign) {
-                        eat_token(tokenizer);
-                        Token num = get_token(tokenizer);
+                res.ed.is_struct = is_enum_struct;
 
-                        ResultInt r = token_to_int(num);
-                        if(r.success) { count = r.e;                                }
-                        else          { push_error(ErrorType_failed_to_parse_enum); }
-                    }
+                // If I call token_to_string here, Visual Studio 2010 ends up generating code which uses MOVAPS on unaligned memory
+                // and crashes. So that's why I didn't...
+                res.ed.name.e = name.e; res.ed.name.len = name.len;
 
-                    ev->value = count;
+                if(underlying_type.type == TokenType_identifier) {
+                    res.ed.type = token_to_string(underlying_type);
                 }
 
-                res.success = true;
+                Tokenizer copy = *tokenizer;
+                res.ed.no_of_values = 1;
+                token = get_token(&copy);
+                while(token.type != TokenType_close_brace) {
+                    // TODO(Jonny): It was stupid to count the number of commas. Instead, actually count
+                    //              the number of enums.
+                    if(token.type == TokenType_comma) {
+                        Token tmp = get_token(&copy);
+
+                        if(tmp.type == TokenType_identifier) {
+                            ++res.ed.no_of_values;
+                        } else if(tmp.type == TokenType_close_brace) {
+                            break;
+                        }
+                    }
+
+                    token = get_token(&copy);
+                }
+
+                res.ed.values = system_alloc(EnumValue, res.ed.no_of_values);
+                if(res.ed.values) {
+                    for(Int i = 0, count = 0; (i < res.ed.no_of_values); ++i, ++count) {
+                        EnumValue *ev = res.ed.values + i;
+
+                        Token temp_token = {};
+                        while(temp_token.type != TokenType_identifier) { temp_token = get_token(tokenizer); }
+
+                        ev->name = token_to_string(temp_token);
+                        if(peak_token(tokenizer).type == TokenType_assign) {
+                            eat_token(tokenizer);
+                            Token num = get_token(tokenizer);
+
+                            ResultInt r = token_to_int(num);
+                            if(r.success) { count = r.e;                                }
+                            else          { push_error(ErrorType_failed_to_parse_enum); }
+                        }
+
+                        ev->value = count;
+                    }
+
+                    res.success = true;
+                }
             }
         }
     }
@@ -972,7 +1053,7 @@ internal Token get_token(Tokenizer *tokenizer) {
                 MacroData *md = macro_data + i;
 
                 String token_as_string = token_to_string(res);
-                if(string_compare(token_as_string, md->iden)) {
+                if(string_comp(token_as_string, md->iden)) {
                     res = string_to_token(md->res);
                     changed = true;
                 }
@@ -1115,25 +1196,28 @@ ParseResult parse_stream(Char *stream) {
     ParseResult res = {};
 
     Int enum_max = 8;
-    res.enum_data = system_alloc(EnumData, enum_max);
+    res.enums.e = system_alloc(EnumData, enum_max);
 
     Int struct_max = 32;
-    res.struct_data = system_alloc(StructData, struct_max);
+    res.structs.e = system_alloc(StructData, struct_max);
+
+    Int func_max = 128;
+    res.funcs.e = system_alloc(FunctionData, func_max);
 
     Int macro_max = 32;
     macro_data = system_alloc(MacroData, macro_max);
 
-    Int func_max = 128;
-    res.func_data = system_alloc(FunctionData, func_max);
+    if((res.enums.e)  && (res.structs.e) && (res.funcs.e) && (macro_data)) {
+        Tokenizer tokenizer = { stream, 1 };
 
-    if((res.enum_data)  && (res.struct_data) && (macro_data)) {
-        Tokenizer tokenizer = { stream };
-
+        String template_header = {};
         Bool parsing = true;
         while(parsing) {
             Token token = get_token(&tokenizer);
             switch(token.type) {
-                case TokenType_end_of_stream: { parsing = false; } break;
+                case TokenType_end_of_stream: {
+                    parsing = false;
+                } break;
 
                 case TokenType_hash: {
                     if(peak_require_token(&tokenizer, "define")) {
@@ -1145,7 +1229,7 @@ ParseResult parse_stream(Char *stream) {
                         md->iden = token_to_string(get_token(&tokenizer));
                         eat_whitespace(&tokenizer);
                         md->res.e = tokenizer.at;
-                        while(!is_end_of_line(*tokenizer.at)) {
+                        while(!is_end_of_line(*tokenizer.at, &tokenizer)) {
                             ++md->res.len;
                             ++tokenizer.at;
                         }
@@ -1157,51 +1241,53 @@ ParseResult parse_stream(Char *stream) {
                 case TokenType_identifier: {
                     // TODO(Jonny): I may need to keep the template header, so that the generated structs still work.
                     if(token_equals(token, "template")) {
-                        eat_token(&tokenizer);
-                        parse_template(&tokenizer);
+                        template_header = parse_template(&tokenizer);
                     } else if((token_equals(token, "struct")) || (token_equals(token, "class")) || (token_equals(token, "union"))) {
                         StructType struct_type = StructType_unknown;
 
-                        if(token_equals(token, "struct"))     struct_type = StructType_struct;
-                        else if(token_equals(token, "class")) struct_type = StructType_class;
-                        else if(token_equals(token, "union")) struct_type = StructType_union;
+                        if(token_equals(token, "struct"))     { struct_type = StructType_struct; }
+                        else if(token_equals(token, "class")) { struct_type = StructType_class;  }
+                        else if(token_equals(token, "union")) { struct_type = StructType_union;  }
 
-                        if(res.struct_cnt + 1 >= struct_max) {
+                        if(res.structs.cnt + 1 >= struct_max) {
                             struct_max *= 2;
-                            Void *p = system_realloc(res.struct_data, struct_max);
-                            if(p) res.struct_data = cast(StructData *)p;
+                            Void *p = system_realloc(res.structs.e, struct_max);
+                            if(p) {
+                                res.structs.e = cast(StructData *)p;
+                            }
                         }
 
-                        ParseStructResult r = parse_struct(&tokenizer, struct_type);
+                        ParseStructResult r = parse_struct(&tokenizer, struct_type, template_header);
+                        template_header.e = 0; template_header.len = 0;
 
                         // TODO(Jonny): This fails at a struct declared within a struct/union.
-                        if(r.success) { res.struct_data[res.struct_cnt++] = r.sd; }
+                        if(r.success) { res.structs.e[res.structs.cnt++] = r.sd; }
                     } else if(token_equals(token, "enum")) {
-                        if(res.enum_cnt + 1 >= enum_max) {
+                        if(res.enums.cnt + 1 >= enum_max) {
                             enum_max *= 2;
-                            Void *p = system_realloc(res.enum_data, enum_max);
-                            if(p) res.enum_data = cast(EnumData *)p;
+                            Void *p = system_realloc(res.enums.e, enum_max);
+                            if(p) {
+                                res.enums.e = cast(EnumData *)p;
+                            }
                         }
 
                         ParseEnumResult r = parse_enum(&tokenizer);
-                        if(r.success) { res.enum_data[res.enum_cnt++] = r.ed; }
-                    } else if(token_equals(token, "union")) {
-                        StructType struct_or_class = token_equals(token, "struct") ? StructType_struct : StructType_class;
-                        if(res.struct_cnt + 1 >= struct_max) {
-                            struct_max *= 2;
-                            Void *p = system_realloc(res.struct_data, struct_max);
-                            if(p) res.struct_data = cast(StructData *)p;
+                        if(r.success) {
+                            res.enums.e[res.enums.cnt++] = r.ed;
                         }
-
-                        ParseStructResult r = parse_struct(&tokenizer, struct_or_class);
-
-                        // TODO(Jonny): This fails at a struct declared within a struct/union.
-                        if(r.success) res.struct_data[res.struct_cnt++] = r.sd;
                     } else {
                         AttemptFunctionResult r = attempt_to_parse_function(token, &tokenizer);
                         if(r.success) {
-                            // TODO(Jonny): Add to functions.
-                            res.func_data[res.func_cnt++] = r.fd;
+                            if(res.funcs.cnt + 1 >= func_max) {
+                                func_max *= 2;
+                                Void *p = system_realloc(res.funcs.e, func_max);
+                                if(p) {
+                                    res.funcs.e = cast(FunctionData *)p;
+                                }
+                            }
+
+                            // TODO(Jonny): Realloc if nessessary.
+                            res.funcs.e[res.funcs.cnt++] = r.fd;
                         }
                     }
                 } break;

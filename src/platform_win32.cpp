@@ -57,7 +57,13 @@ Bool system_free(Void *ptr) {
 }
 
 Void *system_realloc(Void *ptr, PtrSize size) {
-    Void *res = HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ptr, size);
+
+    Void *res = 0;
+    if(ptr) {
+        res = HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ptr, size);
+    } else {
+        res = system_malloc(size);
+    }
 
     return(res);
 }
@@ -89,7 +95,7 @@ File system_read_entire_file_and_null_terminate(Char *fname, Void *memory) {
     return(res);
 }
 
-Bool system_write_to_file(Char *fname, Void *data, PtrSize data_size) {
+Bool system_write_to_file(Char *fname, File file) {
     Bool res = false;
     HANDLE fhandle;
     DWORD fsize32, bytes_written;
@@ -97,11 +103,11 @@ Bool system_write_to_file(Char *fname, Void *data, PtrSize data_size) {
     fhandle = CreateFileA(fname, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, 0, CREATE_ALWAYS, 0, 0);
     if(fhandle != INVALID_HANDLE_VALUE) {
 #if ENVIRONMENT32
-        fsize32 = data_size;
+        fsize32 = file.size;
 #else
-        fsize32 = safe_truncate_size_64(data_size);
+        fsize32 = safe_truncate_size_64(file.size);
 #endif
-        if(WriteFile(fhandle, data, fsize32, &bytes_written, 0)) {
+        if(WriteFile(fhandle, file.data, fsize32, &bytes_written, 0)) {
             if(bytes_written != fsize32) push_error(ErrorType_did_not_write_entire_file);
             else                         res = true;
         }
@@ -128,6 +134,63 @@ PtrSize system_get_file_size(Char *fname) {
         }
 
         CloseHandle(fhandle);
+    }
+
+    return(res);
+}
+
+internal Bool is_valid_cpp_file(Char *fname) {
+    Bool res = false;
+
+    Int len = string_length(fname);
+    if((fname[len - 1] == 'p') && (fname[len - 2] == 'p') && (fname[len - 3] == 'c') && (fname[len - 4] == '.')) {
+        res = true;
+    } else if((fname[len - 1] == 'c') && (fname[len - 2] == 'c') && (fname[len - 3] == '.')) {
+        res = true;
+    } else if((fname[len - 1] == 'c') && (fname[len - 2] == '.')) {
+        res = true;
+    }
+
+    return(res);
+}
+
+File system_read_multiple_files_into_one(Char **fnames, Int cnt) {
+    File res = {};
+
+    // Allocate 10 megabytes, because I've no idea how to big all the files will me. But if I can't allocate 10 megabytes,
+    // then just set the size to 0 and attempt to realloc for each file.
+    PtrSize mem_size = megabytes(10);
+    res.data = system_alloc(Char, mem_size);
+    if(!res.data) {
+        mem_size = 0;
+    }
+
+    WIN32_FIND_DATA find_data = {};
+    HANDLE fhandle = {};
+
+    // Go through each file passed in, and then do a FindFirstFile on each of them.
+    for(Int i = 0; (i < cnt); ++i) {
+        fhandle = FindFirstFile(fnames[i], &find_data);
+
+        do {
+            if(is_valid_cpp_file(find_data.cFileName)) {
+                LARGE_INTEGER file_size;
+                file_size.HighPart = find_data.nFileSizeHigh;
+                file_size.LowPart = find_data.nFileSizeLow;
+
+                PtrSize fsize = system_get_file_size(find_data.cFileName) + 1;
+                if(res.size + fsize >= mem_size) {
+                    mem_size = (mem_size + res.size + fsize) * 2;
+                    void *p = system_realloc(res.data, mem_size);
+                    if(p) {
+                        res.data = cast(Char *)p;
+                    }
+                }
+
+                File file = system_read_entire_file_and_null_terminate(find_data.cFileName, res.data + res.size);
+                res.size += file.size;
+            }
+        } while(FindNextFile(fhandle, &find_data) != 0);
     }
 
     return(res);

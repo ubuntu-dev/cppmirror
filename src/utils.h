@@ -25,8 +25,6 @@
     #define MAKE_GUID GUID(__FILE__, __LINE__)
 #endif
 
-#define dir_name "pp_generated" // The directory the generated code goes in.
-
 //
 // Error stuff.
 //
@@ -82,19 +80,24 @@ Bool print_errors(void);
 #define assert(Expression) {}
 #endif
 
-struct File {
-    Char *data;
+//
+// Temp memory.
+//
+struct TempMemory {
+    Void *e;
     PtrSize size;
+    PtrSize alignment_offset;
+    PtrSize used;
+
+    // TODO(Jonny): Pop memory in destructor??
 };
 
-//
-// Scratch memory
-//
-// A quick-to-access temp region of memory. Should be frequently cleared.
-static Int const scratch_memory_size = 256 * 256;
-Void *push_scratch_memory(Int size = scratch_memory_size);
-Void clear_scratch_memory(void);
-Void free_scratch_memory();
+Int const default_mem_alignment = 4; // TODO(Jonny): Should this be 8?
+
+Bool allocate_temp_memory(PtrSize size);
+TempMemory push_temp_memory(PtrSize size, PtrSize alignment = default_mem_alignment);
+Void pop_temp_memory(TempMemory *temp_memory);
+Void free_temp_memory();
 
 //
 // String
@@ -107,11 +110,11 @@ struct String {
 String create_string(Char *str, Int len = 0);
 Int string_length(Char *str);
 Bool string_concat(Char *dest, Int len, Char *a, Int a_len, Char *b, Int b_len);
-Bool string_compare(Char *a, Char *b, Int len);
-Bool string_compare(Char *a, Char *b);
 Void string_copy(Char *dest, Char *src);
-Bool string_compare(String a, String b);
-Bool string_compare_array(String *a, String *b, Int cnt);
+Bool string_comp(String a, Char *b);
+Bool string_comp(String a, String b);
+Bool string_comp_len(Char *a, Char *b, Int len);
+Bool string_comp_array(String *a, String *b, Int cnt);
 
 Bool string_contains(String str, Char *target);
 Bool string_contains(Char *str, Char *target);
@@ -160,6 +163,10 @@ Bool compare_variable_array(Variable *a, Variable *b, Int count);
 //
 // Utils.
 //
+#define kilobytes(v) ((v)            * (1024LL))
+#define megabytes(v) ((kilobytes(v)) * (1024LL))
+#define gigabytes(v) ((megabytes(v)) * (1024LL))
+
 Char to_caps(Char c);
 
 const Int max_ptr_size = 4;
