@@ -24,7 +24,7 @@ typedef int32_t Int32;
 typedef int16_t Int16;
 typedef int8_t Int8;
 
-typedef bool Bool;
+typedef Int32 Bool;
 typedef void Void;
 typedef char Char;
 

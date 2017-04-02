@@ -80,10 +80,6 @@ internal SwitchType get_switch_type(Char *str) {
 #endif
                 default: assert(0); break;
             }
-        } else if((str[len - 1] == 'h') && (str[len - 2] == '.')) {
-            res = SwitchType_source_file;
-        } else if((str[len - 1] == 'c') && (str[len - 2] == '.')) {
-            res = SwitchType_source_file;
         } else {
             // If it's not a flag, assume it's a source file. This may not actually be true though...
             res = SwitchType_source_file;
@@ -166,7 +162,7 @@ Int main(Int argc, Char **argv) {
                     if(file.size) {
                         ParseResult parse_res = parse_stream(file.data);
                         File file_to_write = write_data(parse_res);
-                        Bool write_success = system_write_to_file("pp_generated.hpp", file_to_write);
+                        Bool write_success = system_write_to_file("pp_generated.h", file_to_write);
 
                         system_free(file.data);
                     }

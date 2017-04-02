@@ -147,6 +147,8 @@ internal Bool is_valid_cpp_file(Char *fname) {
         res = true;
     } else if((fname[len - 1] == 'c') && (fname[len - 2] == 'c') && (fname[len - 3] == '.')) {
         res = true;
+    } else if((fname[len - 1] == 'c') && (fname[len - 2] == '.')) {
+        res = true;
     }
 
     return(res);
