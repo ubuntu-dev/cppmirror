@@ -139,59 +139,61 @@ File write_data(ParseResult pr) {
     ob.buffer = system_alloc(Char, ob.size);
     if(ob.buffer) {
         write_to_output_buffer(&ob,
-                               "#if !defined(PP_GENERATED_H)\n"
-                               "\n"
-                               "typedef void pp_void;\n"
-                               "typedef char pp_char;\n"
-                               "typedef short pp_short;\n"
-                               "typedef int pp_int;\n"
-                               "typedef long pp_long;\n"
-                               "typedef float pp_float;\n"
-                               "typedef double pp_double;\n"
-                               "#if defined(__cplusplus)\n"
-                               "    typedef bool pp_bool;\n"
-                               "    #define PP_TRUE true\n"
-                               "    #define PP_FALSE false\n"
-                               "#else\n"
-                               "    typedef int pp_bool;\n"
-                               "    #define PP_TRUE 1\n"
-                               "    #define PP_FALSE 0\n"
-                               "#endif\n"
-                               "\n"
-                               "// Standard lib stuff.\n"
-                               "#if !defined(PP_ASSERT)\n"
-                               "    #include <assert.h>\n"
-                               "    #define PP_ASSERT assert\n"
-                               "#endif\n"
-                               "\n"
-                               "#define PP_CONCAT(a, b) a##b\n"
-                               "#define PP_TO_STRING(a) #a\n"
-                               "\n"
-                               "#define PP_OFFSETOF(T, var) ((size_t)&(((T *)0)->var))\n"
-                               "\n"
-                               "#if !defined(PP_SPRINTF)\n"
-                               "    #if defined(_MSC_VER)\n"
-                               "        #define PP_SPRINTF(buf, size, format, ...) sprintf_s(buf, size, format, ##__VA_ARGS__)\n"
-                               "    #else\n"
-                               "        #define PP_SPRINTF(buf, size, format, ...) sprintf(buf, format, ##__VA_ARGS__)\n"
-                               "    #endif\n"
-                               "#endif\n"
-                               "\n"
-                               "#if defined(PP_STATIC_FUNCS)\n"
-                               "    #define PP_STATIC static\n"
-                               "#else\n"
-                               "    #define PP_STATIC\n"
-                               "#endif\n"
-                               "\n"
-                               "PP_STATIC pp_bool pp_string_compare(char const *a, char const *b) {\n"
-                               "    for(;; ++a, ++b) {\n"
-                               "        if((*a == 0) && (*b == 0)) {\n"
-                               "            return(PP_TRUE);\n"
-                               "        } else if(*a != *b) {\n"
-                               "            return(PP_FALSE);\n"
-                               "        }\n"
-                               "    }\n"
-                               "}\n");
+                               R"Foo(
+                               #if !defined(PP_GENERATED_H)
+                               
+                               typedef void pp_void;
+                               typedef char pp_char;
+                               typedef short pp_short;
+                               typedef int pp_int;
+                               typedef long pp_long;
+                               typedef float pp_float;
+                               typedef double pp_double;
+                               #if defined(__cplusplus)
+                                   typedef bool pp_bool;
+                                   #define PP_TRUE true
+                                   #define PP_FALSE false
+                               #else
+                                   typedef int pp_bool;
+                                   #define PP_TRUE 1
+                                   #define PP_FALSE 0
+                               #endif
+                               
+                               // Standard lib stuff.
+                               #if !defined(PP_ASSERT)
+                                   #include <assert.h>
+                                   #define PP_ASSERT assert
+                               #endif
+                               
+                               #define PP_CONCAT(a, b) a##b
+                               #define PP_TO_STRING(a) #a
+                               
+                               #define PP_OFFSETOF(T, var) ((size_t)&(((T *)0)->var))
+                               
+                               #if !defined(PP_SPRINTF)
+                                   #if defined(_MSC_VER)
+                                       #define PP_SPRINTF(buf, size, format, ...) sprintf_s(buf, size, format, ##__VA_ARGS__)
+                                   #else
+                                       #define PP_SPRINTF(buf, size, format, ...) sprintf(buf, format, ##__VA_ARGS__)
+                                   #endif
+                               #endif
+                               
+                               #if defined(PP_STATIC_FUNCS)
+                                   #define PP_STATIC static
+                               #else
+                                   #define PP_STATIC
+                               #endif
+                               
+                               PP_STATIC pp_bool pp_string_compare(char const *a, char const *b) {
+                                   for(;; ++a, ++b) {
+                                       if((*a == 0) && (*b == 0)) {
+                                           return(PP_TRUE);
+                                       } else if(*a != *b) {
+                                           return(PP_FALSE);
+                                       }
+                                   }
+                               }
+                               )Foo");
 
         // Create typedefs
         {
