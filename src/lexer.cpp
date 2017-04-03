@@ -1207,7 +1207,10 @@ ParseResult parse_stream(Char *stream) {
     Int macro_max = 32;
     macro_data = system_alloc(MacroData, macro_max);
 
-    if((res.enums.e)  && (res.structs.e) && (res.funcs.e) && (macro_data)) {
+    Int typedef_max = 64;
+    res.typedefs.e = system_alloc(TypedefData, typedef_max);
+
+    if((res.enums.e)  && (res.structs.e) && (res.funcs.e) && (macro_data) && (res.typedefs.e)) {
         Tokenizer tokenizer = { stream, 1 };
 
         String template_header = {};
@@ -1275,6 +1278,25 @@ ParseResult parse_stream(Char *stream) {
                         if(r.success) {
                             res.enums.e[res.enums.cnt++] = r.ed;
                         }
+                    } else if(token_equals(token, "typedef")) {
+                        Token original = peak_token(&tokenizer);
+                        if(original.type == TokenType_identifier) {
+                            eat_token(&tokenizer);
+
+                            Token fresh = peak_token(&tokenizer);
+                            if(original.type == TokenType_identifier) {
+                                eat_token(&tokenizer);
+
+                                res.typedefs.e[res.typedefs.cnt].original = token_to_string(original);
+                                res.typedefs.e[res.typedefs.cnt].fresh = token_to_string(fresh);
+
+                                res.typedefs.cnt++;
+                            }
+                        }
+
+
+
+
                     } else {
                         AttemptFunctionResult r = attempt_to_parse_function(token, &tokenizer);
                         if(r.success) {

@@ -59,6 +59,11 @@ struct FunctionData {
     Int param_cnt;
 };
 
+struct TypedefData {
+    String original;
+    String fresh;
+};
+
 struct Structs {
     StructData *e;
     Int cnt;
@@ -74,10 +79,16 @@ struct Functions {
     Int cnt;
 };
 
+struct Typedefs {
+    TypedefData *e;
+    Int cnt;
+};
+
 struct ParseResult {
     Structs structs;
     Enums enums;
     Functions funcs;
+    Typedefs typedefs;
 };
 
 ParseResult parse_stream(Char *stream);
