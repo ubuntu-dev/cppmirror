@@ -85,17 +85,29 @@ internal Bool is_meta_type_already_in_array(String *array, Int len, String test)
     return(res);
 }
 
-internal Int get_actual_type_count(String *types, Structs structs, Typedefs typedefs) {
+internal Int get_actual_type_count(String *types, Structs structs, Enums enums, Typedefs typedefs) {
     Int res = 0;
+
+    // Primitives.
     for(Int i = 0; (i < array_count(primitive_types)); ++i) {
         types[res++] = create_string(primitive_types[i]);
     }
 
+    // Typedefs.
     for(Int i = 0; (i < typedefs.cnt); ++i) {
         TypedefData *td = typedefs.e + i;
 
         if(!is_meta_type_already_in_array(types, res, td->fresh)) {
             types[res++] = td->fresh;
+        }
+    }
+
+    // Enums
+    for(Int i = 0; (i < enums.cnt); ++i) {
+        EnumData *ed = enums.e + i;
+
+        if(!is_meta_type_already_in_array(types, res, ed->name)) {
+            types[res++] = ed->name;
         }
     }
 
@@ -129,114 +141,6 @@ File write_data(ParseResult pr) {
         write_to_output_buffer(&ob,
                                "#if !defined(PP_GENERATED_H)\n"
                                "\n"
-                               "//\n"
-                               "// Detect compiler.\n"
-                               "//\n"
-                               "#if defined(PP_COMPILER_MSVC)\n"
-                               "    #undef PP_COMPILER_MSVC\n"
-                               "    #undef PP_COMPILER_CLANG\n"
-                               "    #undef PP_COMPILER_GCC\n"
-                               "\n"
-                               "    #define PP_COMPILER_MSVC 1\n"
-                               "    #define PP_COMPILER_CLANG 0\n"
-                               "    #define PP_COMPILER_GCC 0\n"
-                               "#elif defined(PP_COMPILER_CLANG)\n"
-                               "    #undef PP_COMPILER_MSVC\n"
-                               "    #undef PP_COMPILER_CLANG\n"
-                               "    #undef PP_COMPILER_GCC\n"
-                               "\n"
-                               "    #define PP_COMPILER_MSVC 0\n"
-                               "    #define PP_COMPILER_CLANG 1\n"
-                               "    #define PP_COMPILER_GCC 0\n"
-                               "#elif defined(PP_COMPILER_GCC)\n"
-                               "    #undef PP_COMPILER_MSVC\n"
-                               "    #undef PP_COMPILER_CLANG\n"
-                               "    #undef PP_COMPILER_GCC\n"
-                               "\n"
-                               "    #define PP_COMPILER_MSVC 0\n"
-                               "    #define PP_COMPILER_CLANG 0\n"
-                               "    #define PP_COMPILER_GCC 1\n"
-                               "#else\n"
-                               "    #define PP_COMPILER_MSVC 0\n"
-                               "    #define PP_COMPILER_CLANG 0\n"
-                               "    #define PP_COMPILER_GCC 0\n"
-                               "\n"
-                               "    #if defined(__clang__)\n"
-                               "        #undef PP_COMPILER_CLANG\n"
-                               "        #define PP_COMPILER_CLANG 1\n"
-                               "    #elif defined(_MSC_VER)\n"
-                               "        #undef PP_COMPILER_MSVC\n"
-                               "        #define PP_COMPILER_MSVC 1\n"
-                               "    #elif (defined(__GNUC__) || defined(__GNUG__)) // This has to be after __clang__, because Clang also defines this.\n"
-                               "        #undef PP_COMPILER_GCC\n"
-                               "        #define PP_COMPILER_GCC 1\n"
-                               "    #endif\n"
-                               "#endif\n"
-                               "\n"
-                               "//\n"
-                               "// Detect OS.\n"
-                               "//\n"
-                               "#if defined(PP_OS_WIN32)\n"
-                               "    #undef PP_OS_WIN32\n"
-                               "    #undef PP_OS_LINUX\n"
-                               "\n"
-                               "    #define PP_OS_WIN32 1\n"
-                               "    #define PP_OS_LINUX 0\n"
-                               "#elif defined(PP_OS_LINUX)\n"
-                               "    #undef PP_OS_WIN32\n"
-                               "    #undef PP_OS_LINUX\n"
-                               "\n"
-                               "    #define PP_OS_WIN32 0\n"
-                               "    #define PP_OS_LINUX 1\n"
-                               "#else"
-                               "    #define PP_OS_WIN32 0\n"
-                               "    #define PP_OS_LINUX 0\n"
-                               "\n"
-                               "    #if defined(__linux__)\n"
-                               "        #define PP_OS_LINUX 1\n"
-                               "    #elif defined(_WIN32)\n"
-                               "        #define PP_OS_WIN32 1\n"
-                               "    #endif\n"
-                               "#endif\n"
-                               "\n"
-                               "//\n"
-                               "// Detect 32/64 bit.\n"
-                               "//\n"
-                               "#if defined(PP_ENVIRONMENT64)\n"
-                               "    #undef PP_ENVIRONMENT64\n"
-                               "    #undef PP_ENVIRONMENT32\n"
-                               "\n"
-                               "    #define PP_ENVIRONMENT64 1\n"
-                               "    #define PP_ENVIRONMENT32 0\n"
-                               "#elif defined(PP_ENVIRONMENT32)\n"
-                               "    #undef PP_ENVIRONMENT64\n"
-                               "    #undef PP_ENVIRONMENT32\n"
-                               "\n"
-                               "    #define PP_ENVIRONMENT64 0\n"
-                               "    #define PP_ENVIRONMENT32 1\n"
-                               "#else"
-                               "    #define PP_ENVIRONMENT64 0\n"
-                               "    #define PP_ENVIRONMENT32 0\n"
-                               "\n"
-                               "    #if PP_OS_LINUX\n"
-                               "        #if (__x86_64__ || __ppc64__)\n"
-                               "            #undef PP_ENVIRONMENT64\n"
-                               "            #define PP_ENVIRONMENT64 1\n"
-                               "        #else\n"
-                               "            #undef PP_ENVIRONMENT32\n"
-                               "            #define PP_ENVIRONMENT32 1\n"
-                               "        #endif\n"
-                               "    #elif OS_WIN32\n"
-                               "        #if defined(_WIN64)\n"
-                               "            #undef PP_ENVIRONMENT64\n"
-                               "            #define PP_ENVIRONMENT64 1\n"
-                               "        #else\n"
-                               "            #undef PP_ENVIRONMENT32\n"
-                               "            #define PP_ENVIRONMENT32 1\n"
-                               "        #endif\n"
-                               "    #endif\n"
-                               "#endif\n"
-                               "\n"
                                "typedef void pp_void;\n"
                                "typedef char pp_char;\n"
                                "typedef short pp_short;\n"
@@ -244,19 +148,20 @@ File write_data(ParseResult pr) {
                                "typedef long pp_long;\n"
                                "typedef float pp_float;\n"
                                "typedef double pp_double;\n"
-                               "typedef int pp_bool;\n"
-                               "\n"
-                               "#define PP_TRUE 1\n"
-                               "#define PP_FALSE 0\n"
+                               "#if defined(__cplusplus)\n"
+                               "    typedef bool pp_bool;\n"
+                               "    #define PP_TRUE true\n"
+                               "    #define PP_FALSE false\n"
+                               "#else\n"
+                               "    typedef int pp_bool;\n"
+                               "    #define PP_TRUE 1\n"
+                               "    #define PP_FALSE 0\n"
+                               "#endif\n"
                                "\n"
                                "// Standard lib stuff.\n"
                                "#if !defined(PP_ASSERT)\n"
                                "    #include <assert.h>\n"
                                "    #define PP_ASSERT assert\n"
-                               "#endif\n"
-                               "#if !defined(PP_MEMSET)\n"
-                               "    #include <string.h>\n"
-                               "    #define PP_MEMSET memset\n"
                                "#endif\n"
                                "\n"
                                "#define PP_CONCAT(a, b) a##b\n"
@@ -272,7 +177,13 @@ File write_data(ParseResult pr) {
                                "    #endif\n"
                                "#endif\n"
                                "\n"
-                               "static pp_bool pp_string_compare(char const *a, char const *b) {\n"
+                               "#if defined(PP_STATIC_FUNCS)\n"
+                               "    #define PP_STATIC static\n"
+                               "#else\n"
+                               "    #define PP_STATIC\n"
+                               "#endif\n"
+                               "\n"
+                               "PP_STATIC pp_bool pp_string_compare(char const *a, char const *b) {\n"
                                "    for(;; ++a, ++b) {\n"
                                "        if((*a == 0) && (*b == 0)) {\n"
                                "            return(PP_TRUE);\n"
@@ -281,7 +192,6 @@ File write_data(ParseResult pr) {
                                "        }\n"
                                "    }\n"
                                "}\n");
-
 
         // Create typedefs
         {
@@ -353,7 +263,7 @@ File write_data(ParseResult pr) {
 
             // Meta types enum.
             {
-                Int type_count = get_actual_type_count(types, pr.structs, pr.typedefs);
+                Int type_count = get_actual_type_count(types, pr.structs, pr.enums, pr.typedefs);
 
                 write_to_output_buffer(&ob, "typedef enum pp_Type {\n");
 
@@ -376,6 +286,7 @@ File write_data(ParseResult pr) {
                 // Recreated structs.
                 {
                     write_to_output_buffer(&ob,
+                                           "\n"
                                            "//\n"
                                            "// Recreated structs.\n"
                                            "//\n",
@@ -434,7 +345,8 @@ File write_data(ParseResult pr) {
         // Typedef to origional.
         {
             write_to_output_buffer(&ob,
-                                   "static pp_Type pp_typedef_to_original(pp_Type type) {\n"
+                                   "\n"
+                                   "PP_STATIC pp_Type pp_typedef_to_original(pp_Type type) {\n"
                                    "    switch(type) {\n");
 
             for(Int i = 0; (i < pr.typedefs.cnt); ++i) {
@@ -464,7 +376,7 @@ File write_data(ParseResult pr) {
                                    "    int arr_size;\n"
                                    "} pp_MemberDefinition;\n"
                                    "\n"
-                                   "static pp_MemberDefinition pp_get_members_from_type(pp_Type type, pp_int i) {\n"
+                                   "PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, pp_int i) {\n"
                                    "    pp_Type real_type = pp_typedef_to_original(type);\n");
             for(Int i = 0; (i < pr.structs.cnt); ++i) {
                 StructData *sd = pr.structs.e + i;
@@ -512,7 +424,8 @@ File write_data(ParseResult pr) {
         // Get number of members from type.
         {
             write_to_output_buffer(&ob,
-                                   "static int pp_get_number_of_members(pp_Type passed_in_type) {\n"
+                                   "\n"
+                                   "PP_STATIC int pp_get_number_of_members(pp_Type passed_in_type) {\n"
                                    "    pp_Type type = pp_typedef_to_original(passed_in_type);\n"
                                    "\n"
                                    "    switch(type) {\n");
@@ -537,7 +450,8 @@ File write_data(ParseResult pr) {
         // Is primitive
         {
             write_to_output_buffer(&ob,
-                                   "static pp_bool pp_is_primitive(pp_Type _type) {\n"
+                                   "\n"
+                                   "PP_STATIC pp_bool pp_is_primitive(pp_Type _type) {\n"
                                    "    pp_Type type = pp_typedef_to_original(_type);\n"
                                    "\n"
                                    "    pp_bool res = PP_FALSE;\n"
@@ -563,7 +477,8 @@ File write_data(ParseResult pr) {
         // Type to string.
         {
             write_to_output_buffer(&ob,
-                                   "static char const * pp_type_to_string(pp_Type type) {\n"
+                                   "\n"
+                                   "PP_STATIC char const * pp_type_to_string(pp_Type type) {\n"
                                    "    switch(type) {\n");
 
             for(Int i = 0; (i < array_count(primitive_types)); ++i) {
@@ -614,7 +529,7 @@ File write_data(ParseResult pr) {
         {
             write_to_output_buffer(&ob,
                                    "\n"
-                                   "static size_t pp_get_size_from_type(pp_Type _type) {\n"
+                                   "PP_STATIC size_t pp_get_size_from_type(pp_Type _type) {\n"
                                    "    pp_Type type = pp_typedef_to_original(_type);\n"
                                    "\n"
                                    "    switch(type) {\n");
@@ -639,14 +554,11 @@ File write_data(ParseResult pr) {
         // Print struct.
         {
             write_to_output_buffer_no_var_args(&ob,
+                                               "\n"
                                                "#define pp_serialize_struct(var, Type, buf, size) pp_serialize_struct_(var, PP_CONCAT(pp_Type_, Type), PP_TO_STRING(var), 0, buf, size, 0)\n"
-                                               "static size_t\n"
+                                               "PP_STATIC size_t\n"
                                                "pp_serialize_struct_(void *var, pp_Type type, char const *name, int indent, char *buffer, size_t buf_size, size_t bytes_written) {\n"
                                                "    PP_ASSERT((buffer) && (buf_size > 0)); // Check params.\n"
-                                               "\n"
-                                               "    if(!bytes_written) {\n"
-                                               "        PP_MEMSET(buffer, 0, buf_size);\n"
-                                               "    }\n"
                                                "\n"
                                                "    // Setup the indent buffer.\n"
                                                "    char indent_buf[256] = {0};\n"
@@ -655,10 +567,8 @@ File write_data(ParseResult pr) {
                                                "\n"
                                                "    int num_members = pp_get_number_of_members(type); PP_ASSERT(num_members != -1); // Get the number of members for the for loop.\n"
                                                "    for(int i = 0; (i < num_members); ++i) {\n"
-                                               "        pp_MemberDefinition member = pp_get_members_from_type(type, i); // Get the member pointer with meta data.\n"
+                                               "        pp_MemberDefinition member = pp_get_members_from_type(type, i);\n"
                                                "        size_t *member_ptr = (size_t *)((char *)var + member.offset); // Get the actual pointer to the memory address.\n"
-                                               "        // This is a little verbose so I can get the right template overload for serialize_primitive. I should just\n"
-                                               "        // make it a macro though.\n"
                                                "        if(pp_is_primitive(member.type)) {\n"
                                                "            char const *type_as_string = pp_type_to_string(member.type);\n"
                                                "            if(member.arr_size > 1) {\n"
@@ -744,10 +654,10 @@ File write_data(ParseResult pr) {
                                                "        }\n"
                                                "    }\n"
                                                "\n"
+                                               "    buffer[bytes_written] = 0;\n"
                                                "    return(bytes_written);\n"
                                                "}\n");
         }
-
 
         // Enum size.
         {
@@ -756,16 +666,24 @@ File write_data(ParseResult pr) {
                                    "//\n"
                                    "// Number of members in an enum.\n"
                                    "//\n"
-                                   "#define pp_get_enum_size(Type) PP_CONCAT(pp_get_enum_size_, Type)\n");
+                                   "PP_STATIC size_t pp_get_enum_size(pp_Type type) {\n"
+                                   "    switch(pp_typedef_to_original(type)) {\n");
 
             for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                EnumData *ed = pr.enums.e;
+                EnumData *ed = pr.enums.e + i;
 
                 write_to_output_buffer(&ob,
-                                       "#define pp_get_enum_size_%.*s %d\n",
+                                       "        case pp_Type_%.*s: { return(%d); } break;\n",
                                        ed->name.len, ed->name.e,
                                        ed->no_of_values);
             }
+
+            write_to_output_buffer(&ob,
+                                   "    }\n"
+                                   "\n"
+                                   "    PP_ASSERT(0);\n"
+                                   "    return(0);\n"
+                                   "}\n");
         }
 
         // String to enum.
@@ -775,20 +693,21 @@ File write_data(ParseResult pr) {
                                    "//\n"
                                    "// String to enum.\n"
                                    "//\n"
-                                   "#define pp_string_to_enum(Type, str) PP_CONCAT(pp_string_to_enum_, Type)(str)\n\n");
+                                   "PP_STATIC int pp_string_to_enum(pp_Type type, char const *str) {\n"
+                                   "    switch(pp_typedef_to_original(type)) {\n");
 
             for(Int i = 0; (i < pr.enums.cnt); ++i) {
                 EnumData *ed = pr.enums.e + i;
 
                 write_to_output_buffer(&ob,
-                                       "static int pp_string_to_enum_%.*s(char const *str) {\n",
+                                       "        case pp_Type_%.*s: {\n",
                                        ed->name.len, ed->name.e);
 
                 for(Int j = 0; (j < ed->no_of_values); ++j) {
                     EnumValue *ev = ed->values + j;
 
-                    if(!j) { write_to_output_buffer(&ob, "    ");      }
-                    else   { write_to_output_buffer(&ob, "    else "); }
+                    if(!j) { write_to_output_buffer(&ob, "            ");      }
+                    else   { write_to_output_buffer(&ob, "            else "); }
 
                     write_to_output_buffer(&ob,
                                            "if(pp_string_compare(str, \"%.*s\")) { return(%d); }\n",
@@ -796,11 +715,16 @@ File write_data(ParseResult pr) {
                 }
 
                 write_to_output_buffer(&ob,
-                                       "\n"
-                                       "    PP_ASSERT(0);\n"
-                                       "    return(0);\n"
-                                       "}\n");
+                                       "        } break;\n");
+
             }
+
+            write_to_output_buffer(&ob,
+                                   "    }\n"
+                                   "\n"
+                                   "    PP_ASSERT(0);\n"
+                                   "    return(0);\n"
+                                   "}\n");
         }
 
         // Enum to string.
@@ -810,38 +734,42 @@ File write_data(ParseResult pr) {
                                    "//\n"
                                    "// Enum to string.\n"
                                    "//\n"
-                                   "#define pp_enum_to_string(Type, i) PP_CONCAT(pp_enum_to_string, Type)(i)\n\n");
-
+                                   "PP_STATIC char const * pp_enum_to_string(pp_Type type, int i) {\n"
+                                   "    switch(pp_typedef_to_original(type)) {\n");
             for(Int i = 0; (i < pr.enums.cnt); ++i) {
                 EnumData *ed = pr.enums.e + i;
 
                 write_to_output_buffer(&ob,
-                                       "static char const * pp_enum_to_string%.*s(int v) {\n"
-                                       "    switch(v) {\n",
+                                       "        case pp_Type_%.*s: {\n"
+                                       "            switch(i) {\n",
                                        ed->name.len, ed->name.e);
 
                 for(Int j = 0; (j < ed->no_of_values); ++j) {
                     EnumValue *ev = ed->values + j;
 
-                    write_to_output_buffer(&ob, "        case %d: { return(\"%.*s\"); } break;\n",
+                    write_to_output_buffer(&ob,
+                                           "                case %d: { return(\"%.*s\"); } break;\n",
                                            ev->value, ev->name.len, ev->name.e);
                 }
 
                 write_to_output_buffer(&ob,
-                                       "    }\n"
-                                       "\n"
-                                       "    PP_ASSERT(0);\n"
-                                       "    return(0);\n"
-                                       "}");
+                                       "            }\n"
+                                       "        } break;\n");
+
             }
+
+            write_to_output_buffer(&ob,
+                                   "    }\n"
+                                   "\n"
+                                   "    PP_ASSERT(0);\n"
+                                   "    return(0);\n"
+                                   "}\n");
         }
 
         //
         // # Guard macro.
         //
         write_to_output_buffer(&ob,
-                               "\n"
-                               "#undef pp_std\n"
                                "\n"
                                "#define PP_GENERATED_H\n"
                                "#endif // #if defined(PP_GENERATED_H)\n"

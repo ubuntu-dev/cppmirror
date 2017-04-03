@@ -71,17 +71,11 @@ struct Token {
 
 struct Tokenizer {
     Char *at;
-    Int line;
 };
 
 // TODO(Jonny): Line numbers won't match now, remove tokenizer.
-internal Bool is_end_of_line(Char c, Tokenizer *tokenizer = 0) {
+internal Bool is_end_of_line(Char c) {
     Bool res = ((c == '\n') || (c == '\r'));
-    if(c == '\n') {
-        if(tokenizer) {
-            ++tokenizer->line;
-        }
-    }
 
     return(res);
 }
@@ -92,14 +86,8 @@ Bool is_whitespace(Char c) {
     return(res);
 }
 
-internal Bool is_whitespace(Char c, Tokenizer *tokenizer) {
-    Bool res = ((c == ' ') || (c == '\t') || (c == '\v') || (c == '\f') || (is_end_of_line(c, tokenizer)));
-
-    return(res);
-}
-
 internal Void skip_to_end_of_line(Tokenizer *tokenizer) {
-    while(is_end_of_line(*tokenizer->at, tokenizer)) {
+    while(is_end_of_line(*tokenizer->at)) {
         ++tokenizer->at;
     }
 }
@@ -249,11 +237,11 @@ internal Void eat_whitespace(Tokenizer *tokenizer) {
     for(;;) {
         if(!tokenizer->at[0]) { // Nul terminator.
             break;
-        } else if(is_whitespace(tokenizer->at[0], tokenizer)) { // Whitespace
+        } else if(is_whitespace(tokenizer->at[0])) { // Whitespace
             ++tokenizer->at;
         } else if((tokenizer->at[0] == '/') && (tokenizer->at[1] == '/')) { // C++ comments.
             tokenizer->at += 2;
-            while((tokenizer->at[0]) && (!is_end_of_line(tokenizer->at[0], tokenizer))) {
+            while((tokenizer->at[0]) && (!is_end_of_line(tokenizer->at[0]))) {
                 ++tokenizer->at;
             }
 
@@ -278,9 +266,7 @@ internal Void eat_whitespace(Tokenizer *tokenizer) {
 
                 Int level = 0;
                 while(++tokenizer->at) {
-                    if(tokenizer->at[0] == '\n') {
-                        ++tokenizer->line;
-                    } else if(tokenizer->at[0] == '#') {
+                    if(tokenizer->at[0] == '#') {
                         if((tokenizer->at[1] == 'i') && (tokenizer->at[2] == 'f')) {
                             ++level;
 
@@ -309,9 +295,6 @@ internal Void eat_whitespace(Tokenizer *tokenizer) {
 
                 Int level = 0;
                 while(++tokenizer->at) {
-                    if(tokenizer->at[0] == '\n') {
-                        ++tokenizer->line;
-                    }
                     if(tokenizer->at[0] == '#') {
                         if((tokenizer->at[1] == 'i') && (tokenizer->at[2] == 'f')) {
                             ++level;
@@ -650,7 +633,7 @@ internal ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_
                                 break; // for
                             } else if(token.type == TokenType_hash) {
                                 // TODO(Jonny): Support macros with '/' to extend their lines?
-                                while(!is_end_of_line(tokenizer->at[0], tokenizer)) {
+                                while(!is_end_of_line(tokenizer->at[0])) {
                                     ++tokenizer->at;
                                 }
                             } else {
@@ -1211,7 +1194,7 @@ ParseResult parse_stream(Char *stream) {
     res.typedefs.e = system_alloc(TypedefData, typedef_max);
 
     if((res.enums.e)  && (res.structs.e) && (res.funcs.e) && (macro_data) && (res.typedefs.e)) {
-        Tokenizer tokenizer = { stream, 1 };
+        Tokenizer tokenizer = { stream };
 
         String template_header = {};
         Bool parsing = true;
@@ -1232,7 +1215,7 @@ ParseResult parse_stream(Char *stream) {
                         md->iden = token_to_string(get_token(&tokenizer));
                         eat_whitespace(&tokenizer);
                         md->res.e = tokenizer.at;
-                        while(!is_end_of_line(*tokenizer.at, &tokenizer)) {
+                        while(!is_end_of_line(*tokenizer.at)) {
                             ++md->res.len;
                             ++tokenizer.at;
                         }
