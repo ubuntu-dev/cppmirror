@@ -242,12 +242,13 @@ File write_data(ParseResult pr) {
             max_type_count += pr.structs.e[i].member_count + 1;
         }
 
+        Int type_count = 0;
         String *types = system_alloc(String, max_type_count);
         if(types) {
 
             // Meta types enum.
             {
-                Int type_count = get_actual_type_count(types, pr.structs, pr.enums, pr.typedefs);
+                type_count = get_actual_type_count(types, pr.structs, pr.enums, pr.typedefs);
 
                 write(&ob, "typedef enum pp_Type {\n");
 
@@ -261,530 +262,586 @@ File write_data(ParseResult pr) {
 
                 write(&ob, "} pp_Type;\n");
 
-                system_free(types);
-            }
-
-            // Recreated structs.
-            {
-
                 // Recreated structs.
                 {
-                    write(&ob,
-                          "\n"
-                          "//\n"
-                          "// Recreated structs.\n"
-                          "//\n",
-                          "namespace recreated {");
-                    for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                        StructData *sd = pr.structs.e + i;
 
-                        write(&ob, "typedef %s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
-                              sd->name.len, sd->name.e);
+                    // Recreated structs.
+                    {
+                        write(&ob,
+                              "\n"
+                              "//\n"
+                              "// Recreated structs.\n"
+                              "//\n",
+                              "namespace recreated {");
+                        for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                            StructData *sd = pr.structs.e + i;
 
-                        write(&ob, " { ");
+                            write(&ob, "typedef %s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
+                                  sd->name.len, sd->name.e);
 
-                        Bool is_inside_anonymous_struct = false;
-                        for(Int j = 0; (j < sd->member_count); ++j) {
-                            Variable *md = sd->members + j;
+                            write(&ob, " { ");
 
-                            if(md->is_inside_anonymous_struct != is_inside_anonymous_struct) {
-                                is_inside_anonymous_struct = !is_inside_anonymous_struct;
+                            Bool is_inside_anonymous_struct = false;
+                            for(Int j = 0; (j < sd->member_count); ++j) {
+                                Variable *md = sd->members + j;
 
-                                if(is_inside_anonymous_struct) {
-                                    write(&ob, " struct {");
-                                } else {
-                                    write(&ob, "};");
+                                if(md->is_inside_anonymous_struct != is_inside_anonymous_struct) {
+                                    is_inside_anonymous_struct = !is_inside_anonymous_struct;
+
+                                    if(is_inside_anonymous_struct) {
+                                        write(&ob, " struct {");
+                                    } else {
+                                        write(&ob, "};");
+                                    }
                                 }
+
+                                Char *arr = "";
+                                Char arr_buffer[256] = {};
+                                if(md->array_count > 1) {
+                                    stbsp_snprintf(arr_buffer, 256, "[%u]", md->array_count);
+                                    arr = arr_buffer;
+                                }
+
+                                char ptr_buf[max_ptr_size] = {};
+                                for(Int k = 0; (k < md->ptr); ++k) {
+                                    ptr_buf[k] = '*';
+                                }
+
+                                write(&ob, " pp_%.*s %s%.*s%s; ",
+                                      md->type.len, md->type.e,
+                                      ptr_buf,
+                                      md->name.len, md->name.e,
+                                      (md->array_count > 1) ? arr_buffer : arr);
+
                             }
 
-                            Char *arr = "";
-                            Char arr_buffer[256] = {};
-                            if(md->array_count > 1) {
-                                stbsp_snprintf(arr_buffer, 256, "[%u]", md->array_count);
-                                arr = arr_buffer;
-                            }
+                            if(is_inside_anonymous_struct) write(&ob, " };");
 
-                            char ptr_buf[max_ptr_size] = {};
-                            for(Int k = 0; (k < md->ptr); ++k) {
-                                ptr_buf[k] = '*';
-                            }
-
-                            write(&ob, " pp_%.*s %s%.*s%s; ",
-                                  md->type.len, md->type.e,
-                                  ptr_buf,
-                                  md->name.len, md->name.e,
-                                  (md->array_count > 1) ? arr_buffer : arr);
-
+                            write(&ob, " } pp_%.*s;\n",
+                                  sd->name.len, sd->name.e);
                         }
-
-                        if(is_inside_anonymous_struct) write(&ob, " };");
-
-                        write(&ob, " } pp_%.*s;\n",
-                              sd->name.len, sd->name.e);
                     }
                 }
             }
-        }
 
-        // Typedef to origional.
-        {
-            write(&ob,
-                  "\n"
-                  "PP_STATIC pp_Type pp_typedef_to_original(pp_Type type) {\n"
-                  "    switch(type) {\n");
-
-            for(Int i = 0; (i < pr.typedefs.cnt); ++i) {
-                TypedefData *td = pr.typedefs.e + i;
-
+            // Typedef to origional.
+            {
                 write(&ob,
-                      "        case pp_Type_%.*s: { return(pp_Type_%.*s); } break;\n",
-                      td->fresh.len, td->fresh.e,
-                      td->original.len, td->original.e);
-            }
+                      "\n"
+                      "PP_STATIC pp_Type pp_typedef_to_original(pp_Type type) {\n"
+                      "    switch(type) {\n");
 
-            write(&ob,
-                  "    }\n"
-                  "\n"
-                  "    return(type);\n"
-                  "}\n");
-        }
-
-        // get members from type.
-        {
-            write(&ob,
-                  "typedef struct pp_MemberDefinition {\n"
-                  "    pp_Type type;\n"
-                  "    char const *name;\n"
-                  "    size_t offset;\n"
-                  "    int ptr;\n"
-                  "    int arr_size;\n"
-                  "} pp_MemberDefinition;\n"
-                  "\n"
-                  "PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, pp_int i) {\n"
-                  "    pp_Type real_type = pp_typedef_to_original(type);\n");
-            for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                StructData *sd = pr.structs.e + i;
-
-                if(!i) { write(&ob, "    ");      }
-                else   { write(&ob, "    else "); }
-
-                write(&ob,
-                      "if(real_type == pp_Type_%.*s) {\n"
-                      "        switch(i) {\n",
-                      sd->name.len, sd->name.e);
-
-                for(Int j = 0; (j < sd->member_count); ++j) {
-                    Variable *mem = sd->members + j;
+                for(Int i = 0; (i < pr.typedefs.cnt); ++i) {
+                    TypedefData *td = pr.typedefs.e + i;
 
                     write(&ob,
-                          "            case %d: {\n"
-                          "                pp_MemberDefinition res = {pp_Type_%.*s, \"%.*s\", PP_OFFSETOF(pp_%.*s, %.*s), %d, %d};\n"
-                          "                return(res);\n"
-                          "            } break; \n",
-                          j,
-                          mem->type.len, mem->type.e,
-                          mem->name.len, mem->name.e,
-                          sd->name.len, sd->name.e,
-                          mem->name.len, mem->name.e,
-                          mem->ptr,
-                          mem->array_count);
-
+                          "        case pp_Type_%.*s: { return(pp_Type_%.*s); } break;\n",
+                          td->fresh.len, td->fresh.e,
+                          td->original.len, td->original.e);
                 }
 
                 write(&ob,
-                      "        }\n"
-                      "    }\n");
+                      "    }\n"
+                      "\n"
+                      "    return(type);\n"
+                      "}\n");
             }
 
-
-            write(&ob,
-                  "    // Not found\n"
-                  "    PP_ASSERT(0);\n"
-                  "    pp_MemberDefinition res = {};\n"
-                  "    return(res);\n"
-                  "}\n");
-        }
-
-        // Get number of members from type.
-        {
-            write(&ob,
-                  "\n"
-                  "PP_STATIC int pp_get_number_of_members(pp_Type type) {\n"
-                  "    switch(pp_typedef_to_original(type)) {\n");
-
-            for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                StructData *sd = pr.structs.e + i;
-
-                write(&ob,
-                      "        case pp_Type_%.*s: { return(%d); } break;\n",
-                      sd->name.len, sd->name.e, sd->member_count);
-
-            }
-
-            write(&ob,
-                  "    }\n"
-                  "\n"
-                  "    PP_ASSERT(0);\n"
-                  "    return(0);\n"
-                  "}\n");
-        }
-
-        // Is primitive
-        {
-            write(&ob,
-                  "\n"
-                  "typedef enum pp_StructureType {\n"
-                  "    pp_StructureType_unknown,\n"
-                  "    pp_StructureType_primitive,\n"
-                  "    pp_StructureType_struct,\n"
-                  "    pp_StructureType_enum,\n"
-                  "    pp_StructureType_count,\n"
-                  "} pp_StructureType;\n"
-                  "\n"
-                  "PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {\n"
-                  "    switch(pp_typedef_to_original(type)) {\n"
-                  "        ");
-
-            // Primitive.
+            // get members from type.
             {
-                for(Int i = 0; (i < array_count(primitive_types)); ++i) {
-                    write(&ob, "case pp_Type_%s: ", primitive_types[i]);
-                }
                 write(&ob,
-                      " {\n"
-                      "            return(pp_StructureType_primitive);\n"
-                      "        } break;\n"
-                      "        ");
-            }
-
-            // Enums
-            {
-                for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                    EnumData *ed = pr.enums.e + i;
-
-                    write(&ob, "case pp_Type_%.*s: ", ed->name.len, ed->name.e);
-                }
-                write(&ob,
-                      " {\n"
-                      "            return(pp_StructureType_enum);\n"
-                      "        } break;\n");
-            }
-
-
-            // Structs.
-            {
+                      "typedef struct pp_MemberDefinition {\n"
+                      "    pp_Type type;\n"
+                      "    char const *name;\n"
+                      "    size_t offset;\n"
+                      "    int ptr;\n"
+                      "    int arr_size;\n"
+                      "} pp_MemberDefinition;\n"
+                      "\n"
+                      "PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, pp_int i) {\n"
+                      "    pp_Type real_type = pp_typedef_to_original(type);\n");
                 for(Int i = 0; (i < pr.structs.cnt); ++i) {
                     StructData *sd = pr.structs.e + i;
 
-                    write(&ob, "case pp_Type_%.*s: ", sd->name.len, sd->name.e);
-                }
-                write(&ob,
-                      " {\n"
-                      "            return(pp_StructureType_struct);\n"
-                      "        } break;\n");
-            }
-
-            write(&ob,
-                  "    }\n"
-                  "\n"
-                  "    PP_ASSERT(0);\n"
-                  "    return(pp_StructureType_unknown);\n"
-                  "}\n");
-        }
-
-        // Type to string.
-        {
-            write(&ob,
-                  "\n"
-                  "PP_STATIC char const * pp_type_to_string(pp_Type type) {\n"
-                  "    switch(type) {\n");
-
-            for(Int i = 0; (i < array_count(primitive_types)); ++i) {
-                Char *prim = primitive_types[i];
-
-                write(&ob,
-                      "        case pp_Type_%s: { return(\"%s\"); } break;\n",
-                      prim, prim);
-            }
-
-            for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                StructData *sd = pr.structs.e + i;
-
-                write(&ob,
-                      "        case pp_Type_%.*s: { return(\"%.*s\"); } break;\n",
-                      sd->name.len, sd->name.e,
-                      sd->name.len, sd->name.e);
-            }
-
-            for(Int i = 0; (i < pr.typedefs.cnt); ++i) {
-                TypedefData *td = pr.typedefs.e + i;
-
-                write(&ob,
-                      "        case pp_Type_%.*s: { return(\"%.*s\"); } break;\n",
-                      td->fresh.len, td->fresh.e,
-                      td->fresh.len, td->fresh.e);
-            }
-
-            for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                EnumData *ed = pr.enums.e + i;
-
-                write(&ob,
-                      "        case pp_Type_%.*s: { return(\"%.*s\"); } break;\n",
-                      ed->name.len, ed->name.e,
-                      ed->name.len, ed->name.e);
-            }
-
-            write(&ob,
-                  "    }\n"
-                  "    \n"
-                  "    PP_ASSERT(0);\n"
-                  "    return(0);\n"
-                  "}\n");
-
-        }
-
-        // Get size from type.
-        {
-            write(&ob,
-                  "\n"
-                  "PP_STATIC size_t pp_get_size_from_type(pp_Type _type) {\n"
-                  "    pp_Type type = pp_typedef_to_original(_type);\n"
-                  "\n"
-                  "    switch(type) {\n");
-
-            for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                StructData *sd = pr.structs.e + i;
-
-                write(&ob,
-                      "        case pp_Type_%.*s: { return(sizeof(pp_%.*s)); } break;\n",
-                      sd->name.len, sd->name.e,
-                      sd->name.len, sd->name.e);
-            }
-
-            write(&ob,
-                  "    }\n"
-                  "\n"
-                  "    PP_ASSERT(0);\n"
-                  "    return(0);\n"
-                  "}\n");
-        }
-
-        // Print struct.
-        {
-            write_to_output_buffer_no_var_args(&ob,
-                                               "\n"
-                                               "#define pp_serialize_struct(var, Type, buf, size) pp_serialize_struct_(var, PP_CONCAT(pp_Type_, Type), PP_TO_STRING(var), 0, buf, size, 0)\n"
-                                               "PP_STATIC size_t\n"
-                                               "pp_serialize_struct_(void *var, pp_Type type, char const *name, int indent, char *buffer, size_t buf_size, size_t bytes_written) {\n"
-                                               "    PP_ASSERT((buffer) && (buf_size > 0)); // Check params.\n"
-                                               "\n"
-                                               "    // Setup the indent buffer.\n"
-                                               "    char indent_buf[256] = {0};\n"
-                                               "    indent += 4;\n"
-                                               "    for(int i = 0; (i < indent); ++i) {indent_buf[i] = ' ';}\n"
-                                               "\n"
-                                               "    int num_members = pp_get_number_of_members(type); PP_ASSERT(num_members != -1); // Get the number of members for the for loop.\n"
-                                               "    for(int i = 0; (i < num_members); ++i) {\n"
-                                               "        pp_MemberDefinition member = pp_get_members_from_type(type, i);\n"
-                                               "        size_t *member_ptr = (size_t *)((char *)var + member.offset); // Get the actual pointer to the memory address.\n"
-                                               "        pp_StructureType struct_type = pp_get_structure_type(member.type);\n"
-                                               "        if(struct_type == pp_StructureType_primitive) {\n"
-                                               "            char const *type_as_string = pp_type_to_string(member.type);\n"
-                                               "            if(member.arr_size > 1) {\n"
-                                               "                for(int j = 0; (j < member.arr_size); ++j) {\n"
-                                               "                    size_t *member_ptr_as_size_t = (size_t *)member_ptr; // For arrays of pointers.\n"
-                                               "                    pp_bool is_null = (member.ptr) ? member_ptr_as_size_t[j] == 0 : PP_FALSE;\n"
-                                               "                    if(!is_null) {\n"
-                                               "\n"
-                                               "#define print_prim_arr(m, Type, p) Type *v = (member.ptr) ? *(Type **)((char unsigned *)member_ptr + (sizeof(size_t) * j)) : &((Type *)member_ptr)[j]; bytes_written += PP_SPRINTF((char *)buffer + bytes_written, buf_size - bytes_written, \"\\n%s \" #Type \" %s%s[%d] = \" m \"\", indent_buf, (member.ptr) ? \"*\" : \"\", member.name, j, p (Type *)v)\n"
-                                               "                        pp_Type original_type = pp_typedef_to_original(member.type);\n"
-                                               "                        if(original_type == pp_Type_double)     { print_prim_arr(\"%f\",  double, *); }\n"
-                                               "                        else if(original_type == pp_Type_float) { print_prim_arr(\"%f\",  float, *);  }\n"
-                                               "                        else if(original_type == pp_Type_int)   { print_prim_arr(\"%d\",  int, *);    }\n"
-                                               "                        else if(original_type == pp_Type_long)  { print_prim_arr(\"%ld\", long, *);   }\n"
-                                               "                        else if(original_type == pp_Type_short) { print_prim_arr(\"%d\",  short, *);  }\n"
-                                               "                        else if(original_type == pp_Type_bool)  { print_prim_arr(\"%d\",  int, *);    }\n"
-                                               "                        else if(original_type == pp_Type_char) {\n"
-                                               "                            if(member.ptr) {\n"
-                                               "                                print_prim_arr(\"%s\",  char, /**/);\n"
-                                               "                            } else {\n"
-                                               "                                print_prim_arr(\"%c\",  char, *);\n"
-                                               "                            }\n"
-                                               "                        }\n"
-                                               "#undef print_prim_arr\n"
-                                               "                    } else {\n"
-                                               "                        bytes_written += PP_SPRINTF((char *)buffer + bytes_written, buf_size - bytes_written, \"\\n%s %s %s%s[%d] = (null)\", indent_buf, type_as_string, (member.ptr) ? \"*\" : \"\", member.name, j);\n"
-                                               "                    }\n"
-                                               "                }\n"
-                                               "            } else {\n"
-                                               "                size_t *v;\n"
-                                               "                if(member.ptr) {\n"
-                                               "                    v = *(size_t **)member_ptr;\n"
-                                               "                    for(int i = 0; (i < member.ptr - 1); ++i) {\n"
-                                               "                        v = *(size_t **)v;\n"
-                                               "                    }\n"
-                                               "                } else {\n"
-                                               "                    v= (size_t *)member_ptr;\n"
-                                               "                }\n"
-                                               "                if(v) {\n"
-                                               "#define print_prim(m, Type, p) bytes_written += PP_SPRINTF((char *)buffer + bytes_written, buf_size - bytes_written, \"\\n%s \" #Type \" %s%s = \" m \"\", indent_buf, (member.ptr) ? \"*\" : \"\", member.name, p (Type *)v)\n"
-                                               "                    pp_Type original_type = pp_typedef_to_original(member.type);\n"
-                                               "                    if(original_type == pp_Type_double)     { print_prim(\"%f\",  double, *); }\n"
-                                               "                    else if(original_type == pp_Type_float) { print_prim(\"%f\",  float, *);  }\n"
-                                               "                    else if(original_type == pp_Type_int)   { print_prim(\"%d\",  int, *);    }\n"
-                                               "                    else if(original_type == pp_Type_long)  { print_prim(\"%ld\", long, *);   }\n"
-                                               "                    else if(original_type == pp_Type_short) { print_prim(\"%d\",  short, *);  }\n"
-                                               "                    else if(original_type == pp_Type_bool)  { print_prim(\"%d\",  int, *);    }\n"
-                                               "                    else if(original_type == pp_Type_char) {\n"
-                                               "                        if(member.ptr) {\n"
-                                               "                            print_prim(\"%s\",  char, /**/);\n"
-                                               "                        } else {\n"
-                                               "                            print_prim(\"%c\",  char, *);\n"
-                                               "                        }\n"
-                                               "                    }\n"
-                                               "#undef print_prim\n"
-                                               "                } else {\n"
-                                               "                    bytes_written += PP_SPRINTF((char *)buffer + bytes_written, buf_size - bytes_written, \"\\n%s %s *%s = (null)\", indent_buf, type_as_string, member.name);\n"
-                                               "                }\n"
-                                               "            }\n"
-                                               "        } else if(struct_type == pp_StructureType_enum) {\n"
-                                               "// Unsupported, for now.\n"
-                                               "        } else if(struct_type == pp_StructureType_struct) {\n"
-                                               "            char tmp_arr_buf[32] = {0};\n"
-                                               "            if(member.arr_size > 1) {\n"
-                                               "                PP_SPRINTF(tmp_arr_buf, 32, \"[%d]\", member.arr_size);\n"
-                                               "            }\n"
-                                               "            bytes_written += PP_SPRINTF((char *)buffer + bytes_written, buf_size - bytes_written, \"\\n%s%s %s%s%s\", indent_buf, pp_type_to_string(member.type), (member.ptr) ? \"*\" : \"\",member.name, tmp_arr_buf);\n"
-                                               "            if(member.arr_size <= 1) {\n"
-                                               "                void *ptr = (member.ptr) ? *(size_t **)member_ptr : member_ptr;\n"
-                                               "                bytes_written = pp_serialize_struct_(ptr, member.type, member.name, indent, buffer, buf_size - bytes_written, bytes_written);\n"
-                                               "            } else {\n"
-                                               "                for(int j = 0; (j < member.arr_size); ++j) {\n"
-                                               "                    size_t size_of_struct = pp_get_size_from_type(member.type);\n"
-                                               "\n"
-                                               "                    char unsigned *ptr;\n"
-                                               "                    if(member.ptr) {\n"
-                                               "                        ptr = *(char unsigned **)((char unsigned *)member_ptr + (j * sizeof(size_t)));\n"
-                                               "                    } else {\n"
-                                               "                        ptr = ((char unsigned *)member_ptr + (j * size_of_struct));\n"
-                                               "                    }\n"
-                                               "\n"
-                                               "                    bytes_written = pp_serialize_struct_(ptr, member.type, member.name, indent, buffer, buf_size - bytes_written, bytes_written);\n"
-                                               "                }\n"
-                                               "            }\n"
-                                               "        }\n"
-                                               "    }\n"
-                                               "\n"
-                                               "    buffer[bytes_written] = 0;\n"
-                                               "    return(bytes_written);\n"
-                                               "}\n");
-        }
-
-        // Enum size.
-        {
-            write(&ob,
-                  "\n"
-                  "//\n"
-                  "// Number of members in an enum.\n"
-                  "//\n"
-                  "PP_STATIC size_t pp_get_enum_size(pp_Type type) {\n"
-                  "    switch(pp_typedef_to_original(type)) {\n");
-
-            for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                EnumData *ed = pr.enums.e + i;
-
-                write(&ob,
-                      "        case pp_Type_%.*s: { return(%d); } break;\n",
-                      ed->name.len, ed->name.e,
-                      ed->no_of_values);
-            }
-
-            write(&ob,
-                  "    }\n"
-                  "\n"
-                  "    PP_ASSERT(0);\n"
-                  "    return(0);\n"
-                  "}\n");
-        }
-
-        // String to enum.
-        {
-            write(&ob,
-                  "\n"
-                  "//\n"
-                  "// String to enum.\n"
-                  "//\n"
-                  "PP_STATIC int pp_string_to_enum(pp_Type type, char const *str) {\n"
-                  "    switch(pp_typedef_to_original(type)) {\n");
-
-            for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                EnumData *ed = pr.enums.e + i;
-
-                write(&ob,
-                      "        case pp_Type_%.*s: {\n",
-                      ed->name.len, ed->name.e);
-
-                for(Int j = 0; (j < ed->no_of_values); ++j) {
-                    EnumValue *ev = ed->values + j;
-
-                    if(!j) { write(&ob, "            ");      }
-                    else   { write(&ob, "            else "); }
+                    if(!i) { write(&ob, "    ");      }
+                    else   { write(&ob, "    else "); }
 
                     write(&ob,
-                          "if(pp_string_compare(str, \"%.*s\")) { return(%d); }\n",
-                          ev->name.len, ev->name.e, ev->value);
-                }
+                          "if(real_type == pp_Type_%.*s) {\n"
+                          "        switch(i) {\n",
+                          sd->name.len, sd->name.e);
 
-                write(&ob,
-                      "        } break;\n");
+                    for(Int j = 0; (j < sd->member_count); ++j) {
+                        Variable *mem = sd->members + j;
 
-            }
+                        write(&ob,
+                              "            case %d: {\n"
+                              "                pp_MemberDefinition res = {pp_Type_%.*s, \"%.*s\", PP_OFFSETOF(pp_%.*s, %.*s), %d, %d};\n"
+                              "                return(res);\n"
+                              "            } break; \n",
+                              j,
+                              mem->type.len, mem->type.e,
+                              mem->name.len, mem->name.e,
+                              sd->name.len, sd->name.e,
+                              mem->name.len, mem->name.e,
+                              mem->ptr,
+                              mem->array_count);
 
-            write(&ob,
-                  "    }\n"
-                  "\n"
-                  "    PP_ASSERT(0);\n"
-                  "    return(0);\n"
-                  "}\n");
-        }
-
-        // Enum to string.
-        {
-            write(&ob,
-                  "\n"
-                  "//\n"
-                  "// Enum to string.\n"
-                  "//\n"
-                  "PP_STATIC char const * pp_enum_to_string(pp_Type type, int i) {\n"
-                  "    switch(pp_typedef_to_original(type)) {\n");
-            for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                EnumData *ed = pr.enums.e + i;
-
-                write(&ob,
-                      "        case pp_Type_%.*s: {\n"
-                      "            switch(i) {\n",
-                      ed->name.len, ed->name.e);
-
-                for(Int j = 0; (j < ed->no_of_values); ++j) {
-                    EnumValue *ev = ed->values + j;
+                    }
 
                     write(&ob,
-                          "                case %d: { return(\"%.*s\"); } break;\n",
-                          ev->value, ev->name.len, ev->name.e);
+                          "        }\n"
+                          "    }\n");
+                }
+
+
+                write(&ob,
+                      "    // Not found\n"
+                      "    PP_ASSERT(0);\n"
+                      "    pp_MemberDefinition res = {};\n"
+                      "    return(res);\n"
+                      "}\n");
+            }
+
+            // Get number of members from type.
+            {
+                write(&ob,
+                      "\n"
+                      "PP_STATIC int pp_get_number_of_members(pp_Type type) {\n"
+                      "    switch(pp_typedef_to_original(type)) {\n");
+
+                for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                    StructData *sd = pr.structs.e + i;
+
+                    write(&ob,
+                          "        case pp_Type_%.*s: { return(%d); } break;\n",
+                          sd->name.len, sd->name.e, sd->member_count);
+
                 }
 
                 write(&ob,
-                      "            }\n"
-                      "        } break;\n");
+                      "    }\n"
+                      "\n"
+                      "    PP_ASSERT(0);\n"
+                      "    return(0);\n"
+                      "}\n");
+            }
+
+            // Is primitive
+            {
+                write(&ob,
+                      "\n"
+                      "typedef enum pp_StructureType {\n"
+                      "    pp_StructureType_unknown,\n"
+                      "    pp_StructureType_primitive,\n"
+                      "    pp_StructureType_struct,\n"
+                      "    pp_StructureType_enum,\n"
+                      "    pp_StructureType_count,\n"
+                      "} pp_StructureType;\n"
+                      "\n"
+                      "PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {\n"
+                      "    switch(pp_typedef_to_original(type)) {\n"
+                      "        ");
+
+                // Primitive.
+                {
+                    for(Int i = 0; (i < array_count(primitive_types)); ++i) {
+                        write(&ob, "case pp_Type_%s: ", primitive_types[i]);
+                    }
+                    write(&ob,
+                          " {\n"
+                          "            return(pp_StructureType_primitive);\n"
+                          "        } break;\n"
+                          "        ");
+                }
+
+                // Enums
+                {
+                    for(Int i = 0; (i < pr.enums.cnt); ++i) {
+                        EnumData *ed = pr.enums.e + i;
+
+                        write(&ob, "case pp_Type_%.*s: ", ed->name.len, ed->name.e);
+                    }
+                    write(&ob,
+                          " {\n"
+                          "            return(pp_StructureType_enum);\n"
+                          "        } break;\n");
+                }
+
+
+                // Structs.
+                {
+                    for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                        StructData *sd = pr.structs.e + i;
+
+                        write(&ob, "case pp_Type_%.*s: ", sd->name.len, sd->name.e);
+                    }
+                    write(&ob,
+                          " {\n"
+                          "            return(pp_StructureType_struct);\n"
+                          "        } break;\n");
+                }
+
+                write(&ob,
+                      "    }\n"
+                      "\n"
+                      "    PP_ASSERT(0);\n"
+                      "    return(pp_StructureType_unknown);\n"
+                      "}\n");
+            }
+
+            // Type to string.
+            {
+                write(&ob,
+                      "\n"
+                      "PP_STATIC char const * pp_type_to_string(pp_Type type) {\n"
+                      "    switch(type) {\n");
+
+                for(Int i = 0; (i < array_count(primitive_types)); ++i) {
+                    Char *prim = primitive_types[i];
+
+                    write(&ob,
+                          "        case pp_Type_%s: { return(\"%s\"); } break;\n",
+                          prim, prim);
+                }
+
+                for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                    StructData *sd = pr.structs.e + i;
+
+                    write(&ob,
+                          "        case pp_Type_%.*s: { return(\"%.*s\"); } break;\n",
+                          sd->name.len, sd->name.e,
+                          sd->name.len, sd->name.e);
+                }
+
+                for(Int i = 0; (i < pr.typedefs.cnt); ++i) {
+                    TypedefData *td = pr.typedefs.e + i;
+
+                    write(&ob,
+                          "        case pp_Type_%.*s: { return(\"%.*s\"); } break;\n",
+                          td->fresh.len, td->fresh.e,
+                          td->fresh.len, td->fresh.e);
+                }
+
+                for(Int i = 0; (i < pr.enums.cnt); ++i) {
+                    EnumData *ed = pr.enums.e + i;
+
+                    write(&ob,
+                          "        case pp_Type_%.*s: { return(\"%.*s\"); } break;\n",
+                          ed->name.len, ed->name.e,
+                          ed->name.len, ed->name.e);
+                }
+
+                write(&ob,
+                      "    }\n"
+                      "    \n"
+                      "    PP_ASSERT(0);\n"
+                      "    return(0);\n"
+                      "}\n");
 
             }
 
-            write(&ob,
-                  "    }\n"
-                  "\n"
-                  "    PP_ASSERT(0);\n"
-                  "    return(0);\n"
-                  "}\n");
+            // Get size from type.
+            {
+                write(&ob,
+                      "\n"
+                      "PP_STATIC size_t pp_get_size_from_type(pp_Type _type) {\n"
+                      "    pp_Type type = pp_typedef_to_original(_type);\n"
+                      "\n"
+                      "    switch(type) {\n");
+
+                for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                    StructData *sd = pr.structs.e + i;
+
+                    write(&ob,
+                          "        case pp_Type_%.*s: { return(sizeof(pp_%.*s)); } break;\n",
+                          sd->name.len, sd->name.e,
+                          sd->name.len, sd->name.e);
+                }
+
+                write(&ob,
+                      "    }\n"
+                      "\n"
+                      "    PP_ASSERT(0);\n"
+                      "    return(0);\n"
+                      "}\n");
+            }
+
+            // Print struct.
+            {
+                write_to_output_buffer_no_var_args(&ob,
+                                                   "\n"
+                                                   "#define pp_serialize_struct(var, Type, buf, size) pp_serialize_struct_(var, PP_CONCAT(pp_Type_, Type), PP_TO_STRING(var), 0, buf, size, 0)\n"
+                                                   "PP_STATIC size_t\n"
+                                                   "pp_serialize_struct_(void *var, pp_Type type, char const *name, int indent, char *buffer, size_t buf_size, size_t bytes_written) {\n"
+                                                   "    PP_ASSERT((buffer) && (buf_size > 0)); // Check params.\n"
+                                                   "\n"
+                                                   "    // Setup the indent buffer.\n"
+                                                   "    char indent_buf[256] = {0};\n"
+                                                   "    indent += 4;\n"
+                                                   "    for(int i = 0; (i < indent); ++i) {indent_buf[i] = ' ';}\n"
+                                                   "\n"
+                                                   "    int num_members = pp_get_number_of_members(type); PP_ASSERT(num_members != -1); // Get the number of members for the for loop.\n"
+                                                   "    for(int i = 0; (i < num_members); ++i) {\n"
+                                                   "        pp_MemberDefinition member = pp_get_members_from_type(type, i);\n"
+                                                   "        size_t *member_ptr = (size_t *)((char *)var + member.offset); // Get the actual pointer to the memory address.\n"
+                                                   "        pp_StructureType struct_type = pp_get_structure_type(member.type);\n"
+                                                   "        if(struct_type == pp_StructureType_primitive) {\n"
+                                                   "            char const *type_as_string = pp_type_to_string(member.type);\n"
+                                                   "            if(member.arr_size > 1) {\n"
+                                                   "                for(int j = 0; (j < member.arr_size); ++j) {\n"
+                                                   "                    size_t *member_ptr_as_size_t = (size_t *)member_ptr; // For arrays of pointers.\n"
+                                                   "                    pp_bool is_null = (member.ptr) ? member_ptr_as_size_t[j] == 0 : PP_FALSE;\n"
+                                                   "                    if(!is_null) {\n"
+                                                   "\n"
+                                                   "#define print_prim_arr(m, Type, p) Type *v = (member.ptr) ? *(Type **)((char unsigned *)member_ptr + (sizeof(size_t) * j)) : &((Type *)member_ptr)[j]; bytes_written += PP_SPRINTF((char *)buffer + bytes_written, buf_size - bytes_written, \"\\n%s \" #Type \" %s%s[%d] = \" m \"\", indent_buf, (member.ptr) ? \"*\" : \"\", member.name, j, p (Type *)v)\n"
+                                                   "                        pp_Type original_type = pp_typedef_to_original(member.type);\n"
+                                                   "                        if(original_type == pp_Type_double)     { print_prim_arr(\"%f\",  double, *); }\n"
+                                                   "                        else if(original_type == pp_Type_float) { print_prim_arr(\"%f\",  float, *);  }\n"
+                                                   "                        else if(original_type == pp_Type_int)   { print_prim_arr(\"%d\",  int, *);    }\n"
+                                                   "                        else if(original_type == pp_Type_long)  { print_prim_arr(\"%ld\", long, *);   }\n"
+                                                   "                        else if(original_type == pp_Type_short) { print_prim_arr(\"%d\",  short, *);  }\n"
+                                                   "                        else if(original_type == pp_Type_bool)  { print_prim_arr(\"%d\",  int, *);    }\n"
+                                                   "                        else if(original_type == pp_Type_char) {\n"
+                                                   "                            if(member.ptr) {\n"
+                                                   "                                print_prim_arr(\"%s\",  char, /**/);\n"
+                                                   "                            } else {\n"
+                                                   "                                print_prim_arr(\"%c\",  char, *);\n"
+                                                   "                            }\n"
+                                                   "                        }\n"
+                                                   "#undef print_prim_arr\n"
+                                                   "                    } else {\n"
+                                                   "                        bytes_written += PP_SPRINTF((char *)buffer + bytes_written, buf_size - bytes_written, \"\\n%s %s %s%s[%d] = (null)\", indent_buf, type_as_string, (member.ptr) ? \"*\" : \"\", member.name, j);\n"
+                                                   "                    }\n"
+                                                   "                }\n"
+                                                   "            } else {\n"
+                                                   "                size_t *v;\n"
+                                                   "                if(member.ptr) {\n"
+                                                   "                    v = *(size_t **)member_ptr;\n"
+                                                   "                    for(int i = 0; (i < member.ptr - 1); ++i) {\n"
+                                                   "                        v = *(size_t **)v;\n"
+                                                   "                    }\n"
+                                                   "                } else {\n"
+                                                   "                    v= (size_t *)member_ptr;\n"
+                                                   "                }\n"
+                                                   "                if(v) {\n"
+                                                   "#define print_prim(m, Type, p) bytes_written += PP_SPRINTF((char *)buffer + bytes_written, buf_size - bytes_written, \"\\n%s \" #Type \" %s%s = \" m \"\", indent_buf, (member.ptr) ? \"*\" : \"\", member.name, p (Type *)v)\n"
+                                                   "                    pp_Type original_type = pp_typedef_to_original(member.type);\n"
+                                                   "                    if(original_type == pp_Type_double)     { print_prim(\"%f\",  double, *); }\n"
+                                                   "                    else if(original_type == pp_Type_float) { print_prim(\"%f\",  float, *);  }\n"
+                                                   "                    else if(original_type == pp_Type_int)   { print_prim(\"%d\",  int, *);    }\n"
+                                                   "                    else if(original_type == pp_Type_long)  { print_prim(\"%ld\", long, *);   }\n"
+                                                   "                    else if(original_type == pp_Type_short) { print_prim(\"%d\",  short, *);  }\n"
+                                                   "                    else if(original_type == pp_Type_bool)  { print_prim(\"%d\",  int, *);    }\n"
+                                                   "                    else if(original_type == pp_Type_char) {\n"
+                                                   "                        if(member.ptr) {\n"
+                                                   "                            print_prim(\"%s\",  char, /**/);\n"
+                                                   "                        } else {\n"
+                                                   "                            print_prim(\"%c\",  char, *);\n"
+                                                   "                        }\n"
+                                                   "                    }\n"
+                                                   "#undef print_prim\n"
+                                                   "                } else {\n"
+                                                   "                    bytes_written += PP_SPRINTF((char *)buffer + bytes_written, buf_size - bytes_written, \"\\n%s %s *%s = (null)\", indent_buf, type_as_string, member.name);\n"
+                                                   "                }\n"
+                                                   "            }\n"
+                                                   "        } else if(struct_type == pp_StructureType_enum) {\n"
+                                                   "// Unsupported, for now.\n"
+                                                   "        } else if(struct_type == pp_StructureType_struct) {\n"
+                                                   "            char tmp_arr_buf[32] = {0};\n"
+                                                   "            if(member.arr_size > 1) {\n"
+                                                   "                PP_SPRINTF(tmp_arr_buf, 32, \"[%d]\", member.arr_size);\n"
+                                                   "            }\n"
+                                                   "            bytes_written += PP_SPRINTF((char *)buffer + bytes_written, buf_size - bytes_written, \"\\n%s%s %s%s%s\", indent_buf, pp_type_to_string(member.type), (member.ptr) ? \"*\" : \"\",member.name, tmp_arr_buf);\n"
+                                                   "            if(member.arr_size <= 1) {\n"
+                                                   "                void *ptr = (member.ptr) ? *(size_t **)member_ptr : member_ptr;\n"
+                                                   "                bytes_written = pp_serialize_struct_(ptr, member.type, member.name, indent, buffer, buf_size - bytes_written, bytes_written);\n"
+                                                   "            } else {\n"
+                                                   "                for(int j = 0; (j < member.arr_size); ++j) {\n"
+                                                   "                    size_t size_of_struct = pp_get_size_from_type(member.type);\n"
+                                                   "\n"
+                                                   "                    char unsigned *ptr;\n"
+                                                   "                    if(member.ptr) {\n"
+                                                   "                        ptr = *(char unsigned **)((char unsigned *)member_ptr + (j * sizeof(size_t)));\n"
+                                                   "                    } else {\n"
+                                                   "                        ptr = ((char unsigned *)member_ptr + (j * size_of_struct));\n"
+                                                   "                    }\n"
+                                                   "\n"
+                                                   "                    bytes_written = pp_serialize_struct_(ptr, member.type, member.name, indent, buffer, buf_size - bytes_written, bytes_written);\n"
+                                                   "                }\n"
+                                                   "            }\n"
+                                                   "        }\n"
+                                                   "    }\n"
+                                                   "\n"
+                                                   "    buffer[bytes_written] = 0;\n"
+                                                   "    return(bytes_written);\n"
+                                                   "}\n");
+            }
+
+            // Enum size.
+            {
+                write(&ob,
+                      "\n"
+                      "//\n"
+                      "// Number of members in an enum.\n"
+                      "//\n"
+                      "PP_STATIC size_t pp_get_enum_size(pp_Type type) {\n"
+                      "    switch(pp_typedef_to_original(type)) {\n");
+
+                for(Int i = 0; (i < pr.enums.cnt); ++i) {
+                    EnumData *ed = pr.enums.e + i;
+
+                    write(&ob,
+                          "        case pp_Type_%.*s: { return(%d); } break;\n",
+                          ed->name.len, ed->name.e,
+                          ed->no_of_values);
+                }
+
+                write(&ob,
+                      "    }\n"
+                      "\n"
+                      "    PP_ASSERT(0);\n"
+                      "    return(0);\n"
+                      "}\n");
+            }
+
+            // String to enum.
+            {
+                write(&ob,
+                      "\n"
+                      "//\n"
+                      "// String to enum.\n"
+                      "//\n"
+                      "PP_STATIC int pp_string_to_enum(pp_Type type, char const *str) {\n"
+                      "    switch(pp_typedef_to_original(type)) {\n");
+
+                for(Int i = 0; (i < pr.enums.cnt); ++i) {
+                    EnumData *ed = pr.enums.e + i;
+
+                    write(&ob,
+                          "        case pp_Type_%.*s: {\n",
+                          ed->name.len, ed->name.e);
+
+                    for(Int j = 0; (j < ed->no_of_values); ++j) {
+                        EnumValue *ev = ed->values + j;
+
+                        if(!j) { write(&ob, "            ");      }
+                        else   { write(&ob, "            else "); }
+
+                        write(&ob,
+                              "if(pp_string_compare(str, \"%.*s\")) { return(%d); }\n",
+                              ev->name.len, ev->name.e, ev->value);
+                    }
+
+                    write(&ob,
+                          "        } break;\n");
+
+                }
+
+                write(&ob,
+                      "    }\n"
+                      "\n"
+                      "    PP_ASSERT(0);\n"
+                      "    return(0);\n"
+                      "}\n");
+            }
+
+            // Enum to string.
+            {
+                write(&ob,
+                      "\n"
+                      "//\n"
+                      "// Enum to string.\n"
+                      "//\n"
+                      "PP_STATIC char const * pp_enum_to_string(pp_Type type, int i) {\n"
+                      "    switch(pp_typedef_to_original(type)) {\n");
+                for(Int i = 0; (i < pr.enums.cnt); ++i) {
+                    EnumData *ed = pr.enums.e + i;
+
+                    write(&ob,
+                          "        case pp_Type_%.*s: {\n"
+                          "            switch(i) {\n",
+                          ed->name.len, ed->name.e);
+
+                    for(Int j = 0; (j < ed->no_of_values); ++j) {
+                        EnumValue *ev = ed->values + j;
+
+                        write(&ob,
+                              "                case %d: { return(\"%.*s\"); } break;\n",
+                              ev->value, ev->name.len, ev->name.e);
+                    }
+
+                    write(&ob,
+                          "            }\n"
+                          "        } break;\n");
+
+                }
+
+                write(&ob,
+                      "    }\n"
+                      "\n"
+                      "    PP_ASSERT(0);\n"
+                      "    return(0);\n"
+                      "}\n");
+            }
+
+            // Linked List
+            {
+                write(&ob,
+                      "\n"
+                      "//\n"
+                      "// Linked List.\n"
+                      "//\n"
+                      "#define LL(Type) PP_CONCAT(LL_, Type)\n"
+                      "\n");
+
+                // Primitives.
+                for(Int i = 0; (i < array_count(primitive_types)); ++i) {
+                    Char *p = primitive_types[i];
+
+                    write(&ob,
+                          "struct LL_%s {\n"
+                          "    LL_%s *next;\n"
+                          "    %s *e;\n"
+                          "};\n"
+                          "\n",
+                          p, p, p);
+                }
+
+                // Structs.
+                for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                    StructData *sd = pr.structs.e + i;
+
+                    write(&ob,
+                          "struct LL_%.*s {\n"
+                          "    LL_%.*s *next;\n"
+                          "    %.*s *e;\n"
+                          "};\n"
+                          "\n",
+                          sd->name.len, sd->name.e,
+                          sd->name.len, sd->name.e,
+                          sd->name.len, sd->name.e);
+
+                }
+
+                // Enums.
+                for(Int i = 0; (i < pr.enums.cnt); ++i) {
+                    EnumData *ed = pr.enums.e + i;
+
+                    write(&ob,
+                          "struct LL_%.*s {\n"
+                          "    LL_%.*s *next;\n"
+                          "    %.*s *e;\n"
+                          "};\n"
+                          "\n",
+                          ed->name.len, ed->name.e,
+                          ed->name.len, ed->name.e,
+                          ed->name.len, ed->name.e);
+
+                }
+            }
+
+            system_free(types);
         }
 
         //
