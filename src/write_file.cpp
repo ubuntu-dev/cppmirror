@@ -207,11 +207,11 @@ File write_data(ParseResult pr) {
                 StructData *sd = pr.structs.e + i;
 
                 if(sd->struct_type == StructType_struct) {
-                    write(&ob, "typedef struct %.*s %.*s;\n", sd->name.len, sd->name.e, sd->name.len, sd->name.e);
+                    write(&ob, "struct %.*s;\n", sd->name.len, sd->name.e);
                 } else if(sd->struct_type == StructType_class) {
                     write(&ob, "class %.*s;\n", sd->name.len, sd->name.e);
                 } else if(sd->struct_type == StructType_union) {
-                    write(&ob, "typedef union %.*s %.*s;\n", sd->name.len, sd->name.e, sd->name.len, sd->name.e);
+                    write(&ob, "union %.*s;\n", sd->name.len, sd->name.e);
                 } else {
                     assert(0);
                 }
@@ -228,9 +228,8 @@ File write_data(ParseResult pr) {
                           ed->name.len, ed->name.e,
                           ed->type.len, ed->type.e);
                 } else {
-                    // TODO(Jonny): This part will only work in C projects.
                     write(&ob,
-                          "typedef enum %.*s %.*s;\n",
+                          "enum %.*s;\n",
                           ed->name.len, ed->name.e,
                           ed->name.len, ed->name.e);
                 }
@@ -250,7 +249,7 @@ File write_data(ParseResult pr) {
             {
                 type_count = get_actual_type_count(types, pr.structs, pr.enums, pr.typedefs);
 
-                write(&ob, "typedef enum pp_Type {\n");
+                write(&ob, "enum pp_Type {\n");
 
                 for(Int i =0; (i < type_count); ++i) {
                     String *t = types + i;
@@ -260,7 +259,7 @@ File write_data(ParseResult pr) {
                           t->len, t->e);
                 }
 
-                write(&ob, "} pp_Type;\n");
+                write(&ob, "};\n");
 
                 // Recreated structs.
                 {
@@ -271,12 +270,11 @@ File write_data(ParseResult pr) {
                               "\n"
                               "//\n"
                               "// Recreated structs.\n"
-                              "//\n",
-                              "namespace recreated {");
+                              "//\n");
                         for(Int i = 0; (i < pr.structs.cnt); ++i) {
                             StructData *sd = pr.structs.e + i;
 
-                            write(&ob, "typedef %s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
+                            write(&ob, "%s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
                                   sd->name.len, sd->name.e);
 
                             write(&ob, " { ");
@@ -317,8 +315,7 @@ File write_data(ParseResult pr) {
 
                             if(is_inside_anonymous_struct) write(&ob, " };");
 
-                            write(&ob, " } pp_%.*s;\n",
-                                  sd->name.len, sd->name.e);
+                            write(&ob, " };\n");
                         }
                     }
                 }
@@ -350,13 +347,13 @@ File write_data(ParseResult pr) {
             // get members from type.
             {
                 write(&ob,
-                      "typedef struct pp_MemberDefinition {\n"
+                      "struct pp_MemberDefinition {\n"
                       "    pp_Type type;\n"
                       "    char const *name;\n"
                       "    size_t offset;\n"
                       "    int ptr;\n"
                       "    int arr_size;\n"
-                      "} pp_MemberDefinition;\n"
+                      "};\n"
                       "\n"
                       "PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, pp_int i) {\n"
                       "    pp_Type real_type = pp_typedef_to_original(type);\n");
@@ -431,13 +428,13 @@ File write_data(ParseResult pr) {
             {
                 write(&ob,
                       "\n"
-                      "typedef enum pp_StructureType {\n"
+                      "enum pp_StructureType {\n"
                       "    pp_StructureType_unknown,\n"
                       "    pp_StructureType_primitive,\n"
                       "    pp_StructureType_struct,\n"
                       "    pp_StructureType_enum,\n"
                       "    pp_StructureType_count,\n"
-                      "} pp_StructureType;\n"
+                      "};\n"
                       "\n"
                       "PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {\n"
                       "    switch(pp_typedef_to_original(type)) {\n"
@@ -785,14 +782,14 @@ File write_data(ParseResult pr) {
                       "}\n");
             }
 
-            // Linked List
+            // Dynamic array.
             {
                 write(&ob,
                       "\n"
                       "//\n"
-                      "// Linked List.\n"
+                      "// Dynamic Array.\n"
                       "//\n"
-                      "#define LL(Type) PP_CONCAT(LL_, Type)\n"
+                      "#define pp_DynamicArray(Type) PP_CONCAT(pp_DynamicArray_, Type)\n"
                       "\n");
 
                 // Primitives.
@@ -800,8 +797,8 @@ File write_data(ParseResult pr) {
                     Char *p = primitive_types[i];
 
                     write(&ob,
-                          "struct LL_%s {\n"
-                          "    LL_%s *next;\n"
+                          "struct pp_DynamicArray_%s {\n"
+                          "    size_t capacity, size;\n"
                           "    %s *e;\n"
                           "};\n"
                           "\n",
@@ -813,8 +810,8 @@ File write_data(ParseResult pr) {
                     StructData *sd = pr.structs.e + i;
 
                     write(&ob,
-                          "struct LL_%.*s {\n"
-                          "    LL_%.*s *next;\n"
+                          "struct DynamicArray_%.*s {\n"
+                          "    DynamicArray_%.*s *next;\n"
                           "    %.*s *e;\n"
                           "};\n"
                           "\n",
@@ -829,8 +826,8 @@ File write_data(ParseResult pr) {
                     EnumData *ed = pr.enums.e + i;
 
                     write(&ob,
-                          "struct LL_%.*s {\n"
-                          "    LL_%.*s *next;\n"
+                          "struct DynamicArray_%.*s {\n"
+                          "    DynamicArray_%.*s *next;\n"
                           "    %.*s *e;\n"
                           "};\n"
                           "\n",

@@ -185,6 +185,18 @@ Bool string_comp_len(Char *a, Char *b, Int len) {
     return(true);
 }
 
+Bool string_comp(Char *a, Char *b) {
+    while((*a) && (*b)) {
+        if(*a != *b) {
+            return(false);
+        }
+
+        ++a; ++b;
+    }
+
+    return(true);
+}
+
 Void string_copy(Char *dest, Char *src) {
     while(*src) {
         *dest = *src;
@@ -230,6 +242,34 @@ Bool string_comp_array(String *a, String *b, Int cnt) {
             res = false;
             break;
         }
+    }
+
+    return(res);
+}
+
+Bool string_contains(String str, Char target) {
+    Bool res = false;
+
+    for(Int i = 0; (i < str.len); ++i) {
+        if(str.e[i] == target) {
+            res = true;
+            break;
+        }
+    }
+
+    return(res);
+}
+
+Bool string_contains(Char *str, Char target) {
+    Bool res = false;
+
+    while(*str) {
+        if(*str == target) {
+            res = true;
+            break;
+        }
+
+        ++str;
     }
 
     return(res);
@@ -435,7 +475,7 @@ Void set(void *dest, Byte v, PtrSize n) {
     }
 }
 
-#if OS_WIN32
+#if OS_WIN32 && !INTERNAL
 extern "C"
 {
 #pragma function(memset)

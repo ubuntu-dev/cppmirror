@@ -113,11 +113,14 @@ Bool string_concat(Char *dest, Int len, Char *a, Int a_len, Char *b, Int b_len);
 Void string_copy(Char *dest, Char *src);
 Bool string_comp(String a, Char *b);
 Bool string_comp(String a, String b);
+Bool string_comp(Char *a, Char *b);
 Bool string_comp_len(Char *a, Char *b, Int len);
 Bool string_comp_array(String *a, String *b, Int cnt);
 
+Bool string_contains(String str, Char target);
 Bool string_contains(String str, Char *target);
-Bool string_contains(Char *str, Char *target);
+Bool string_contains(Char *str,  Char target);
+Bool string_contains(Char *str,  Char *target);
 
 Bool is_in_string_array(String target, String *arr, Int arr_cnt);
 
@@ -179,7 +182,7 @@ Void copy(Void *dst, Void *src, PtrSize size);
 #define zero(dst, size) set(dst, 0, size)
 Void set(Void *dst, Byte v, PtrSize size);
 
-#if OS_WIN32
+#if OS_WIN32 && !INTERNAL
 extern "C"
 {
     void *memset(void *dest, int c, size_t count);

@@ -12,13 +12,6 @@
 #include "lexer.h"
 #include "platform.h"
 
-struct MacroData {
-    String iden;
-    String res;
-};
-internal MacroData *macro_data = 0;
-internal Int macro_count = 0;
-
 // TODO(Jonny): Rename some of these so they're more clear.
 enum TokenType {
     TokenType_unknown,
@@ -108,6 +101,23 @@ internal Void token_to_string(Token token, Char *buf, Int size) {
 }
 
 internal Bool token_compare(Token a, Token b) {
+    Bool res = false;
+
+    if(a.len == b.len) {
+        res = true;
+
+        for(Int i = 0; (i < a.len); ++i) {
+            if(a.e[i] != b.e[i]) {
+                res = false;
+                break; // for
+            }
+        }
+    }
+
+    return(res);
+}
+
+internal Bool token_compare(Token a, String b) {
     Bool res = false;
 
     if(a.len == b.len) {
@@ -389,6 +399,19 @@ internal Bool peak_require_token(Tokenizer *tokenizer, Char *str) {
     return(res);
 }
 
+internal Bool peak_require_token_type(Tokenizer *tokenizer, TokenType type) {
+    Bool res = false;
+    Tokenizer cpy = *tokenizer;
+    Token token = get_token(&cpy);
+
+    if(token.type == type) {
+        res = true;
+    }
+
+    return(res);
+}
+
+
 internal Bool is_stupid_class_keyword(Token t) {
     Bool res = false;
     Char *keywords[] = { "private", "public", "protected" };
@@ -641,6 +664,7 @@ internal ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_
 
                                 Tokenizer tokenizer_copy = *tokenizer;
                                 Token temp = get_token(&tokenizer_copy);
+
                                 while(temp.type != TokenType_semi_colon) {
 
                                     // Handle C++11 assignment within struct.
@@ -1028,24 +1052,6 @@ internal Token get_token(Tokenizer *tokenizer) {
         } break;
     }
 
-    if(res.type == TokenType_identifier) {
-        Bool changed = false;
-        do {
-            changed = false;
-            for(Int i = 0; (i < macro_count); ++i) {
-                MacroData *md = macro_data + i;
-
-                String token_as_string = token_to_string(res);
-                if(string_comp(token_as_string, md->iden)) {
-                    res = string_to_token(md->res);
-                    changed = true;
-                }
-            }
-        } while(changed);
-    }
-
-    //if(res.type == TokenType_unknown) { push_error(ErrorType_unknown_token_found); }
-
     return(res);
 }
 
@@ -1175,132 +1181,212 @@ internal AttemptFunctionResult attempt_to_parse_function(Token token, Tokenizer 
     return(res);
 }
 
-ParseResult parse_stream(Char *stream) {
-    ParseResult res = {};
+internal Void parse_stream(Char *stream, ParseResult *res) {
+    Tokenizer tokenizer = { stream };
 
-    Int enum_max = 8;
-    res.enums.e = system_alloc(EnumData, enum_max);
+    String template_header = {};
+    Bool parsing = true;
+    while(parsing) {
+        Token token = get_token(&tokenizer);
+        switch(token.type) {
+            case TokenType_end_of_stream: {
+                parsing = false;
+            } break;
 
-    Int struct_max = 32;
-    res.structs.e = system_alloc(StructData, struct_max);
+            case TokenType_hash: {
+                // TODO(Jonny): Assert false in here after I've written the macro parsing stage. Should be no #'s after that.
+                skip_to_end_of_line(&tokenizer);
+            } break;
 
-    Int func_max = 128;
-    res.funcs.e = system_alloc(FunctionData, func_max);
+            case TokenType_identifier: {
+                // TODO(Jonny): I may need to keep the template header, so that the generated structs still work.
+                if(token_equals(token, "template")) {
+                    template_header = parse_template(&tokenizer);
+                } else if((token_equals(token, "struct")) || (token_equals(token, "class")) || (token_equals(token, "union"))) {
+                    StructType struct_type = StructType_unknown;
 
-    Int macro_max = 32;
-    macro_data = system_alloc(MacroData, macro_max);
+                    if(token_equals(token, "struct"))     { struct_type = StructType_struct; }
+                    else if(token_equals(token, "class")) { struct_type = StructType_class;  }
+                    else if(token_equals(token, "union")) { struct_type = StructType_union;  }
 
-    Int typedef_max = 64;
-    res.typedefs.e = system_alloc(TypedefData, typedef_max);
+                    if(res->structs.cnt + 1 >= res->struct_max) {
+                        res->struct_max *= 2;
+                        Void *p = system_realloc(res->structs.e, res->struct_max);
+                        if(p) {
+                            res->structs.e = cast(StructData *)p;
+                        }
+                    }
 
-    if((res.enums.e)  && (res.structs.e) && (res.funcs.e) && (macro_data) && (res.typedefs.e)) {
-        Tokenizer tokenizer = { stream };
+                    ParseStructResult r = parse_struct(&tokenizer, struct_type, template_header);
+                    template_header.e = 0; template_header.len = 0;
 
-        String template_header = {};
-        Bool parsing = true;
-        while(parsing) {
-            Token token = get_token(&tokenizer);
-            switch(token.type) {
-                case TokenType_end_of_stream: {
-                    parsing = false;
-                } break;
+                    // TODO(Jonny): This fails at a struct declared within a struct/union.
+                    if(r.success) { res->structs.e[res->structs.cnt++] = r.sd; }
+                } else if(token_equals(token, "enum")) {
+                    if(res->enums.cnt + 1 >= res->enum_max) {
+                        res->enum_max *= 2;
+                        Void *p = system_realloc(res->enums.e, res->enum_max);
+                        if(p) {
+                            res->enums.e = cast(EnumData *)p;
+                        }
+                    }
 
-                case TokenType_hash: {
-                    if(peak_require_token(&tokenizer, "define")) {
+                    ParseEnumResult r = parse_enum(&tokenizer);
+                    if(r.success) {
+                        res->enums.e[res->enums.cnt++] = r.ed;
+                    }
+                } else if(token_equals(token, "typedef")) {
+                    Token original = peak_token(&tokenizer);
+                    if(original.type == TokenType_identifier) {
                         eat_token(&tokenizer);
 
-                        MacroData *md = macro_data + macro_count++;
-                        zero(md, sizeof(*md));
-
-                        md->iden = token_to_string(get_token(&tokenizer));
-                        eat_whitespace(&tokenizer);
-                        md->res.e = tokenizer.at;
-                        while(!is_end_of_line(*tokenizer.at)) {
-                            ++md->res.len;
-                            ++tokenizer.at;
-                        }
-                    } else {
-                        skip_to_end_of_line(&tokenizer);
-                    }
-                } break;
-
-                case TokenType_identifier: {
-                    // TODO(Jonny): I may need to keep the template header, so that the generated structs still work.
-                    if(token_equals(token, "template")) {
-                        template_header = parse_template(&tokenizer);
-                    } else if((token_equals(token, "struct")) || (token_equals(token, "class")) || (token_equals(token, "union"))) {
-                        StructType struct_type = StructType_unknown;
-
-                        if(token_equals(token, "struct"))     { struct_type = StructType_struct; }
-                        else if(token_equals(token, "class")) { struct_type = StructType_class;  }
-                        else if(token_equals(token, "union")) { struct_type = StructType_union;  }
-
-                        if(res.structs.cnt + 1 >= struct_max) {
-                            struct_max *= 2;
-                            Void *p = system_realloc(res.structs.e, struct_max);
-                            if(p) {
-                                res.structs.e = cast(StructData *)p;
-                            }
-                        }
-
-                        ParseStructResult r = parse_struct(&tokenizer, struct_type, template_header);
-                        template_header.e = 0; template_header.len = 0;
-
-                        // TODO(Jonny): This fails at a struct declared within a struct/union.
-                        if(r.success) { res.structs.e[res.structs.cnt++] = r.sd; }
-                    } else if(token_equals(token, "enum")) {
-                        if(res.enums.cnt + 1 >= enum_max) {
-                            enum_max *= 2;
-                            Void *p = system_realloc(res.enums.e, enum_max);
-                            if(p) {
-                                res.enums.e = cast(EnumData *)p;
-                            }
-                        }
-
-                        ParseEnumResult r = parse_enum(&tokenizer);
-                        if(r.success) {
-                            res.enums.e[res.enums.cnt++] = r.ed;
-                        }
-                    } else if(token_equals(token, "typedef")) {
-                        Token original = peak_token(&tokenizer);
+                        Token fresh = peak_token(&tokenizer);
                         if(original.type == TokenType_identifier) {
                             eat_token(&tokenizer);
 
-                            Token fresh = peak_token(&tokenizer);
-                            if(original.type == TokenType_identifier) {
-                                eat_token(&tokenizer);
+                            res->typedefs.e[res->typedefs.cnt].original = token_to_string(original);
+                            res->typedefs.e[res->typedefs.cnt].fresh = token_to_string(fresh);
 
-                                res.typedefs.e[res.typedefs.cnt].original = token_to_string(original);
-                                res.typedefs.e[res.typedefs.cnt].fresh = token_to_string(fresh);
-
-                                res.typedefs.cnt++;
-                            }
-                        }
-
-
-
-
-                    } else {
-                        AttemptFunctionResult r = attempt_to_parse_function(token, &tokenizer);
-                        if(r.success) {
-                            if(res.funcs.cnt + 1 >= func_max) {
-                                func_max *= 2;
-                                Void *p = system_realloc(res.funcs.e, func_max);
-                                if(p) {
-                                    res.funcs.e = cast(FunctionData *)p;
-                                }
-                            }
-
-                            // TODO(Jonny): Realloc if nessessary.
-                            res.funcs.e[res.funcs.cnt++] = r.fd;
+                            res->typedefs.cnt++;
                         }
                     }
-                } break;
+
+
+
+
+                } else {
+                    AttemptFunctionResult r = attempt_to_parse_function(token, &tokenizer);
+                    if(r.success) {
+                        if(res->funcs.cnt + 1 >= res->func_max) {
+                            res->func_max *= 2;
+                            Void *p = system_realloc(res->funcs.e, res->func_max);
+                            if(p) {
+                                res->funcs.e = cast(FunctionData *)p;
+                            }
+                        }
+
+                        // TODO(Jonny): Realloc if nessessary.
+                        res->funcs.e[res->funcs.cnt++] = r.fd;
+                    }
+                }
+            } break;
+        }
+    }
+}
+
+struct MacroData {
+    String iden;
+    String res;
+};
+
+void move_bytes(Void *ptr, PtrSize num_bytes_to_move, PtrSize move_pos) {
+    Byte *ptr8 = cast(Byte *)ptr;
+    for(Int i = num_bytes_to_move - 1; (i >= 0); --i) {
+        ptr8[i + move_pos] = ptr8[i];
+    }
+}
+
+internal Void preprocess_macros(Char *stream, PtrSize size) {
+    Int macro_max = 32, macro_cnt = 0;
+    MacroData *macro_data = system_alloc(MacroData, macro_max);
+
+    for(Int i = 0; (i < size); ++i) {
+        if(stream[i] == '#') {
+            stream[i++] = ' ';
+
+            if(string_comp(stream + i, "include")) {
+                while((stream[i] != '"') && (stream[i] != '<')) {
+                    if(stream[i] == '\n') {
+                        // TODO(Jonny): Error.
+                        break;
+                    }
+
+                    stream[i++] = ' ';
+                }
+
+                if((stream[i] == '"') || (stream[i] == '<')) {
+                    stream[i++] = ' ';
+
+                    Char name_buf[256] = {};
+                    Char *at = name_buf;
+                    while((stream[i] != '"') && (stream[i] != '>')) {
+                        *at = stream[i];
+                        ++at;
+                        stream[i++] = ' ';
+                    }
+
+                    stream[i++] = ' ';
+
+                    if(!string_comp(name_buf, "pp_generated.h")) {
+                        File include_file = system_read_entire_file_and_null_terminate(name_buf);
+                        if(include_file.size) {
+                            PtrSize old_size = size;
+                            size += include_file.size;
+                            Void *p = system_realloc(stream, size);
+                            if(p) {
+                                stream = cast(Char *)p;
+
+                                move_bytes(stream + i, old_size - i, include_file.size);
+                                copy(stream + i, include_file.data, include_file.size);
+                            }
+
+                            system_free(include_file.data);
+                        }
+                    }
+                }
+
+            } else if(string_comp(stream + i, "define")) {
+                // TODO(Jonny): Hacky!
+                while(!is_end_of_line(stream[i])) {
+                    stream[i++] = ' ';
+                }
+            } else if(string_comp(stream + i, "if 0")) {
+                // TODO(Jonny): Loop until relevant endif.
+            } else if(string_comp(stream + i, "if 1")) {
+                // TODO(Jonny): Make a note you're in an #if 1 block, then keep going until you find #else or #endif.
+            } else if(string_comp(stream + i, "endif")) {
+                // TODO(Jonny): Note you've left a #if block.
+            } else if(string_comp(stream + i, "else")) {
+                // TODO(Jonny): Note you're in an else.
+            }
+        } else {
+            for(Int j = 0; (j < macro_cnt); ++j) {
+                MacroData *md = macro_data + j;
+
+                if(string_comp(md->iden, stream + i)) {
+                    // TODO(Jonny): Replace!
+                }
             }
         }
+    }
 
-        system_free(macro_data);
+    system_free(macro_data);
+}
+
+ParseResult parse_streams(Int cnt, Char **fnames) {
+    ParseResult res = {};
+
+    res.enum_max = 8;
+    res.enums.e = system_alloc(EnumData, res.enum_max);
+
+    res.struct_max = 32;
+    res.structs.e = system_alloc(StructData, res.struct_max);
+
+    res.func_max = 128;
+    res.funcs.e = system_alloc(FunctionData, res.func_max);
+
+    res.typedef_max = 64;
+    res.typedefs.e = system_alloc(TypedefData, res.typedef_max);
+
+    for(Int i = 0; (i < cnt); ++i) {
+        File file = system_read_entire_file_and_null_terminate(fnames[i]); // TODO(Jonny): Leak.
+
+        file.data = cast(Char *)system_realloc(file.data, file.size * 2);
+
+        preprocess_macros(file.data, file.size);
+        parse_stream(file.data, &res);
     }
 
     return(res);
 }
+

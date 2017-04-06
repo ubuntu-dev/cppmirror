@@ -21,7 +21,7 @@ pushd "build"
 if "%RELEASE%"=="true" (
     cl -Femirror %RELEASE_COMMON_COMPILER_FLAGS% -GS- -Gs9999999 -Wall %FILES% -link -nodefaultlib -subsystem:console,5.2 kernel32.lib -stack:0x100000,0x100000
 ) else (
-    cl -Femirror %DEBUG_COMMON_COMPILER_FLAGS% -GS- -Gs9999999 -Wall %FILES% -link -nodefaultlib -subsystem:console,5.2 kernel32.lib -stack:0x100000,0x100000
+    cl -Femirror %DEBUG_COMMON_COMPILER_FLAGS% -GS- -Gs9999999 -Wall %FILES% -link -subsystem:console,5.2 kernel32.lib
     mirror -t
 )
 popd
@@ -31,7 +31,7 @@ rem Run after building.
 rem Test code.
 if "%RUN_TEST%"=="true" (
     pushd "test"
-    "../build/mirror.exe" *.c *.cpp
+    "../build/mirror.exe" test_code.cpp
     popd
 
     pushd "build"

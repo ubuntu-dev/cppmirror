@@ -89,9 +89,14 @@ struct ParseResult {
     Enums enums;
     Functions funcs;
     Typedefs typedefs;
+
+    Int struct_max;
+    Int enum_max;
+    Int func_max;
+    Int typedef_max;
 };
 
-ParseResult parse_stream(Char *stream);
+ParseResult parse_streams(Int cnt, Char **streams);
 Bool is_whitespace(Char c);
 
 #define _LEXER_H
