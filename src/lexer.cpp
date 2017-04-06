@@ -79,6 +79,13 @@ Bool is_whitespace(Char c) {
     return(res);
 }
 
+internal Bool is_whitespace_no_end_line(Char c) {
+    Bool res = ((c == ' ') || (c == '\t') || (c == '\v') || (c == '\f'));
+
+    return(res);
+}
+
+
 internal Void skip_to_end_of_line(Tokenizer *tokenizer) {
     while(is_end_of_line(*tokenizer->at)) {
         ++tokenizer->at;
@@ -128,6 +135,19 @@ internal Bool token_compare(Token a, String b) {
                 res = false;
                 break; // for
             }
+        }
+    }
+
+    return(res);
+}
+
+internal Bool token_compare(Token a, Char *b) {
+    Bool res = true;
+
+    for(Int i = 0; (i < a.len); ++i) {
+        if(a.e[i] != b[i]) {
+            res = false;
+            break;
         }
     }
 
@@ -481,6 +501,10 @@ struct ParseVariableRes {
 
 internal ParseVariableRes parse_variable(Tokenizer *tokenizer, TokenType end_token_type_1,
                                          TokenType end_token_type_2 = TokenType_unknown) {
+#if INTERNAL
+    Tokenizer debug_copy_tokenizer = *tokenizer;
+#endif
+
     ParseVariableRes res = {};
 
     // Return type.
@@ -503,8 +527,9 @@ internal ParseVariableRes parse_variable(Tokenizer *tokenizer, TokenType end_tok
             token = peak_token(tokenizer);
             if((token.type != end_token_type_1) && (token.type != end_token_type_2)) {
                 eat_token(tokenizer);
-                if(token.type != TokenType_open_bracket) { push_error(ErrorType_failed_parsing_variable); }
-                else {
+                if(token.type != TokenType_open_bracket) {
+                    push_error(ErrorType_failed_parsing_variable);
+                } else {
                     token = get_token(tokenizer);
                     ResultInt num = token_to_int(token);
                     if(!num.success) {
@@ -1250,11 +1275,8 @@ internal Void parse_stream(Char *stream, ParseResult *res) {
                             res->typedefs.cnt++;
                         }
                     }
-
-
-
-
                 } else {
+#if 0
                     AttemptFunctionResult r = attempt_to_parse_function(token, &tokenizer);
                     if(r.success) {
                         if(res->funcs.cnt + 1 >= res->func_max) {
@@ -1268,6 +1290,7 @@ internal Void parse_stream(Char *stream, ParseResult *res) {
                         // TODO(Jonny): Realloc if nessessary.
                         res->funcs.e[res->funcs.cnt++] = r.fd;
                     }
+#endif
                 }
             } break;
         }
@@ -1277,48 +1300,53 @@ internal Void parse_stream(Char *stream, ParseResult *res) {
 struct MacroData {
     String iden;
     String res;
+
+    String *params;
+    Int param_cnt;
 };
 
-void move_bytes(Void *ptr, PtrSize num_bytes_to_move, PtrSize move_pos) {
+internal void move_bytes(Void *ptr, PtrSize num_bytes_to_move, PtrSize move_pos) {
     Byte *ptr8 = cast(Byte *)ptr;
     for(Int i = num_bytes_to_move - 1; (i >= 0); --i) {
         ptr8[i + move_pos] = ptr8[i];
     }
 }
 
+// TODO(Jonny): Memory's a big problem here. Should use the TempMemory thing more.
 internal Void preprocess_macros(Char *stream, PtrSize size) {
-    Int macro_max = 32, macro_cnt = 0;
-    MacroData *macro_data = system_alloc(MacroData, macro_max);
+    TempMemory macro_mem = push_temp_memory(sizeof(MacroData) * 128);
 
-    for(Int i = 0; (i < size); ++i) {
-        if(stream[i] == '#') {
-            stream[i++] = ' ';
+    Int macro_cnt = 0;
+    MacroData *macro_data = cast(MacroData *)macro_mem.e;
 
-            if(string_comp(stream + i, "include")) {
-                while((stream[i] != '"') && (stream[i] != '<')) {
-                    if(stream[i] == '\n') {
-                        // TODO(Jonny): Error.
-                        break;
-                    }
+    Char *start = stream;
+    Tokenizer tokenizer = { stream };
 
-                    stream[i++] = ' ';
-                }
+    Bool parsing = true;
+    while(parsing) {
+        Token token = get_token(&tokenizer);
+        switch(token.type) {
+            case TokenType_hash: {
+                Token preprocessor_dir = get_token(&tokenizer);
 
-                if((stream[i] == '"') || (stream[i] == '<')) {
-                    stream[i++] = ' ';
+                // #include files.
+                if(token_compare(preprocessor_dir, "include")) {
+                    eat_whitespace(&tokenizer);
 
+                    // Get a copy of the name.
                     Char name_buf[256] = {};
                     Char *at = name_buf;
-                    while((stream[i] != '"') && (stream[i] != '>')) {
-                        *at = stream[i];
-                        ++at;
-                        stream[i++] = ' ';
+
+                    ++tokenizer.at;
+                    while((*tokenizer.at != '"') && (*tokenizer.at != '>')) {
+                        *at++ = *tokenizer.at++;
                     }
 
-                    stream[i++] = ' ';
+                    ++tokenizer.at;
 
                     if(!string_comp(name_buf, "pp_generated.h")) {
                         File include_file = system_read_entire_file_and_null_terminate(name_buf);
+
                         if(include_file.size) {
                             PtrSize old_size = size;
                             size += include_file.size;
@@ -1326,41 +1354,25 @@ internal Void preprocess_macros(Char *stream, PtrSize size) {
                             if(p) {
                                 stream = cast(Char *)p;
 
-                                move_bytes(stream + i, old_size - i, include_file.size);
-                                copy(stream + i, include_file.data, include_file.size);
+                                move_bytes(tokenizer.at, old_size - cast(PtrSize)(tokenizer.at - start), include_file.size);
+                                copy(tokenizer.at, include_file.data, include_file.size);
                             }
 
                             system_free(include_file.data);
                         }
                     }
-                }
 
-            } else if(string_comp(stream + i, "define")) {
-                // TODO(Jonny): Hacky!
-                while(!is_end_of_line(stream[i])) {
-                    stream[i++] = ' ';
-                }
-            } else if(string_comp(stream + i, "if 0")) {
-                // TODO(Jonny): Loop until relevant endif.
-            } else if(string_comp(stream + i, "if 1")) {
-                // TODO(Jonny): Make a note you're in an #if 1 block, then keep going until you find #else or #endif.
-            } else if(string_comp(stream + i, "endif")) {
-                // TODO(Jonny): Note you've left a #if block.
-            } else if(string_comp(stream + i, "else")) {
-                // TODO(Jonny): Note you're in an else.
-            }
-        } else {
-            for(Int j = 0; (j < macro_cnt); ++j) {
-                MacroData *md = macro_data + j;
 
-                if(string_comp(md->iden, stream + i)) {
-                    // TODO(Jonny): Replace!
+                } else if(token_compare(preprocessor_dir, "define")) {
+
                 }
-            }
+            } break;
+
+            case TokenType_end_of_stream: {
+                parsing = false;
+            };
         }
     }
-
-    system_free(macro_data);
 }
 
 ParseResult parse_streams(Int cnt, Char **fnames) {

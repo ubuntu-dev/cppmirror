@@ -97,7 +97,7 @@ struct ParseResult {
 };
 
 ParseResult parse_streams(Int cnt, Char **streams);
-Bool is_whitespace(Char c);
+//Bool is_whitespace(Char c);
 
 #define _LEXER_H
 #endif

@@ -105,7 +105,7 @@ internal Void print_help(void) {
     system_write_to_console(help);
 }
 
-Int main(Int argc, Char **argv) {
+int main(int argc, char **argv) {
     Int res = 0;
 
     system_write_to_console("Starting Mirror...");

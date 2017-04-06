@@ -195,7 +195,6 @@ File write_data(ParseResult pr) {
             }
         }
 
-        // Forward declare structs.
         {
             write(&ob,
                   "\n"
@@ -203,6 +202,7 @@ File write_data(ParseResult pr) {
                   "// Forward declared structs, enums, and functions\n"
                   "//\n");
 
+            // Forward declare structs.
             for(Int i = 0; (i < pr.structs.cnt); ++i) {
                 StructData *sd = pr.structs.e + i;
 
@@ -217,6 +217,7 @@ File write_data(ParseResult pr) {
                 }
             }
 
+#if 0
             // Forward declared enums.
             for(Int i = 0; (i < pr.enums.cnt); ++i) {
                 EnumData *ed = pr.enums.e + i;
@@ -233,6 +234,44 @@ File write_data(ParseResult pr) {
                           ed->name.len, ed->name.e,
                           ed->name.len, ed->name.e);
                 }
+            }
+#endif
+
+            for(Int i = 0; (i < pr.funcs.cnt); ++i) {
+                FunctionData *fd = pr.funcs.e + i;
+
+                Char ptr_buf[max_ptr_size] = {};
+                for(Int j = 0; (j < fd->return_type_ptr); ++j) {
+                    ptr_buf[j] = '*';
+                }
+
+                write(&ob,
+                      "%.*s %.*s%s %.*s(",
+                      fd->linkage.len, fd->linkage.e,
+                      fd->return_type.len, fd->return_type.e,
+                      ptr_buf,
+                      fd->name.len, fd->name.e);
+
+                for(Int j = 0; (j < fd->param_cnt); ++j) {
+                    Variable *param = fd->params + j;
+
+                    Char param_ptr_buf[max_ptr_size] = {};
+                    for(Int k = 0; (k < param->ptr); ++k) {
+                        param_ptr_buf[k] = '*';
+                    }
+
+                    if(j) {
+                        write(&ob, ", ");
+                    }
+
+                    write(&ob,
+                          "%.*s %s %.*s",
+                          param->type.len, param->type.e,
+                          param_ptr_buf,
+                          param->name.len, param->name.e);
+                }
+
+                write(&ob, ");\n");
             }
         }
 
@@ -821,6 +860,7 @@ File write_data(ParseResult pr) {
 
                 }
 
+#if 0
                 // Enums.
                 for(Int i = 0; (i < pr.enums.cnt); ++i) {
                     EnumData *ed = pr.enums.e + i;
@@ -834,8 +874,8 @@ File write_data(ParseResult pr) {
                           ed->name.len, ed->name.e,
                           ed->name.len, ed->name.e,
                           ed->name.len, ed->name.e);
-
                 }
+#endif
             }
 
             system_free(types);

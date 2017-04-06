@@ -95,7 +95,8 @@ struct TempMemory {
 Int const default_mem_alignment = 4; // TODO(Jonny): Should this be 8?
 
 Bool allocate_temp_memory(PtrSize size);
-TempMemory push_temp_memory(PtrSize size, PtrSize alignment = default_mem_alignment);
+PtrSize get_remaining_temp_memory();
+TempMemory push_temp_memory(PtrSize size = get_remaining_temp_memory(), PtrSize alignment = default_mem_alignment);
 Void pop_temp_memory(TempMemory *temp_memory);
 Void free_temp_memory();
 

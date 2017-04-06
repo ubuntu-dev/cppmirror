@@ -155,49 +155,7 @@ internal Bool is_valid_cpp_file(Char *fname) {
 
     return(res);
 }
-#if 0
-File system_read_multiple_files_into_one(Char **fnames, Int cnt) {
-    File res = {};
 
-    // Allocate 10 megabytes, because I've no idea how to big all the files will me. But if I can't allocate 10 megabytes,
-    // then just set the size to 0 and attempt to realloc for each file.
-    PtrSize mem_size = megabytes(10);
-    res.data = system_alloc(Char, mem_size);
-    if(!res.data) {
-        mem_size = 0;
-    }
-
-    WIN32_FIND_DATA find_data = {};
-    HANDLE fhandle = {};
-
-    // Go through each file passed in, and then do a FindFirstFile on each of them.
-    for(Int i = 0; (i < cnt); ++i) {
-        fhandle = FindFirstFile(fnames[i], &find_data);
-
-        do {
-            if(is_valid_cpp_file(find_data.cFileName)) {
-                LARGE_INTEGER file_size;
-                file_size.HighPart = find_data.nFileSizeHigh;
-                file_size.LowPart = find_data.nFileSizeLow;
-
-                PtrSize fsize = system_get_file_size(find_data.cFileName) + 1;
-                if(res.size + fsize >= mem_size) {
-                    mem_size = (mem_size + res.size + fsize) * 2;
-                    void *p = system_realloc(res.data, mem_size);
-                    if(p) {
-                        res.data = cast(Char *)p;
-                    }
-                }
-
-                File file = system_read_entire_file_and_null_terminate(find_data.cFileName, res.data + res.size);
-                res.size += file.size;
-            }
-        } while(FindNextFile(fhandle, &find_data) != 0);
-    }
-
-    return(res);
-}
-#endif
 Bool system_create_folder(Char *name) {
     Int create_dir_res = CreateDirectory(name, 0);
 

@@ -122,7 +122,13 @@ Bool allocate_temp_memory(PtrSize size) {
     return(res);
 }
 
-TempMemory push_temp_memory(PtrSize size, PtrSize alignment/*=default_memory_alignment*/) {
+PtrSize get_remaining_temp_memory() {
+    PtrSize res = global_temp_max - global_temp_index;
+
+    return(res);
+}
+
+TempMemory push_temp_memory(PtrSize size/*= get_remaining_temp_memory()*/, PtrSize alignment/*=default_memory_alignment*/) {
     TempMemory res = {};
 
     PtrSize alignment_offset = get_alignment(cast(Byte *)global_temp_memory + global_temp_index, alignment);
