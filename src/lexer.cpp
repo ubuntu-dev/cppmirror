@@ -1305,19 +1305,73 @@ struct MacroData {
     Int param_cnt;
 };
 
-internal void move_bytes(Void *ptr, PtrSize num_bytes_to_move, PtrSize move_pos) {
+internal void move_bytes_forward(Void *ptr, PtrSize num_bytes_to_move, PtrSize move_pos) {
     Byte *ptr8 = cast(Byte *)ptr;
     for(Int i = num_bytes_to_move - 1; (i >= 0); --i) {
         ptr8[i + move_pos] = ptr8[i];
     }
 }
 
+internal void move_bytes_backwards(Void *ptr, PtrSize num_bytes_to_move, PtrSize move_pos) {
+    Byte *ptr8 = cast(Byte *)ptr;
+    for(Int i = 0; (i < num_bytes_to_move); ++i) {
+        ptr8[i + move_pos] = ptr8[i];
+    }
+}
+
+struct ParseMacroResult {
+    MacroData md;
+    Bool success;
+};
+internal ParseMacroResult parse_macro(Tokenizer *tokenizer, TempMemory *param_memory) {
+    ParseMacroResult res = {};
+
+    Token iden = get_token(tokenizer);
+
+    while(is_whitespace_no_end_line(*tokenizer->at)) {
+        ++tokenizer->at;
+    }
+
+    res.md.iden = token_to_string(iden);
+
+    if(is_end_of_line(*tokenizer->at)) {
+        res.success = true;
+    } else {
+        if(*tokenizer->at == '(') {
+            res.md.params = cast(String *)(cast(Char *)param_memory->e + param_memory->used);
+
+            Token param = {};
+            do {
+                param = get_token(tokenizer);
+                if(param.type == TokenType_identifier) {
+                    res.md.params[res.md.param_cnt++] = token_to_string(param);
+                }
+            } while(param.type != TokenType_close_paren);
+
+            param_memory->used += sizeof(String) * res.md.param_cnt;
+        }
+
+        String macro_res = {};
+        macro_res.e = tokenizer->at;
+        while(!is_end_of_line(*tokenizer->at)) {
+            ++tokenizer->at;
+            ++macro_res.len;
+        }
+
+        res.md.res = macro_res;
+        res.success = true;
+    }
+
+    return(res);
+}
+
 // TODO(Jonny): Memory's a big problem here. Should use the TempMemory thing more.
 internal Void preprocess_macros(Char *stream, PtrSize size) {
-    TempMemory macro_mem = push_temp_memory(sizeof(MacroData) * 128);
+    TempMemory macro_memory = push_temp_memory(sizeof(MacroData) * 128);
+    TempMemory param_memory = push_temp_memory(sizeof(String) * 128);
 
     Int macro_cnt = 0;
-    MacroData *macro_data = cast(MacroData *)macro_mem.e;
+    MacroData *macro_data = cast(MacroData *)macro_memory.e;
 
     Char *start = stream;
     Tokenizer tokenizer = { stream };
@@ -1354,7 +1408,7 @@ internal Void preprocess_macros(Char *stream, PtrSize size) {
                             if(p) {
                                 stream = cast(Char *)p;
 
-                                move_bytes(tokenizer.at, old_size - cast(PtrSize)(tokenizer.at - start), include_file.size);
+                                move_bytes_forward(tokenizer.at, old_size - cast(PtrSize)(tokenizer.at - start), include_file.size);
                                 copy(tokenizer.at, include_file.data, include_file.size);
                             }
 
@@ -1362,9 +1416,36 @@ internal Void preprocess_macros(Char *stream, PtrSize size) {
                         }
                     }
 
-
                 } else if(token_compare(preprocessor_dir, "define")) {
+                    ParseMacroResult pmr = parse_macro(&tokenizer, &param_memory);
+                    if(pmr.success) {
+                        macro_data[macro_cnt++] = pmr.md;
+                    }
+                }
+            } break;
 
+            case TokenType_identifier: {
+                for(Int i = 0; (i < macro_cnt); ++i) {
+                    MacroData *md = macro_data + i;
+
+                    if(token_compare(token, md->iden)) {
+                        if(md->res.len) {
+                            PtrSize old_size = size;
+                            if(md->res.len > md->iden.len) {
+                                size += md->res.len - md->iden.len;
+                                Void *p = system_realloc(stream, size);
+                                if(p) {
+                                    stream = cast(Char *)p;
+                                    move_bytes_forward(tokenizer.at, old_size - cast(PtrSize)(tokenizer.at - start), md->res.len - md->iden.len);
+                                }
+                            } else {
+                                move_bytes_backwards(tokenizer.at, old_size - cast(PtrSize)(tokenizer.at - start), md->res.len - md->iden.len);
+                            }
+
+                            tokenizer.at -= md->iden.len;
+                            copy(tokenizer.at, md->res.e, md->res.len);
+                        }
+                    }
                 }
             } break;
 
@@ -1373,6 +1454,9 @@ internal Void preprocess_macros(Char *stream, PtrSize size) {
             };
         }
     }
+
+    pop_temp_memory(&param_memory);
+    pop_temp_memory(&macro_memory);
 }
 
 ParseResult parse_streams(Int cnt, Char **fnames) {

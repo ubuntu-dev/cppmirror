@@ -251,7 +251,7 @@ void mainCRTStartup() {
                         *cur = find_data.cFileName;
                         ++cur;
                         ++argc;
-                    } while(FindNextFile(fhandle, &find_data) != 0);
+                    } while(FindNextFile(fhandle, &find_data));
                 }
             }
         }
