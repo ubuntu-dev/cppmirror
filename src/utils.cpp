@@ -98,10 +98,6 @@ Bool print_errors(void) {
 //
 // Temp Memory.
 //
-internal Void *global_temp_memory = 0;
-internal PtrSize global_temp_index = 0;
-internal PtrSize global_temp_max = 0;
-
 PtrSize get_alignment(void *mem, PtrSize desired_alignment) {
     PtrSize res = 0;
 
@@ -113,40 +109,36 @@ PtrSize get_alignment(void *mem, PtrSize desired_alignment) {
     return(res);
 }
 
-
-Bool allocate_temp_memory(PtrSize size) {
-    global_temp_max = size;
-    global_temp_memory = system_malloc(global_temp_max);
-
-    Bool res = global_temp_memory != 0;
-    return(res);
-}
-
-PtrSize get_remaining_temp_memory() {
-    PtrSize res = global_temp_max - global_temp_index;
-
-    return(res);
-}
-
-TempMemory push_temp_memory(PtrSize size/*= get_remaining_temp_memory()*/, PtrSize alignment/*=default_memory_alignment*/) {
+TempMemory create_temp_buffer(PtrSize size) {
     TempMemory res = {};
 
-    PtrSize alignment_offset = get_alignment(cast(Byte *)global_temp_memory + global_temp_index, alignment);
-    if(global_temp_index + alignment_offset + size < global_temp_max) {
-        res.e = cast(Byte *)global_temp_memory + global_temp_index + alignment_offset;
+    res.e = system_malloc(size);
+    if(res.e) {
         res.size = size;
-        res.alignment_offset = alignment_offset;
-
-        global_temp_index += (res.size + alignment);;
         zero(res.e, res.size);
     }
 
     return(res);
 }
 
-Void pop_temp_memory(TempMemory *temp_memory) {
-    global_temp_index -= temp_memory->size + temp_memory->alignment_offset;
-    zero(temp_memory, sizeof(*temp_memory));
+Void *push_size(TempMemory *tm, PtrSize size, PtrSize alignment/*= default_mem_alignment*/) {
+    Void *res = 0;
+
+    PtrSize alignment_offset = get_alignment(cast(Byte *)tm->e + tm->used, alignment);
+
+    if(tm->used + alignment_offset < tm->size) {
+        res = cast(Byte *)tm->e + tm->used + alignment_offset;
+        tm->used += size + alignment_offset;
+    } else {
+        assert(0);
+    }
+
+    return(res);
+}
+
+Void free_temp_buffer(TempMemory *temp_memory) {
+    system_free(temp_memory->e);
+    zero(temp_memory, sizeof(temp_memory));
 }
 
 //

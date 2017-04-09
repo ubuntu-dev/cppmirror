@@ -86,19 +86,17 @@ Bool print_errors(void);
 struct TempMemory {
     Void *e;
     PtrSize size;
-    PtrSize alignment_offset;
     PtrSize used;
-
-    // TODO(Jonny): Pop memory in destructor??
 };
 
 Int const default_mem_alignment = 4; // TODO(Jonny): Should this be 8?
 
-Bool allocate_temp_memory(PtrSize size);
 PtrSize get_remaining_temp_memory();
-TempMemory push_temp_memory(PtrSize size = get_remaining_temp_memory(), PtrSize alignment = default_mem_alignment);
-Void pop_temp_memory(TempMemory *temp_memory);
-Void free_temp_memory();
+TempMemory create_temp_buffer(PtrSize size);
+#define push_type(tm, Type, ...) (Type *)push_size(tm, sizeof(Type), ##__VA_ARGS__)
+Void *push_size(TempMemory *tm, PtrSize size, PtrSize alignment = default_mem_alignment);
+
+Void free_temp_buffer(TempMemory *temp_memory);
 
 //
 // String

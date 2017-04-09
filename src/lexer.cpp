@@ -1297,6 +1297,9 @@ internal Void parse_stream(Char *stream, ParseResult *res) {
     }
 }
 
+//
+// Preprocessor.
+//
 struct MacroData {
     String iden;
     String res;
@@ -1365,15 +1368,128 @@ internal ParseMacroResult parse_macro(Tokenizer *tokenizer, TempMemory *param_me
     return(res);
 }
 
-// TODO(Jonny): Memory's a big problem here. Should use the TempMemory thing more.
+internal Void macro_replace(Tokenizer *tokenizer, Char *stream, PtrSize size, MacroData md) {
+    TempMemory tm = create_temp_buffer(megabytes(1));
+
+    Int iden_len = md.iden.len;
+    String *params = 0;
+    if(md.param_cnt) {
+        params = cast(String *)push_size(&tm, sizeof(String) * md.param_cnt);
+
+        ++tokenizer->at;// Skip open paren.
+
+        String *p = params;
+        p->e = cast(Char *)push_size(&tm, sizeof(Char) * 128);
+        do {
+            ++iden_len;
+            if(*tokenizer->at == ',') {
+                ++p;
+                p->e = cast(Char *)push_size(&tm, sizeof(Char) * 128);
+            } else {
+                p->e[p->len++] = *tokenizer->at;
+                assert(p->len < 128);
+            }
+
+            ++tokenizer->at;
+        } while(*tokenizer->at != ')');
+
+        iden_len += 2;
+    }
+
+    PtrSize old_size = size;
+    if(md.res.len > iden_len) {
+        size += md.res.len - iden_len;
+        Void *p = system_realloc(stream, size);
+        if(p) {
+            stream = cast(Char *)p;
+            move_bytes_forward(tokenizer->at, old_size - cast(PtrSize)(tokenizer->at - stream), md.res.len - iden_len);
+        }
+    } else {
+        move_bytes_backwards(tokenizer->at, old_size - cast(PtrSize)(tokenizer->at - stream), md.res.len - iden_len - 1);
+    }
+
+    Char *end = tokenizer->at;
+
+    tokenizer->at -= iden_len;
+    copy(tokenizer->at, md.res.e, md.res.len);
+
+
+    if(md.param_cnt) {
+        Token token = get_token(tokenizer);
+
+        do {
+            for(Int i = 0; (i < md.param_cnt); ++i) {
+                if(token_compare(token, md.params[i])) {
+
+                    PtrSize old_size = size;
+                    if(params[i].len > token.len) {
+                        size += params[i].len;
+                        Void *p = system_realloc(stream, size);
+                        if(p) {
+                            stream = cast(Char *)p;
+                            move_bytes_forward(tokenizer->at, old_size - cast(PtrSize)(tokenizer->at - stream), params[i].len - token.len);
+                        }
+                    } else if(params[i].len < token.len) {
+                        move_bytes_backwards(tokenizer->at, old_size - cast(PtrSize)(tokenizer->at - stream), params[i].len - token.len - 1);
+                    }
+
+                    iden_len += params[i].len - token.len;
+                    end += params[i].len - token.len;
+                    for(Int j = 0; (j < params[i].len); ++j) {
+                        token.e[j] = params[i].e[j];
+                    }
+                }
+            }
+
+            token = get_token(tokenizer);
+        } while(tokenizer->at <= end);
+    }
+
+    tokenizer->at -= iden_len;
+
+    free_temp_buffer(&tm);
+}
+
+internal Void add_include_file(Tokenizer *tokenizer, Char *stream, PtrSize *size) {
+    eat_whitespace(tokenizer);
+
+    // Get a copy of the name.
+    Char name_buf[256] = {};
+    Char *at = name_buf;
+
+    ++tokenizer->at;
+    while((*tokenizer->at != '"') && (*tokenizer->at != '>')) {
+        *at++ = *tokenizer->at++;
+    }
+
+    ++tokenizer->at;
+
+    if(!string_comp(name_buf, "pp_generated.h")) {
+        File include_file = system_read_entire_file_and_null_terminate(name_buf);
+
+        if(include_file.size) {
+            PtrSize old_size = *size;
+            *size += include_file.size;
+            Void *p = system_realloc(stream, *size);
+            if(p) {
+                stream = cast(Char *)p;
+
+                move_bytes_forward(tokenizer->at, old_size - cast(PtrSize)(tokenizer->at - stream), include_file.size);
+                copy(tokenizer->at, include_file.data, include_file.size);
+            }
+
+            system_free(include_file.data);
+        }
+    }
+}
+
 internal Void preprocess_macros(Char *stream, PtrSize size) {
-    TempMemory macro_memory = push_temp_memory(sizeof(MacroData) * 128);
-    TempMemory param_memory = push_temp_memory(sizeof(String) * 128);
+    TempMemory macro_memory = create_temp_buffer(sizeof(MacroData) * 128);
+    TempMemory param_memory = create_temp_buffer(sizeof(String) * 128);
 
     Int macro_cnt = 0;
     MacroData *macro_data = cast(MacroData *)macro_memory.e;
 
-    Char *start = stream;
     Tokenizer tokenizer = { stream };
 
     Bool parsing = true;
@@ -1385,37 +1501,7 @@ internal Void preprocess_macros(Char *stream, PtrSize size) {
 
                 // #include files.
                 if(token_compare(preprocessor_dir, "include")) {
-                    eat_whitespace(&tokenizer);
-
-                    // Get a copy of the name.
-                    Char name_buf[256] = {};
-                    Char *at = name_buf;
-
-                    ++tokenizer.at;
-                    while((*tokenizer.at != '"') && (*tokenizer.at != '>')) {
-                        *at++ = *tokenizer.at++;
-                    }
-
-                    ++tokenizer.at;
-
-                    if(!string_comp(name_buf, "pp_generated.h")) {
-                        File include_file = system_read_entire_file_and_null_terminate(name_buf);
-
-                        if(include_file.size) {
-                            PtrSize old_size = size;
-                            size += include_file.size;
-                            Void *p = system_realloc(stream, size);
-                            if(p) {
-                                stream = cast(Char *)p;
-
-                                move_bytes_forward(tokenizer.at, old_size - cast(PtrSize)(tokenizer.at - start), include_file.size);
-                                copy(tokenizer.at, include_file.data, include_file.size);
-                            }
-
-                            system_free(include_file.data);
-                        }
-                    }
-
+                    add_include_file(&tokenizer, stream, &size);
                 } else if(token_compare(preprocessor_dir, "define")) {
                     ParseMacroResult pmr = parse_macro(&tokenizer, &param_memory);
                     if(pmr.success) {
@@ -1426,24 +1512,9 @@ internal Void preprocess_macros(Char *stream, PtrSize size) {
 
             case TokenType_identifier: {
                 for(Int i = 0; (i < macro_cnt); ++i) {
-                    MacroData *md = macro_data + i;
-
-                    if(token_compare(token, md->iden)) {
-                        if(md->res.len) {
-                            PtrSize old_size = size;
-                            if(md->res.len > md->iden.len) {
-                                size += md->res.len - md->iden.len;
-                                Void *p = system_realloc(stream, size);
-                                if(p) {
-                                    stream = cast(Char *)p;
-                                    move_bytes_forward(tokenizer.at, old_size - cast(PtrSize)(tokenizer.at - start), md->res.len - md->iden.len);
-                                }
-                            } else {
-                                move_bytes_backwards(tokenizer.at, old_size - cast(PtrSize)(tokenizer.at - start), md->res.len - md->iden.len);
-                            }
-
-                            tokenizer.at -= md->iden.len;
-                            copy(tokenizer.at, md->res.e, md->res.len);
+                    if(token_compare(token, macro_data[i].iden)) {
+                        if(macro_data[i].res.len) {
+                            macro_replace(&tokenizer, stream, size, macro_data[i]);
                         }
                     }
                 }
@@ -1455,10 +1526,13 @@ internal Void preprocess_macros(Char *stream, PtrSize size) {
         }
     }
 
-    pop_temp_memory(&param_memory);
-    pop_temp_memory(&macro_memory);
+    free_temp_buffer(&param_memory);
+    free_temp_buffer(&macro_memory);
 }
 
+//
+// Start point.
+//
 ParseResult parse_streams(Int cnt, Char **fnames) {
     ParseResult res = {};
 

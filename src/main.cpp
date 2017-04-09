@@ -153,8 +153,6 @@ int main(int argc, char **argv) {
                 if(tests_failed == 0) { system_write_to_console("all tests passed...");             }
                 else                  { system_write_to_console("%d tests failed\n", tests_failed); }
             } else {
-                allocate_temp_memory(gigabytes(1));
-
                 if(!number_of_files) {
                     push_error(ErrorType_no_files_pass_in);
                 } else {
