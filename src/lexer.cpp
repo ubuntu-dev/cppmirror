@@ -1368,69 +1368,87 @@ internal ParseMacroResult parse_macro(Tokenizer *tokenizer, TempMemory *param_me
     return(res);
 }
 
-internal Void macro_replace(Tokenizer *tokenizer, Char *stream, PtrSize size, MacroData md) {
+internal Int macro_replace(Char *token_start, Char *stream, PtrSize *size, MacroData md) {
+    Int res = 0;
+
     TempMemory tm = create_temp_buffer(megabytes(1));
+
+    Tokenizer tokenizer = { token_start };
 
     Int iden_len = md.iden.len;
     String *params = 0;
+
+    // Read the parameters the user passed in.
     if(md.param_cnt) {
         params = cast(String *)push_size(&tm, sizeof(String) * md.param_cnt);
 
-        ++tokenizer->at;// Skip open paren.
+        Tokenizer cpy = tokenizer;
+        cpy.at += md.iden.len + 1; // Skip identifier and open parenthesis.
 
         String *p = params;
         p->e = cast(Char *)push_size(&tm, sizeof(Char) * 128);
         do {
             ++iden_len;
-            if(*tokenizer->at == ',') {
+            if(*cpy.at == ',') {
                 ++p;
                 p->e = cast(Char *)push_size(&tm, sizeof(Char) * 128);
             } else {
-                p->e[p->len++] = *tokenizer->at;
+                p->e[p->len++] = *cpy.at;
                 assert(p->len < 128);
             }
 
-            ++tokenizer->at;
-        } while(*tokenizer->at != ')');
+            ++cpy.at;
+        } while(*cpy.at != ')');
 
         iden_len += 2;
     }
 
-    PtrSize old_size = size;
-    if(md.res.len > iden_len) {
-        size += md.res.len - iden_len;
-        Void *p = system_realloc(stream, size);
-        if(p) {
-            stream = cast(Char *)p;
-            move_bytes_forward(tokenizer->at, old_size - cast(PtrSize)(tokenizer->at - stream), md.res.len - iden_len);
+    Char *end = tokenizer.at + iden_len;
+
+    // Replace macro identifier
+    {
+        Int amount_to_change = md.res.len - iden_len;
+        PtrSize old_size = *size;
+        PtrSize offset = 0;
+        if(md.res.len > iden_len) {
+            *size += md.res.len - iden_len;
+            Void *p = system_realloc(stream, *size);
+            if(p) {
+                stream = cast(Char *)p;
+                offset = old_size - cast(PtrSize)(end - stream);
+                move_bytes_forward(end, offset, amount_to_change);
+            }
+        } else {
+            offset = old_size - cast(PtrSize)(end - stream);
+            move_bytes_backwards(end, offset, amount_to_change);
         }
-    } else {
-        move_bytes_backwards(tokenizer->at, old_size - cast(PtrSize)(tokenizer->at - stream), md.res.len - iden_len - 1);
+
+        copy(tokenizer.at, md.res.e, md.res.len);
+
+        end += amount_to_change;
+        res += amount_to_change;
     }
 
-    Char *end = tokenizer->at;
-
-    tokenizer->at -= iden_len;
-    copy(tokenizer->at, md.res.e, md.res.len);
-
-
+    // Replace macro parameters.
     if(md.param_cnt) {
-        Token token = get_token(tokenizer);
+        Token token = get_token(&tokenizer);
 
         do {
             for(Int i = 0; (i < md.param_cnt); ++i) {
                 if(token_compare(token, md.params[i])) {
 
-                    PtrSize old_size = size;
+                    PtrSize old_size = *size;
                     if(params[i].len > token.len) {
-                        size += params[i].len;
-                        Void *p = system_realloc(stream, size);
+                        *size += params[i].len;
+                        Void *p = system_realloc(stream, *size);
                         if(p) {
                             stream = cast(Char *)p;
-                            move_bytes_forward(tokenizer->at, old_size - cast(PtrSize)(tokenizer->at - stream), params[i].len - token.len);
+                            res += params[i].len - token.len;
+                            move_bytes_forward(tokenizer.at, old_size - cast(PtrSize)(tokenizer.at - stream), params[i].len - token.len);
                         }
                     } else if(params[i].len < token.len) {
-                        move_bytes_backwards(tokenizer->at, old_size - cast(PtrSize)(tokenizer->at - stream), params[i].len - token.len - 1);
+                        res += params[i].len - token.len;
+                        move_bytes_backwards(tokenizer.at, old_size - cast(PtrSize)(tokenizer.at - stream), token.len - params[i].len - 1);
                     }
 
                     iden_len += params[i].len - token.len;
@@ -1441,13 +1459,13 @@ internal Void macro_replace(Tokenizer *tokenizer, Char *stream, PtrSize size, Ma
                 }
             }
 
-            token = get_token(tokenizer);
-        } while(tokenizer->at <= end);
+            token = get_token(&tokenizer);
+        } while(tokenizer.at <= end);
     }
 
-    tokenizer->at -= iden_len;
-
     free_temp_buffer(&tm);
+
+    return(res);
 }
 
 internal Void add_include_file(Tokenizer *tokenizer, Char *stream, PtrSize *size) {
@@ -1514,7 +1532,10 @@ internal Void preprocess_macros(Char *stream, PtrSize size) {
                 for(Int i = 0; (i < macro_cnt); ++i) {
                     if(token_compare(token, macro_data[i].iden)) {
                         if(macro_data[i].res.len) {
-                            macro_replace(&tokenizer, stream, size, macro_data[i]);
+                            // TODO(Jonny): This passes in the tokenizer, but maybe it should pass
+                            //              in the token??
+                            Int tokenizer_offset = macro_replace(token.e, stream, &size, macro_data[i]);
+                            tokenizer.at += tokenizer_offset;
                         }
                     }
                 }
