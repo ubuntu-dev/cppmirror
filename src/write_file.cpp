@@ -217,26 +217,6 @@ File write_data(ParseResult pr) {
                 }
             }
 
-#if 0
-            // Forward declared enums.
-            for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                EnumData *ed = pr.enums.e + i;
-
-                if(ed->type.len) {
-                    write(&ob,
-                          "enum %s%.*s : %.*s;\n",
-                          (ed->is_struct) ? "class " : "",
-                          ed->name.len, ed->name.e,
-                          ed->type.len, ed->type.e);
-                } else {
-                    write(&ob,
-                          "enum %.*s;\n",
-                          ed->name.len, ed->name.e,
-                          ed->name.len, ed->name.e);
-                }
-            }
-#endif
-
             for(Int i = 0; (i < pr.funcs.cnt); ++i) {
                 FunctionData *fd = pr.funcs.e + i;
 
@@ -311,6 +291,13 @@ File write_data(ParseResult pr) {
                           "#define pp_DynamicArray(Type) PP_CONCAT(pp_DynamicArray_, Type)\n"
                           "\n");
 
+                    write(&ob,
+                          "typedef struct pp_DynamicArray_void { "
+                          " pp_int capacity, size;"
+                          " void *e;"
+                          " } pp_DynamicArray_void, pp_pp_DynamicArray_void;\n");
+
+
                     // Primitives.
                     for(Int i = 0; (i < array_count(primitive_types)); ++i) {
                         Char *p = primitive_types[i];
@@ -340,64 +327,108 @@ File write_data(ParseResult pr) {
                     }
                 }
 
+
                 // Recreated structs.
                 {
+                    write(&ob,
+                          "\n"
+                          "//\n"
+                          "// Recreated structs.\n"
+                          "//\n");
+                    for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                        StructData *sd = pr.structs.e + i;
 
-                    // Recreated structs.
-                    {
-                        write(&ob,
-                              "\n"
-                              "//\n"
-                              "// Recreated structs.\n"
-                              "//\n");
-                        for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                            StructData *sd = pr.structs.e + i;
+                        write(&ob, "%s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
+                              sd->name.len, sd->name.e);
 
-                            write(&ob, "%s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
-                                  sd->name.len, sd->name.e);
+                        write(&ob, " { ");
 
-                            write(&ob, " { ");
+                        Bool is_inside_anonymous_struct = false;
+                        for(Int j = 0; (j < sd->member_count); ++j) {
+                            Variable *md = sd->members + j;
 
-                            Bool is_inside_anonymous_struct = false;
-                            for(Int j = 0; (j < sd->member_count); ++j) {
-                                Variable *md = sd->members + j;
+                            if(md->is_inside_anonymous_struct != is_inside_anonymous_struct) {
+                                is_inside_anonymous_struct = !is_inside_anonymous_struct;
 
-                                if(md->is_inside_anonymous_struct != is_inside_anonymous_struct) {
-                                    is_inside_anonymous_struct = !is_inside_anonymous_struct;
-
-                                    if(is_inside_anonymous_struct) {
-                                        write(&ob, " struct {");
-                                    } else {
-                                        write(&ob, "};");
-                                    }
+                                if(is_inside_anonymous_struct) {
+                                    write(&ob, " struct {");
+                                } else {
+                                    write(&ob, "};");
                                 }
-
-                                Char *arr = "";
-                                Char arr_buffer[256] = {};
-                                if(md->array_count > 1) {
-                                    stbsp_snprintf(arr_buffer, 256, "[%u]", md->array_count);
-                                    arr = arr_buffer;
-                                }
-
-                                char ptr_buf[max_ptr_size] = {};
-                                for(Int k = 0; (k < md->ptr); ++k) {
-                                    ptr_buf[k] = '*';
-                                }
-
-                                write(&ob, " pp_%.*s %s%.*s%s; ",
-                                      md->type.len, md->type.e,
-                                      ptr_buf,
-                                      md->name.len, md->name.e,
-                                      (md->array_count > 1) ? arr_buffer : arr);
-
                             }
 
-                            if(is_inside_anonymous_struct) write(&ob, " };");
+                            Char *arr = "";
+                            Char arr_buffer[256] = {};
+                            if(md->array_count > 1) {
+                                stbsp_snprintf(arr_buffer, 256, "[%u]", md->array_count);
+                                arr = arr_buffer;
+                            }
 
-                            write(&ob, " };\n");
+                            char ptr_buf[max_ptr_size] = {};
+                            for(Int k = 0; (k < md->ptr); ++k) {
+                                ptr_buf[k] = '*';
+                            }
+
+                            write(&ob, " pp_%.*s %s%.*s%s; ",
+                                  md->type.len, md->type.e,
+                                  ptr_buf,
+                                  md->name.len, md->name.e,
+                                  (md->array_count > 1) ? arr_buffer : arr);
+
                         }
+
+                        if(is_inside_anonymous_struct) {
+                            write(&ob, " };");
+                        }
+
+                        write(&ob, " };\n");
                     }
                 }
+            }
+
+            //
+            // Dynamic array functions
+            //
+            {
+                write(&ob,
+                      "//\n"
+                      "//\n"
+                      "//\n");
+
+                // Pop.
+                write(&ob, "#define pp_pop_back(da) --da->size;\n");
+
+                write(&ob,
+                      "#define pp_push_back(da, value) { static_assert(sizeof(*(da)->e) == sizeof(value), \"Invalid value passed to pp_push_back.\"); pp_push_back_((pp_DynamicArray(void) *)da, &value, sizeof(value)); }\n"
+                      "\n"
+                      "bool pp_push_back_(pp_DynamicArray(void) *da, void *value_ptr, int size) {\n"
+                      "    bool res = false;\n"
+                      "    if(!da->capacity) {\n"
+                      "        da->e = malloc(4 * size);\n"
+                      "        if(da->e) {\n"
+                      "            da->capacity = 4;\n"
+                      "        } else {\n"
+                      "            goto exit;\n"
+                      "        }\n"
+                      "    } else if(da->size + 1 < da->capacity) {\n"
+                      "        int new_capacity = da->capacity * 2;\n"
+                      "        void *p = realloc(da->e, new_capacity * size);\n"
+                      "        if(p) {\n"
+                      "            da->e = p;\n"
+                      "            da->capacity = new_capacity;\n"
+                      "        } else {\n"
+                      "            goto exit;\n"
+                      "        }\n"
+                      "    }\n"
+                      "\n"
+                      "    char *ptr = (char *)da->e + (da->size * size);\n"
+                      "    memcpy(ptr, value_ptr, size);\n"
+                      "    ++da->size;\n"
+                      "\n"
+                      "exit:;\n"
+                      "\n"
+                      "    return(res);\n"
+                      "}\n");
             }
 
             // Typedef to origional.
