@@ -457,6 +457,15 @@ Char to_caps(Char c) {
     return(res);
 }
 
+Int absolute_value(Int v) {
+    Int res = (v > 0) ? v : -v;
+
+    return(res);
+}
+
+//
+// Memory stuff.
+//
 Void copy(Void *dest, Void *src, PtrSize size) {
     Byte *dest8 = cast(Byte *)dest;
     Byte *src8 = cast(Byte *)src;

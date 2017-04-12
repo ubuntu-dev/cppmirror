@@ -85,8 +85,8 @@ File system_read_entire_file_and_null_terminate(Char *fname) {
                     push_error(ErrorType_did_not_read_entire_file);
                 } else {
                     res.size = fsize32;
-                    res.data = cast(Char *)memory;
-                    res.data[res.size] = 0;
+                    res.e = cast(Char *)memory;
+                    res.e[res.size] = 0;
                 }
             }
 
@@ -109,7 +109,7 @@ Bool system_write_to_file(Char *fname, File file) {
 #else
         fsize32 = safe_truncate_size_64(file.size);
 #endif
-        if(WriteFile(fhandle, file.data, fsize32, &bytes_written, 0)) {
+        if(WriteFile(fhandle, file.e, fsize32, &bytes_written, 0)) {
             if(bytes_written != fsize32) push_error(ErrorType_did_not_write_entire_file);
             else                         res = true;
         }

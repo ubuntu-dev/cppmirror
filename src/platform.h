@@ -23,7 +23,7 @@ Void *system_realloc(Void *ptr, PtrSize size);
 
 // File IO.
 struct File {
-    Char *data;
+    Char *e;
     PtrSize size;
 };
 

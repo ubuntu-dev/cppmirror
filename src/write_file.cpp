@@ -891,7 +891,7 @@ File write_data(ParseResult pr) {
               "\n");
 
         res.size = ob.index;
-        res.data = ob.buffer;
+        res.e = ob.buffer;
     }
 
     return(res);

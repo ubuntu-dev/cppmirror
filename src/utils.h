@@ -173,6 +173,8 @@ Char to_caps(Char c);
 
 const Int max_ptr_size = 4;
 
+Int absolute_value(Int v);
+
 //
 // memset and memcpy
 //

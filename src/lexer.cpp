@@ -1308,6 +1308,7 @@ struct MacroData {
     Int param_cnt;
 };
 
+// TODO(Jonny): Replace these both with move stream.
 internal void move_bytes_forward(Void *ptr, PtrSize num_bytes_to_move, PtrSize move_pos) {
     Byte *ptr8 = cast(Byte *)ptr;
     for(Int i = num_bytes_to_move - 1; (i >= 0); --i) {
@@ -1320,6 +1321,8 @@ internal void move_bytes_backwards(Void *ptr, PtrSize num_bytes_to_move, PtrSize
     for(Int i = 0; (i < num_bytes_to_move); ++i) {
         ptr8[i + move_pos] = ptr8[i];
     }
+
+    ptr8[num_bytes_to_move + move_pos] = 0;
 }
 
 struct ParseMacroResult {
@@ -1368,7 +1371,7 @@ internal ParseMacroResult parse_macro(Tokenizer *tokenizer, TempMemory *param_me
     return(res);
 }
 
-internal Int macro_replace(Char *token_start, Char *stream, PtrSize *size, MacroData md) {
+internal Int macro_replace(Char *token_start, File *file, MacroData md) {
     Int res = 0;
 
     TempMemory tm = create_temp_buffer(megabytes(1));
@@ -1408,18 +1411,19 @@ internal Int macro_replace(Char *token_start, Char *stream, PtrSize *size, Macro
     // Replace macro identifier
     {
         Int amount_to_change = md.res.len - iden_len;
-        PtrSize old_size = *size;
+        PtrSize old_size = file->size;
         PtrSize offset = 0;
         if(md.res.len > iden_len) {
-            *size += md.res.len - iden_len;
-            Void *p = system_realloc(stream, *size);
+            file->size += md.res.len - iden_len;
+            Void *p = system_realloc(file->e, file->size);
             if(p) {
-                stream = cast(Char *)p;
-                offset = old_size - cast(PtrSize)(end - stream);
+                file->e = cast(Char *)p;
+                offset = old_size - cast(PtrSize)(end - file->e);
                 move_bytes_forward(end, offset, amount_to_change);
             }
         } else {
-            offset = old_size - cast(PtrSize)(end - stream);
+            offset = old_size - cast(PtrSize)(end - file->e);
+            file->size += amount_to_change;
             move_bytes_backwards(end, offset, amount_to_change);
         }
 
@@ -1437,18 +1441,19 @@ internal Int macro_replace(Char *token_start, Char *stream, PtrSize *size, Macro
             for(Int i = 0; (i < md.param_cnt); ++i) {
                 if(token_compare(token, md.params[i])) {
 
-                    PtrSize old_size = *size;
+                    PtrSize old_size = file->size;
                     if(params[i].len > token.len) {
-                        *size += params[i].len;
-                        Void *p = system_realloc(stream, *size);
+                        file->size += params[i].len;
+                        Void *p = system_realloc(file->e, file->size);
                         if(p) {
-                            stream = cast(Char *)p;
+                            file->e = cast(Char *)p;
                             res += params[i].len - token.len;
-                            move_bytes_forward(tokenizer.at, old_size - cast(PtrSize)(tokenizer.at - stream), params[i].len - token.len);
+                            move_bytes_forward(tokenizer.at, old_size - cast(PtrSize)(tokenizer.at - file->e), params[i].len - token.len);
                         }
                     } else if(params[i].len < token.len) {
                         res += params[i].len - token.len;
-                        move_bytes_backwards(tokenizer.at, old_size - cast(PtrSize)(tokenizer.at - stream), token.len - params[i].len - 1);
+                        file->size -= -1 * (token.len - params[i].len - 1);
+                        move_bytes_backwards(tokenizer.at, old_size - cast(PtrSize)(tokenizer.at - file->e), token.len - params[i].len - 1);
                     }
 
                     iden_len += params[i].len - token.len;
@@ -1468,7 +1473,7 @@ internal Int macro_replace(Char *token_start, Char *stream, PtrSize *size, Macro
     return(res);
 }
 
-internal Void add_include_file(Tokenizer *tokenizer, Char *stream, PtrSize *size) {
+internal Void add_include_file(Tokenizer *tokenizer, File *file) {
     eat_whitespace(tokenizer);
 
     // Get a copy of the name.
@@ -1486,31 +1491,49 @@ internal Void add_include_file(Tokenizer *tokenizer, Char *stream, PtrSize *size
         File include_file = system_read_entire_file_and_null_terminate(name_buf);
 
         if(include_file.size) {
-            PtrSize old_size = *size;
-            *size += include_file.size;
-            Void *p = system_realloc(stream, *size);
+            PtrSize old_size = file->size;
+            file->size += include_file.size;
+            Void *p = system_realloc(file->e, file->size);
             if(p) {
-                stream = cast(Char *)p;
+                file->e = cast(Char *)p;
 
-                move_bytes_forward(tokenizer->at, old_size - cast(PtrSize)(tokenizer->at - stream), include_file.size);
-                copy(tokenizer->at, include_file.data, include_file.size);
+                move_bytes_forward(tokenizer->at, old_size - cast(PtrSize)(tokenizer->at - file->e), include_file.size);
+                copy(tokenizer->at, include_file.e, include_file.size);
             }
 
-            system_free(include_file.data);
+            system_free(include_file.e);
         }
     }
 }
 
-internal Void preprocess_macros(Char *stream, PtrSize size) {
+// TODO(Jonny): This doesn't work... :P
+internal Void move_stream(File *file, Char *offset_ptr, PtrSize amount_to_move) {
+    PtrSize offset = offset_ptr - file->e;
+    if(amount_to_move < 0) {
+        Int abs_amount_to_move = absolute_value(amount_to_move);
+        file->size -= abs_amount_to_move;
+        for(Int i = offset; (i < file->size); ++i) {
+            file->e[i] = file->e[i + abs_amount_to_move];
+        }
+    } else {
+        assert(0); // TODO(Jonny): Not implemented yet.
+    }
+
+    file->e[file->size] = 0;
+}
+
+// TODO(Jonny): I don't think the size is correct, so I may have messed something up with it :P
+internal Void preprocess_macros(File *file) {
     TempMemory macro_memory = create_temp_buffer(sizeof(MacroData) * 128);
     TempMemory param_memory = create_temp_buffer(sizeof(String) * 128);
 
     Int macro_cnt = 0;
     MacroData *macro_data = cast(MacroData *)macro_memory.e;
 
-    Tokenizer tokenizer = { stream };
+    Tokenizer tokenizer = { file->e };
 
     Bool parsing = true;
+    Token prev_token = {};
     while(parsing) {
         Token token = get_token(&tokenizer);
         switch(token.type) {
@@ -1519,12 +1542,18 @@ internal Void preprocess_macros(Char *stream, PtrSize size) {
 
                 // #include files.
                 if(token_compare(preprocessor_dir, "include")) {
-                    add_include_file(&tokenizer, stream, &size);
+                    add_include_file(&tokenizer, file);
                 } else if(token_compare(preprocessor_dir, "define")) {
                     ParseMacroResult pmr = parse_macro(&tokenizer, &param_memory);
                     if(pmr.success) {
                         macro_data[macro_cnt++] = pmr.md;
                     }
+                } else if(preprocessor_dir.type == TokenType_hash) {
+                    Char *prev_token_end = prev_token.e + prev_token.len;
+                    Token next_token = peak_token(&tokenizer);
+                    PtrSize diff = next_token.e - prev_token_end;
+
+                    move_stream(file, token.e, -diff);
                 }
             } break;
 
@@ -1534,7 +1563,7 @@ internal Void preprocess_macros(Char *stream, PtrSize size) {
                         if(macro_data[i].res.len) {
                             // TODO(Jonny): This passes in the tokenizer, but maybe it should pass
                             //              in the token??
-                            Int tokenizer_offset = macro_replace(token.e, stream, &size, macro_data[i]);
+                            Int tokenizer_offset = macro_replace(token.e, file, macro_data[i]);
                             tokenizer.at += tokenizer_offset;
                         }
                     }
@@ -1545,6 +1574,8 @@ internal Void preprocess_macros(Char *stream, PtrSize size) {
                 parsing = false;
             };
         }
+
+        prev_token = token;
     }
 
     free_temp_buffer(&param_memory);
@@ -1572,10 +1603,10 @@ ParseResult parse_streams(Int cnt, Char **fnames) {
     for(Int i = 0; (i < cnt); ++i) {
         File file = system_read_entire_file_and_null_terminate(fnames[i]); // TODO(Jonny): Leak.
 
-        file.data = cast(Char *)system_realloc(file.data, file.size * 2);
+        file.e = cast(Char *)system_realloc(file.e, file.size * 2);
 
-        preprocess_macros(file.data, file.size);
-        parse_stream(file.data, &res);
+        preprocess_macros(&file);
+        parse_stream(file.e, &res);
     }
 
     return(res);
