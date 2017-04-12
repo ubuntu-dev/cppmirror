@@ -1246,7 +1246,21 @@ internal Void parse_stream(Char *stream, ParseResult *res) {
                     template_header.e = 0; template_header.len = 0;
 
                     // TODO(Jonny): This fails at a struct declared within a struct/union.
-                    if(r.success) { res->structs.e[res->structs.cnt++] = r.sd; }
+                    if(r.success) {
+                        Bool already_added = false;
+                        for(Int i = 0; (i < res->structs.cnt); ++i) {
+                            StructData *sd = res->structs.e + i;
+
+                            if(string_comp(sd->name, r.sd.name)) {
+                                already_added = true;
+                                break;
+                            }
+                        }
+
+                        if(!already_added) {
+                            res->structs.e[res->structs.cnt++] = r.sd;
+                        }
+                    }
                 } else if(token_equals(token, "enum")) {
                     if(res->enums.cnt + 1 >= res->enum_max) {
                         res->enum_max *= 2;
@@ -1323,6 +1337,32 @@ internal void move_bytes_backwards(Void *ptr, PtrSize num_bytes_to_move, PtrSize
     }
 
     ptr8[num_bytes_to_move + move_pos] = 0;
+}
+
+internal Void move_stream(File *file, Char *offset_ptr, Int amount_to_move) {
+    PtrSize offset = offset_ptr - file->e;
+    if(amount_to_move < 0) {
+        Int abs_amount_to_move = absolute_value(amount_to_move);
+        file->size -= abs_amount_to_move;
+        for(Int i = offset; (i < file->size); ++i) {
+            file->e[i] = file->e[i + abs_amount_to_move];
+        }
+    } else {
+        PtrSize old_size = file->size;
+        PtrSize new_size = file->size + amount_to_move;
+        Void *p = system_realloc(file->e, new_size + 1);
+        if(p) {
+            file->e = cast(Char *)p;
+
+            for(Int i = file->size - 1; (i >= offset); --i) {
+                file->e[i + amount_to_move] = file->e[i];
+            }
+
+            file->size += amount_to_move;
+        }
+    }
+
+    file->e[file->size] = 0;
 }
 
 struct ParseMacroResult {
@@ -1440,21 +1480,8 @@ internal Int macro_replace(Char *token_start, File *file, MacroData md) {
         do {
             for(Int i = 0; (i < md.param_cnt); ++i) {
                 if(token_compare(token, md.params[i])) {
-
-                    PtrSize old_size = file->size;
-                    if(params[i].len > token.len) {
-                        file->size += params[i].len;
-                        Void *p = system_realloc(file->e, file->size);
-                        if(p) {
-                            file->e = cast(Char *)p;
-                            res += params[i].len - token.len;
-                            move_bytes_forward(tokenizer.at, old_size - cast(PtrSize)(tokenizer.at - file->e), params[i].len - token.len);
-                        }
-                    } else if(params[i].len < token.len) {
-                        res += params[i].len - token.len;
-                        file->size -= -1 * (token.len - params[i].len - 1);
-                        move_bytes_backwards(tokenizer.at, old_size - cast(PtrSize)(tokenizer.at - file->e), token.len - params[i].len - 1);
-                    }
+                    move_stream(file, tokenizer.at - 1, params[i].len - token.len);
+                    res += params[i].len - token.len;
 
                     iden_len += params[i].len - token.len;
                     end += params[i].len - token.len;
@@ -1491,44 +1518,58 @@ internal Void add_include_file(Tokenizer *tokenizer, File *file) {
         File include_file = system_read_entire_file_and_null_terminate(name_buf);
 
         if(include_file.size) {
+            move_stream(file, tokenizer->at, include_file.size);
+            copy(tokenizer->at, include_file.e, include_file.size);
+#if 0
             PtrSize old_size = file->size;
             file->size += include_file.size;
             Void *p = system_realloc(file->e, file->size);
             if(p) {
                 file->e = cast(Char *)p;
 
-                move_bytes_forward(tokenizer->at, old_size - cast(PtrSize)(tokenizer->at - file->e), include_file.size);
+                //move_bytes_forward(tokenizer->at, old_size - cast(PtrSize)(tokenizer->at - file->e), include_file.size);
+                move_stream(file, tokenizer->at, file->size);
                 copy(tokenizer->at, include_file.e, include_file.size);
             }
+#endif
 
             system_free(include_file.e);
         }
     }
 }
 
-// TODO(Jonny): This doesn't work... :P
-internal Void move_stream(File *file, Char *offset_ptr, PtrSize amount_to_move) {
-    PtrSize offset = offset_ptr - file->e;
-    if(amount_to_move < 0) {
-        Int abs_amount_to_move = absolute_value(amount_to_move);
-        file->size -= abs_amount_to_move;
-        for(Int i = offset; (i < file->size); ++i) {
-            file->e[i] = file->e[i + abs_amount_to_move];
-        }
-    } else {
-        assert(0); // TODO(Jonny): Not implemented yet.
-    }
 
-    file->e[file->size] = 0;
+internal Void preload_macros(MacroData *macro_data, Int *macro_cnt, TempMemory *param_memory) {
+    Int i = 0;
+
+    //#define pp_DynamicArray(Type) PP_CONCAT(pp_DynamicArray_, Type)
+    macro_data[i].iden = create_string("pp_DynamicArray");
+    macro_data[i].res = create_string("pp_DynamicArray_##Type");
+    macro_data[i].params = push_type(param_memory, String);
+    macro_data[i].params[0] = create_string("Type");
+    macro_data[i].param_cnt = 1;
+    ++i;
+
+    //#define PP_CONCAT(a, b) a##b
+    macro_data[i].iden = create_string("PP_CONCAT");
+    macro_data[i].res = create_string("a##b");
+    macro_data[i].params = cast(String *)push_size(param_memory, sizeof(String) * 2);
+    macro_data[i].params[0] = create_string("a");
+    macro_data[i].params[1] = create_string("b");
+    macro_data[i].param_cnt = 2;
+    ++i;
+
+    *macro_cnt += i;
 }
 
-// TODO(Jonny): I don't think the size is correct, so I may have messed something up with it :P
 internal Void preprocess_macros(File *file) {
     TempMemory macro_memory = create_temp_buffer(sizeof(MacroData) * 128);
     TempMemory param_memory = create_temp_buffer(sizeof(String) * 128);
 
     Int macro_cnt = 0;
     MacroData *macro_data = cast(MacroData *)macro_memory.e;
+
+    preload_macros(macro_data, &macro_cnt, &param_memory);
 
     Tokenizer tokenizer = { file->e };
 
@@ -1565,6 +1606,7 @@ internal Void preprocess_macros(File *file) {
                             //              in the token??
                             Int tokenizer_offset = macro_replace(token.e, file, macro_data[i]);
                             tokenizer.at += tokenizer_offset;
+                            token.e += tokenizer_offset;
                         }
                     }
                 }

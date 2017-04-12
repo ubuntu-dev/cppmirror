@@ -300,6 +300,46 @@ File write_data(ParseResult pr) {
 
                 write(&ob, "};\n");
 
+
+                // Dynamic array.
+                {
+                    write(&ob,
+                          "\n"
+                          "//\n"
+                          "// Dynamic Array.\n"
+                          "//\n"
+                          "#define pp_DynamicArray(Type) PP_CONCAT(pp_DynamicArray_, Type)\n"
+                          "\n");
+
+                    // Primitives.
+                    for(Int i = 0; (i < array_count(primitive_types)); ++i) {
+                        Char *p = primitive_types[i];
+
+                        write(&ob,
+                              "typedef struct pp_DynamicArray_%s { "
+                              " pp_int capacity, size;"
+                              " %s *e;"
+                              " } pp_DynamicArray_%s, pp_pp_DynamicArray_%s;\n",
+                              p, p, p, p);
+                    }
+
+                    // Structs.
+                    for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                        StructData *sd = pr.structs.e + i;
+
+                        write(&ob,
+                              "typedef struct pp_DynamicArray_%.*s {"
+                              " pp_int capacity, size;"
+                              " %.*s *e;"
+                              "} pp_DynamicArray_%.*s, pp_pp_DynamicArray_%.*s;\n",
+                              sd->name.len, sd->name.e,
+                              sd->name.len, sd->name.e,
+                              sd->name.len, sd->name.e,
+                              sd->name.len, sd->name.e);
+
+                    }
+                }
+
                 // Recreated structs.
                 {
 
@@ -819,63 +859,6 @@ File write_data(ParseResult pr) {
                       "    PP_ASSERT(0);\n"
                       "    return(0);\n"
                       "}\n");
-            }
-
-            // Dynamic array.
-            {
-                write(&ob,
-                      "\n"
-                      "//\n"
-                      "// Dynamic Array.\n"
-                      "//\n"
-                      "#define pp_DynamicArray(Type) PP_CONCAT(pp_DynamicArray_, Type)\n"
-                      "\n");
-
-                // Primitives.
-                for(Int i = 0; (i < array_count(primitive_types)); ++i) {
-                    Char *p = primitive_types[i];
-
-                    write(&ob,
-                          "struct pp_DynamicArray_%s {\n"
-                          "    size_t capacity, size;\n"
-                          "    %s *e;\n"
-                          "};\n"
-                          "\n",
-                          p, p, p);
-                }
-
-                // Structs.
-                for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                    StructData *sd = pr.structs.e + i;
-
-                    write(&ob,
-                          "struct DynamicArray_%.*s {\n"
-                          "    DynamicArray_%.*s *next;\n"
-                          "    %.*s *e;\n"
-                          "};\n"
-                          "\n",
-                          sd->name.len, sd->name.e,
-                          sd->name.len, sd->name.e,
-                          sd->name.len, sd->name.e);
-
-                }
-
-#if 0
-                // Enums.
-                for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                    EnumData *ed = pr.enums.e + i;
-
-                    write(&ob,
-                          "struct DynamicArray_%.*s {\n"
-                          "    DynamicArray_%.*s *next;\n"
-                          "    %.*s *e;\n"
-                          "};\n"
-                          "\n",
-                          ed->name.len, ed->name.e,
-                          ed->name.len, ed->name.e,
-                          ed->name.len, ed->name.e);
-                }
-#endif
             }
 
             system_free(types);
