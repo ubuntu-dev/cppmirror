@@ -208,11 +208,11 @@ File write_data(ParseResult pr) {
                 StructData *sd = pr.structs.e + i;
 
                 if(sd->struct_type == StructType_struct) {
-                    write(&ob, "struct %.*s;\n", sd->name.len, sd->name.e);
+                    write(&ob, "typedef struct %.*s %.*s;\n", sd->name.len, sd->name.e, sd->name.len, sd->name.e);
                 } else if(sd->struct_type == StructType_class) {
                     write(&ob, "class %.*s;\n", sd->name.len, sd->name.e);
                 } else if(sd->struct_type == StructType_union) {
-                    write(&ob, "union %.*s;\n", sd->name.len, sd->name.e);
+                    write(&ob, "typedef union %.*s %.*s;\n", sd->name.len, sd->name.e, sd->name.len, sd->name.e);
                 } else {
                     assert(0);
                 }
@@ -272,7 +272,7 @@ File write_data(ParseResult pr) {
 
                 write(&ob,
                       "typedef enum pp_Type {\n"
-                      "pp_Type_unknown,\n");
+                      "    pp_Type_unknown,\n");
 
                 for(Int i =0; (i < type_count); ++i) {
                     String *t = types + i;
@@ -488,6 +488,7 @@ File write_data(ParseResult pr) {
                       "} pp_MemberDefinition;\n"
                       "\n"
                       "PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, pp_int i) {\n"
+                      "    pp_MemberDefinition res;\n"
                       "    pp_Type real_type = pp_typedef_to_original(type);\n");
                 for(Int i = 0; (i < pr.structs.cnt); ++i) {
                     StructData *sd = pr.structs.e + i;
@@ -527,7 +528,7 @@ File write_data(ParseResult pr) {
                 write(&ob,
                       "    // Not found\n"
                       "    PP_ASSERT(0);\n"
-                      "    pp_MemberDefinition res; memset(&res, 0, sizeof(res));\n"
+                      "    memset(&res, 0, sizeof(res));\n"
                       "    return(res);\n"
                       "}\n");
             }
