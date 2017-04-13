@@ -195,6 +195,7 @@ File write_data(ParseResult pr) {
             }
         }
 
+        // Forward declared structs/functions.
         {
             write(&ob,
                   "\n"
@@ -217,6 +218,7 @@ File write_data(ParseResult pr) {
                 }
             }
 
+            // Forward declared functions.
             for(Int i = 0; (i < pr.funcs.cnt); ++i) {
                 FunctionData *fd = pr.funcs.e + i;
 
@@ -280,8 +282,9 @@ File write_data(ParseResult pr) {
 
                 write(&ob, "};\n");
 
-
+                //
                 // Dynamic array.
+                //
                 {
                     write(&ob,
                           "\n"
@@ -327,8 +330,9 @@ File write_data(ParseResult pr) {
                     }
                 }
 
-
+                //
                 // Recreated structs.
+                //
                 {
                     write(&ob,
                           "\n"
@@ -391,43 +395,46 @@ File write_data(ParseResult pr) {
             //
             {
                 write(&ob,
-                      "//\n"
-                      "//\n"
-                      "//\n");
-
-                // Pop.
-                write(&ob, "#define pp_pop_back(da) --da->size;\n");
-
-                write(&ob,
-                      "#define pp_push_back(da, value) { static_assert(sizeof(*(da)->e) == sizeof(value), \"Invalid value passed to pp_push_back.\"); pp_push_back_((pp_DynamicArray(void) *)da, &value, sizeof(value)); }\n"
                       "\n"
-                      "bool pp_push_back_(pp_DynamicArray(void) *da, void *value_ptr, int size) {\n"
-                      "    bool res = false;\n"
+                      "//\n"
+                      "// Dynamic Array functions.\n"
+                      "//\n"
+                      "\n"
+                      "// Remove element from end of array, and return it by value.\n"
+                      "// TYPE pp_pop(pp_DynamicArray(TYPE) *da);\n"
+                      "#define pp_pop(da) (--(da)->size, (da)->e[(da)->size]);\n"
+                      "\n"
+                      "// Add an element onto the end of the array, and return a pointer to it.\n"
+                      "// TYPE *pp_push(pp_DynamicArray(TYPE) *da, TYPE v);\n"
+                      "#define pp_push(da, v) (pp_dynamic_array_grow_if_needed((pp_DynamicArray(void) *)(da), sizeof(v)), (da)->e[(da)->size++] = (v), &((da)->e[(da)->size - 1]))\n"
+                      "\n"
+                      "// Add an element at index i in the array, and return a pointer to it.\n"
+                      "// TYPE *pp_insert(pp_DynamicArray(TYPE) *da, TYPE v, int i);\n"
+                      "#define pp_insert(da, v, i) (pp_dynamic_array_grow_if_needed((pp_DynamicArray(void) *)(da), sizeof(v)), memmove((da)->e + (i) + 1, (da)->e + (i), (++(da)->size - (i)) * sizeof(*(da)->e)), (da)->e[i] = (v), &(da)->e[(i)])\n"
+                      "\n"
+                      "// Remove an element from the array.\n"
+                      "// void pp_remove(pp_DynamicArray(TYPE), int i);\n"
+                      "#define pp_remove(da, i) (memmove((da)->e + (i), (da)->e + (i) + 1, (--(da)->size - (i)) * sizeof(*(da)->e)))\n"
+                      "\n"
+                      "// Make the array grow by one, if needed.\n"
+                      "PP_STATIC void pp_dynamic_array_grow_if_needed(pp_DynamicArray(void) *da, int stride) {\n"
                       "    if(!da->capacity) {\n"
-                      "        da->e = malloc(4 * size);\n"
+                      "        da->e = malloc(4 * stride);\n"
                       "        if(da->e) {\n"
                       "            da->capacity = 4;\n"
                       "        } else {\n"
-                      "            goto exit;\n"
+                      "            // No Memory\n"
                       "        }\n"
-                      "    } else if(da->size + 1 < da->capacity) {\n"
+                      "    } else if(da->size + 1 >= da->capacity) {\n"
                       "        int new_capacity = da->capacity * 2;\n"
-                      "        void *p = realloc(da->e, new_capacity * size);\n"
+                      "        void *p = realloc(da->e, new_capacity * stride);\n"
                       "        if(p) {\n"
                       "            da->e = p;\n"
                       "            da->capacity = new_capacity;\n"
                       "        } else {\n"
-                      "            goto exit;\n"
+                      "            // No memory.\n"
                       "        }\n"
                       "    }\n"
-                      "\n"
-                      "    char *ptr = (char *)da->e + (da->size * size);\n"
-                      "    memcpy(ptr, value_ptr, size);\n"
-                      "    ++da->size;\n"
-                      "\n"
-                      "exit:;\n"
-                      "\n"
-                      "    return(res);\n"
                       "}\n");
             }
 
