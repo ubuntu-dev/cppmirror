@@ -270,7 +270,9 @@ File write_data(ParseResult pr) {
             {
                 type_count = get_actual_type_count(types, pr.structs, pr.enums, pr.typedefs);
 
-                write(&ob, "enum pp_Type {\n");
+                write(&ob,
+                      "typedef enum pp_Type {\n"
+                      "pp_Type_unknown,\n");
 
                 for(Int i =0; (i < type_count); ++i) {
                     String *t = types + i;
@@ -280,7 +282,7 @@ File write_data(ParseResult pr) {
                           t->len, t->e);
                 }
 
-                write(&ob, "};\n");
+                write(&ob, "} pp_Type;\n");
 
                 //
                 // Dynamic array.
@@ -305,12 +307,22 @@ File write_data(ParseResult pr) {
                     for(Int i = 0; (i < array_count(primitive_types)); ++i) {
                         Char *p = primitive_types[i];
 
+                        if(string_comp(p, "bool")) {
+                            write(&ob,
+                                  "#if defined(__cplusplus)\n");
+                        }
+
                         write(&ob,
                               "typedef struct pp_DynamicArray_%s { "
                               " pp_int capacity, size;"
                               " %s *e;"
                               " } pp_DynamicArray_%s, pp_pp_DynamicArray_%s;\n",
                               p, p, p, p);
+
+                        if(string_comp(p, "bool")) {
+                            write(&ob,
+                                  "#endif // defined(__cplusplus)\n");
+                        }
                     }
 
                     // Structs.
@@ -320,7 +332,7 @@ File write_data(ParseResult pr) {
                         write(&ob,
                               "typedef struct pp_DynamicArray_%.*s {"
                               " pp_int capacity, size;"
-                              " %.*s *e;"
+                              " struct %.*s *e;"
                               "} pp_DynamicArray_%.*s, pp_pp_DynamicArray_%.*s;\n",
                               sd->name.len, sd->name.e,
                               sd->name.len, sd->name.e,
@@ -342,7 +354,7 @@ File write_data(ParseResult pr) {
                     for(Int i = 0; (i < pr.structs.cnt); ++i) {
                         StructData *sd = pr.structs.e + i;
 
-                        write(&ob, "%s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
+                        write(&ob, "typedef %s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
                               sd->name.len, sd->name.e);
 
                         write(&ob, " { ");
@@ -382,10 +394,13 @@ File write_data(ParseResult pr) {
                         }
 
                         if(is_inside_anonymous_struct) {
-                            write(&ob, " };");
+                            write(&ob, " }");
                         }
 
-                        write(&ob, " };\n");
+                        write(&ob, " } pp_%.*s, pp_pp_%.*s;\n",
+                              sd->name.len, sd->name.e,
+                              sd->name.len, sd->name.e);
+
                     }
                 }
             }
@@ -464,13 +479,13 @@ File write_data(ParseResult pr) {
             // get members from type.
             {
                 write(&ob,
-                      "struct pp_MemberDefinition {\n"
+                      "typedef struct pp_MemberDefinition {\n"
                       "    pp_Type type;\n"
                       "    char const *name;\n"
                       "    size_t offset;\n"
                       "    int ptr;\n"
                       "    int arr_size;\n"
-                      "};\n"
+                      "} pp_MemberDefinition;\n"
                       "\n"
                       "PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, pp_int i) {\n"
                       "    pp_Type real_type = pp_typedef_to_original(type);\n");
@@ -512,7 +527,7 @@ File write_data(ParseResult pr) {
                 write(&ob,
                       "    // Not found\n"
                       "    PP_ASSERT(0);\n"
-                      "    pp_MemberDefinition res = {};\n"
+                      "    pp_MemberDefinition res; memset(&res, 0, sizeof(res));\n"
                       "    return(res);\n"
                       "}\n");
             }
@@ -545,13 +560,13 @@ File write_data(ParseResult pr) {
             {
                 write(&ob,
                       "\n"
-                      "enum pp_StructureType {\n"
+                      "typedef enum pp_StructureType {\n"
                       "    pp_StructureType_unknown,\n"
                       "    pp_StructureType_primitive,\n"
                       "    pp_StructureType_struct,\n"
                       "    pp_StructureType_enum,\n"
                       "    pp_StructureType_count,\n"
-                      "};\n"
+                      "} pp_StructureType;\n"
                       "\n"
                       "PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {\n"
                       "    switch(pp_typedef_to_original(type)) {\n"
@@ -688,22 +703,23 @@ File write_data(ParseResult pr) {
                                                    "#define pp_serialize_struct(var, Type, buf, size) pp_serialize_struct_(var, PP_CONCAT(pp_Type_, Type), PP_TO_STRING(var), 0, buf, size, 0)\n"
                                                    "PP_STATIC size_t\n"
                                                    "pp_serialize_struct_(void *var, pp_Type type, char const *name, int indent, char *buffer, size_t buf_size, size_t bytes_written) {\n"
+                                                   "    char indent_buf[256] = {0};\n"
+                                                   "    int i, j, k, num_members;\n"
                                                    "    PP_ASSERT((buffer) && (buf_size > 0)); // Check params.\n"
                                                    "\n"
                                                    "    // Setup the indent buffer.\n"
-                                                   "    char indent_buf[256] = {0};\n"
                                                    "    indent += 4;\n"
-                                                   "    for(int i = 0; (i < indent); ++i) {indent_buf[i] = ' ';}\n"
+                                                   "    for(i = 0; (i < indent); ++i) {indent_buf[i] = ' ';}\n"
                                                    "\n"
-                                                   "    int num_members = pp_get_number_of_members(type); PP_ASSERT(num_members != -1); // Get the number of members for the for loop.\n"
-                                                   "    for(int i = 0; (i < num_members); ++i) {\n"
+                                                   "    num_members = pp_get_number_of_members(type); PP_ASSERT(num_members != -1); // Get the number of members for the for loop.\n"
+                                                   "    for(i = 0; (i < num_members); ++i) {\n"
                                                    "        pp_MemberDefinition member = pp_get_members_from_type(type, i);\n"
                                                    "        size_t *member_ptr = (size_t *)((char *)var + member.offset); // Get the actual pointer to the memory address.\n"
                                                    "        pp_StructureType struct_type = pp_get_structure_type(member.type);\n"
                                                    "        if(struct_type == pp_StructureType_primitive) {\n"
                                                    "            char const *type_as_string = pp_type_to_string(member.type);\n"
                                                    "            if(member.arr_size > 1) {\n"
-                                                   "                for(int j = 0; (j < member.arr_size); ++j) {\n"
+                                                   "                for(j = 0; (j < member.arr_size); ++j) {\n"
                                                    "                    size_t *member_ptr_as_size_t = (size_t *)member_ptr; // For arrays of pointers.\n"
                                                    "                    pp_bool is_null = (member.ptr) ? member_ptr_as_size_t[j] == 0 : PP_FALSE;\n"
                                                    "                    if(!is_null) {\n"
@@ -732,7 +748,7 @@ File write_data(ParseResult pr) {
                                                    "                size_t *v;\n"
                                                    "                if(member.ptr) {\n"
                                                    "                    v = *(size_t **)member_ptr;\n"
-                                                   "                    for(int i = 0; (i < member.ptr - 1); ++i) {\n"
+                                                   "                    for(k = 0; (k < member.ptr - 1); ++k) {\n"
                                                    "                        v = *(size_t **)v;\n"
                                                    "                    }\n"
                                                    "                } else {\n"
@@ -771,7 +787,7 @@ File write_data(ParseResult pr) {
                                                    "                void *ptr = (member.ptr) ? *(size_t **)member_ptr : member_ptr;\n"
                                                    "                bytes_written = pp_serialize_struct_(ptr, member.type, member.name, indent, buffer, buf_size - bytes_written, bytes_written);\n"
                                                    "            } else {\n"
-                                                   "                for(int j = 0; (j < member.arr_size); ++j) {\n"
+                                                   "                for(j = 0; (j < member.arr_size); ++j) {\n"
                                                    "                    size_t size_of_struct = pp_get_size_from_type(member.type);\n"
                                                    "\n"
                                                    "                    char unsigned *ptr;\n"
