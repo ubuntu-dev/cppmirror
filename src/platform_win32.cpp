@@ -180,9 +180,9 @@ Void system_write_to_console(Char *format, ...) {
 
         assert(res);
         assert(chars_written == len);
-    }
 
-    system_free(buf);
+        system_free(buf);
+    }
 }
 
 int main(int argc, char **argv);
