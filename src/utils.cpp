@@ -98,10 +98,6 @@ Bool print_errors(void) {
 //
 // Temp Memory.
 //
-internal Void *global_temp_memory = 0;
-internal PtrSize global_temp_index = 0;
-internal PtrSize global_temp_max = 0;
-
 PtrSize get_alignment(void *mem, PtrSize desired_alignment) {
     PtrSize res = 0;
 
@@ -113,34 +109,36 @@ PtrSize get_alignment(void *mem, PtrSize desired_alignment) {
     return(res);
 }
 
-
-Bool allocate_temp_memory(PtrSize size) {
-    global_temp_max = size;
-    global_temp_memory = system_malloc(global_temp_max);
-
-    Bool res = global_temp_memory != 0;
-    return(res);
-}
-
-TempMemory push_temp_memory(PtrSize size, PtrSize alignment/*=default_memory_alignment*/) {
+TempMemory create_temp_buffer(PtrSize size) {
     TempMemory res = {};
 
-    PtrSize alignment_offset = get_alignment(cast(Byte *)global_temp_memory + global_temp_index, alignment);
-    if(global_temp_index + alignment_offset + size < global_temp_max) {
-        res.e = cast(Byte *)global_temp_memory + global_temp_index + alignment_offset;
+    res.e = system_malloc(size);
+    if(res.e) {
         res.size = size;
-        res.alignment_offset = alignment_offset;
-
-        global_temp_index += (res.size + alignment);;
         zero(res.e, res.size);
     }
 
     return(res);
 }
 
-Void pop_temp_memory(TempMemory *temp_memory) {
-    global_temp_index -= temp_memory->size + temp_memory->alignment_offset;
-    zero(temp_memory, sizeof(*temp_memory));
+Void *push_size(TempMemory *tm, PtrSize size, PtrSize alignment/*= default_mem_alignment*/) {
+    Void *res = 0;
+
+    PtrSize alignment_offset = get_alignment(cast(Byte *)tm->e + tm->used, alignment);
+
+    if(tm->used + alignment_offset < tm->size) {
+        res = cast(Byte *)tm->e + tm->used + alignment_offset;
+        tm->used += size + alignment_offset;
+    } else {
+        assert(0);
+    }
+
+    return(res);
+}
+
+Void free_temp_buffer(TempMemory *temp_memory) {
+    system_free(temp_memory->e);
+    zero(temp_memory, sizeof(temp_memory));
 }
 
 //
@@ -180,6 +178,18 @@ Bool string_comp_len(Char *a, Char *b, Int len) {
         if(*a != *b) {
             return(false);
         }
+    }
+
+    return(true);
+}
+
+Bool string_comp(Char *a, Char *b) {
+    while((*a) && (*b)) {
+        if(*a != *b) {
+            return(false);
+        }
+
+        ++a; ++b;
     }
 
     return(true);
@@ -230,6 +240,34 @@ Bool string_comp_array(String *a, String *b, Int cnt) {
             res = false;
             break;
         }
+    }
+
+    return(res);
+}
+
+Bool string_contains(String str, Char target) {
+    Bool res = false;
+
+    for(Int i = 0; (i < str.len); ++i) {
+        if(str.e[i] == target) {
+            res = true;
+            break;
+        }
+    }
+
+    return(res);
+}
+
+Bool string_contains(Char *str, Char target) {
+    Bool res = false;
+
+    while(*str) {
+        if(*str == target) {
+            res = true;
+            break;
+        }
+
+        ++str;
     }
 
     return(res);
@@ -419,6 +457,15 @@ Char to_caps(Char c) {
     return(res);
 }
 
+Int absolute_value(Int v) {
+    Int res = (v > 0) ? v : -v;
+
+    return(res);
+}
+
+//
+// Memory stuff.
+//
 Void copy(Void *dest, Void *src, PtrSize size) {
     Byte *dest8 = cast(Byte *)dest;
     Byte *src8 = cast(Byte *)src;
@@ -435,7 +482,7 @@ Void set(void *dest, Byte v, PtrSize n) {
     }
 }
 
-#if OS_WIN32
+#if OS_WIN32 && !INTERNAL
 extern "C"
 {
 #pragma function(memset)

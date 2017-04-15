@@ -23,12 +23,12 @@ Void *system_realloc(Void *ptr, PtrSize size);
 
 // File IO.
 struct File {
-    Char *data;
+    Char *e;
     PtrSize size;
 };
 
 Bool system_write_to_file(Char *fname, File file);
-File system_read_multiple_files_into_one(Char **fnames, Int cnt);
+File system_read_entire_file_and_null_terminate(Char *fname);
 
 // Utility stuff.
 Uint64 system_get_performance_counter(void);

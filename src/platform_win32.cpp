@@ -68,23 +68,25 @@ Void *system_realloc(Void *ptr, PtrSize size) {
     return(res);
 }
 
-File system_read_entire_file_and_null_terminate(Char *fname, Void *memory) {
+File system_read_entire_file_and_null_terminate(Char *fname) {
     File res = {};
     HANDLE fhandle;
     LARGE_INTEGER fsize;
-    DWORD fsize32, bytes_read;
+    DWORD bytes_read;
 
     fhandle = CreateFileA(fname, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
     if(fhandle != INVALID_HANDLE_VALUE) {
         if(GetFileSizeEx(fhandle, &fsize)) {
-            fsize32 = safe_truncate_size_64(fsize.QuadPart);
+            Void *memory;
+            DWORD fsize32 = safe_truncate_size_64(fsize.QuadPart);
+            memory = system_malloc(fsize32 + 1);
             if(ReadFile(fhandle, memory, fsize32, &bytes_read, 0)) {
                 if(bytes_read != fsize32) {
                     push_error(ErrorType_did_not_read_entire_file);
                 } else {
                     res.size = fsize32;
-                    res.data = cast(Char *)memory;
-                    res.data[res.size] = 0;
+                    res.e = cast(Char *)memory;
+                    res.e[res.size] = 0;
                 }
             }
 
@@ -107,7 +109,7 @@ Bool system_write_to_file(Char *fname, File file) {
 #else
         fsize32 = safe_truncate_size_64(file.size);
 #endif
-        if(WriteFile(fhandle, file.data, fsize32, &bytes_written, 0)) {
+        if(WriteFile(fhandle, file.e, fsize32, &bytes_written, 0)) {
             if(bytes_written != fsize32) push_error(ErrorType_did_not_write_entire_file);
             else                         res = true;
         }
@@ -154,48 +156,6 @@ internal Bool is_valid_cpp_file(Char *fname) {
     return(res);
 }
 
-File system_read_multiple_files_into_one(Char **fnames, Int cnt) {
-    File res = {};
-
-    // Allocate 10 megabytes, because I've no idea how to big all the files will me. But if I can't allocate 10 megabytes,
-    // then just set the size to 0 and attempt to realloc for each file.
-    PtrSize mem_size = megabytes(10);
-    res.data = system_alloc(Char, mem_size);
-    if(!res.data) {
-        mem_size = 0;
-    }
-
-    WIN32_FIND_DATA find_data = {};
-    HANDLE fhandle = {};
-
-    // Go through each file passed in, and then do a FindFirstFile on each of them.
-    for(Int i = 0; (i < cnt); ++i) {
-        fhandle = FindFirstFile(fnames[i], &find_data);
-
-        do {
-            if(is_valid_cpp_file(find_data.cFileName)) {
-                LARGE_INTEGER file_size;
-                file_size.HighPart = find_data.nFileSizeHigh;
-                file_size.LowPart = find_data.nFileSizeLow;
-
-                PtrSize fsize = system_get_file_size(find_data.cFileName) + 1;
-                if(res.size + fsize >= mem_size) {
-                    mem_size = (mem_size + res.size + fsize) * 2;
-                    void *p = system_realloc(res.data, mem_size);
-                    if(p) {
-                        res.data = cast(Char *)p;
-                    }
-                }
-
-                File file = system_read_entire_file_and_null_terminate(find_data.cFileName, res.data + res.size);
-                res.size += file.size;
-            }
-        } while(FindNextFile(fhandle, &find_data) != 0);
-    }
-
-    return(res);
-}
-
 Bool system_create_folder(Char *name) {
     Int create_dir_res = CreateDirectory(name, 0);
 
@@ -227,40 +187,72 @@ Void system_write_to_console(Char *format, ...) {
 
 int main(int argc, char **argv);
 void mainCRTStartup() {
-    Char *args = GetCommandLineA();
-    Int len = string_length(args);
+    Char *cmdline = GetCommandLineA();
+    Int args_len = string_length(cmdline);
 
     // Count number of arguments.
-    Int argc = 1;
+    Int original_cnt = 1;
     Bool in_quotes = false;
-    for(Int i = 0; (i < len); ++i) {
-        if(args[i] == '"') {
+    for(Int i = 0; (i < args_len); ++i) {
+        if(cmdline[i] == '"') {
             in_quotes = !in_quotes;
-        } else if(args[i] == ' ') {
+        } else if(cmdline[i] == ' ') {
             if(!in_quotes) {
-                ++argc;
+                ++original_cnt;
             }
         }
     }
 
     // Create copy of args.
-    Char *arg_cpy = system_alloc(Char, len + 1);
-    string_copy(arg_cpy, args);
+    Char *arg_cpy = system_alloc(Char, args_len + 1);
+    string_copy(arg_cpy, cmdline);
+
+    for(Int i = 0; (i < args_len); ++i) {
+        for(Int i = 0; (i < args_len); ++i) {
+            if(arg_cpy[i] == '"') {
+                in_quotes = !in_quotes;
+            } else if(arg_cpy[i] == ' ') {
+                if(!in_quotes) {
+                    arg_cpy[i] = 0;
+                }
+            }
+        }
+    }
 
     // Setup pointers.
     in_quotes = false;
-    Char **argv = system_alloc(Char *, argc);
+    Int mem_size = original_cnt * 2;
+    Int argc = 1;
+    Char **argv = system_alloc(Char *, mem_size);
     Char **cur = argv;
     *cur = arg_cpy;
     ++cur;
-    for(Int i = 0; (i < len); ++i) {
-        if(arg_cpy[i] == '"') {
-            in_quotes = !in_quotes;
-        } else if(arg_cpy[i] == ' ') {
-            if(!in_quotes) {
-                arg_cpy[i] = 0;
-                *cur = arg_cpy + i + 1;
+    for(Int i = 0; (i < args_len); ++i) {
+        if(!arg_cpy[i]) {
+            Char *str = arg_cpy + i + 1;
+            if(!string_contains(str, '*')) {
+                *cur = str;
                 ++cur;
+                ++argc;
+            } else {
+                WIN32_FIND_DATA find_data;
+                HANDLE fhandle = FindFirstFile(str, &find_data);
+
+                if(fhandle != INVALID_HANDLE_VALUE) {
+                    do {
+                        if(argc + 1 >= mem_size) {
+                            mem_size *= 2;
+                            Void *p = system_realloc(argv, sizeof(Char *) * mem_size);
+                            if(p) {
+                                argv = cast(Char **)p;
+                            }
+                        }
+
+                        *cur = find_data.cFileName;
+                        ++cur;
+                        ++argc;
+                    } while(FindNextFile(fhandle, &find_data));
+                }
             }
         }
     }

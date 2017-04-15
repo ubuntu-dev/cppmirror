@@ -59,6 +59,11 @@ struct FunctionData {
     Int param_cnt;
 };
 
+struct TypedefData {
+    String original;
+    String fresh;
+};
+
 struct Structs {
     StructData *e;
     Int cnt;
@@ -74,14 +79,25 @@ struct Functions {
     Int cnt;
 };
 
+struct Typedefs {
+    TypedefData *e;
+    Int cnt;
+};
+
 struct ParseResult {
     Structs structs;
     Enums enums;
     Functions funcs;
+    Typedefs typedefs;
+
+    Int struct_max;
+    Int enum_max;
+    Int func_max;
+    Int typedef_max;
 };
 
-ParseResult parse_stream(Char *stream);
-Bool is_whitespace(Char c);
+ParseResult parse_streams(Int cnt, Char **streams);
+//Bool is_whitespace(Char c);
 
 #define _LEXER_H
 #endif
