@@ -1540,26 +1540,22 @@ internal Void add_include_file(Tokenizer *tokenizer, File *file) {
 
 
 internal Void preload_macros(MacroData *macro_data, Int *macro_cnt, TempMemory *param_memory) {
-    Int i = 0;
-
-    //#define pp_DynamicArray(Type) PP_CONCAT(pp_DynamicArray_, Type)
-    macro_data[i].iden = create_string("pp_DynamicArray");
-    macro_data[i].res = create_string("pp_DynamicArray_##Type");
-    macro_data[i].params = push_type(param_memory, String);
-    macro_data[i].params[0] = create_string("Type");
-    macro_data[i].param_cnt = 1;
-    ++i;
+    //#define pp_DA(Type) PP_CONCAT(pp_DynamicArray_, Type)
+    macro_data[*macro_cnt].iden = create_string("pp_DA");
+    macro_data[*macro_cnt].res = create_string("pp_DA_##Type");
+    macro_data[*macro_cnt].params = push_type(param_memory, String);
+    macro_data[*macro_cnt].params[0] = create_string("Type");
+    macro_data[*macro_cnt].param_cnt = 1;
+    *macro_cnt += 1;
 
     //#define PP_CONCAT(a, b) a##b
-    macro_data[i].iden = create_string("PP_CONCAT");
-    macro_data[i].res = create_string("a##b");
-    macro_data[i].params = cast(String *)push_size(param_memory, sizeof(String) * 2);
-    macro_data[i].params[0] = create_string("a");
-    macro_data[i].params[1] = create_string("b");
-    macro_data[i].param_cnt = 2;
-    ++i;
-
-    *macro_cnt += i;
+    macro_data[*macro_cnt].iden = create_string("PP_CONCAT");
+    macro_data[*macro_cnt].res = create_string("a##b");
+    macro_data[*macro_cnt].params = cast(String *)push_size(param_memory, sizeof(String) * 2);
+    macro_data[*macro_cnt].params[0] = create_string("a");
+    macro_data[*macro_cnt].params[1] = create_string("b");
+    macro_data[*macro_cnt].param_cnt = 2;
+    *macro_cnt += 1;
 }
 
 internal Void preprocess_macros(File *file) {

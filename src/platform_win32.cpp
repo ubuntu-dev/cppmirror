@@ -167,9 +167,9 @@ Void system_write_to_console(Char *format, ...) {
 
         assert(res);
         assert(chars_written == len);
-    }
 
-    system_free(buf);
+        system_free(buf);
+    }
 }
 
 int main(int argc, char **argv);
@@ -196,13 +196,11 @@ void mainCRTStartup() {
     string_copy(arg_cpy, cmdline);
 
     for(Int i = 0; (i < args_len); ++i) {
-        for(Int i = 0; (i < args_len); ++i) {
-            if(arg_cpy[i] == '"') {
-                in_quotes = !in_quotes;
-            } else if(arg_cpy[i] == ' ') {
-                if(!in_quotes) {
-                    arg_cpy[i] = 0;
-                }
+        if(arg_cpy[i] == '"') {
+            in_quotes = !in_quotes;
+        } else if(arg_cpy[i] == ' ') {
+            if(!in_quotes) {
+                arg_cpy[i] = 0;
             }
         }
     }

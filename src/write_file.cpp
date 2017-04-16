@@ -154,11 +154,22 @@ File write_data(ParseResult pr) {
               "#define PP_OFFSETOF(T, var) ((size_t)&(((T *)0)->var))\n"
               "\n"
               "#if !defined(PP_SPRINTF)\n"
+              "    #include \"stdio.h\" \n"
               "    #if defined(_MSC_VER)\n"
               "        #define PP_SPRINTF(buf, size, format, ...) sprintf_s(buf, size, format, ##__VA_ARGS__)\n"
               "    #else\n"
               "        #define PP_SPRINTF(buf, size, format, ...) sprintf(buf, format, ##__VA_ARGS__)\n"
               "    #endif\n"
+              "#endif\n"
+              "\n"
+              "#if !defined(PP_MALLOC)\n"
+              "    #define PP_MALLOC malloc\n"
+              "#endif\n"
+              "#if !defined(PP_REALLOC)\n"
+              "    #define PP_REALLOC realloc\n"
+              "#endif\n"
+              "#if !defined(PP_FREE)\n"
+              "    #define PP_FREE free\n"
               "#endif\n"
               "\n"
               "#if defined(PP_STATIC_FUNCS)\n"
@@ -168,13 +179,13 @@ File write_data(ParseResult pr) {
               "#endif\n"
               "\n"
               "PP_STATIC pp_bool pp_string_compare(char const *a, char const *b) {\n"
-              "    for(;; ++a, ++b) {\n"
-              "        if((*a == 0) && (*b == 0)) {\n"
+              "    for(; (*a != *b); ++a, ++b) {\n"
+              "        if(!(*a) && !(*b)) {\n"
               "            return(PP_TRUE);\n"
-              "        } else if(*a != *b) {\n"
-              "            return(PP_FALSE);\n"
               "        }\n"
               "    }\n"
+              "\n"
+              "    return(PP_FALSE);\n"
               "}\n");
 
         // Create typedefs
@@ -284,63 +295,6 @@ File write_data(ParseResult pr) {
                 write(&ob, "} pp_Type;\n");
             }
 
-            //
-            // Dynamic array.
-            //
-            {
-                write(&ob,
-                      "\n"
-                      "//\n"
-                      "// Dynamic Array.\n"
-                      "//\n"
-                      "#define pp_DynamicArray(Type) PP_CONCAT(pp_DynamicArray_, Type)\n"
-                      "\n");
-
-                write(&ob,
-                      "typedef struct pp_DynamicArray_void { "
-                      " pp_int capacity, size;"
-                      " void *e;"
-                      " } pp_DynamicArray_void, pp_pp_DynamicArray_void;\n");
-
-
-                // Primitives.
-                for(Int i = 0; (i < array_count(primitive_types)); ++i) {
-                    Char *p = primitive_types[i];
-
-                    if(string_comp(p, "bool")) {
-                        write(&ob,
-                              "#if defined(__cplusplus)\n");
-                    }
-
-                    write(&ob,
-                          "typedef struct pp_DynamicArray_%s { "
-                          " pp_int capacity, size;"
-                          " %s *e;"
-                          " } pp_DynamicArray_%s, pp_pp_DynamicArray_%s;\n",
-                          p, p, p, p);
-
-                    if(string_comp(p, "bool")) {
-                        write(&ob,
-                              "#endif // defined(__cplusplus)\n");
-                    }
-                }
-
-                // Structs.
-                for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                    StructData *sd = pr.structs.e + i;
-
-                    write(&ob,
-                          "typedef struct pp_DynamicArray_%.*s {"
-                          " pp_int capacity, size;"
-                          " struct %.*s *e;"
-                          "} pp_DynamicArray_%.*s, pp_pp_DynamicArray_%.*s;\n",
-                          sd->name.len, sd->name.e,
-                          sd->name.len, sd->name.e,
-                          sd->name.len, sd->name.e,
-                          sd->name.len, sd->name.e);
-
-                }
-            }
 
             //
             // Recreated structs.
@@ -397,62 +351,16 @@ File write_data(ParseResult pr) {
                         write(&ob, " }");
                     }
 
-                    write(&ob, " } pp_%.*s, pp_pp_%.*s;\n",
+                    write(&ob, " } pp_%.*s, pp_pp_%.*s, * pp_%.*s_ptr, * pp_pp_%.*s_ptr;\n",
+                          sd->name.len, sd->name.e,
+                          sd->name.len, sd->name.e,
                           sd->name.len, sd->name.e,
                           sd->name.len, sd->name.e);
 
                 }
             }
 
-            //
-            // Dynamic array functions
-            //
-            {
-                write(&ob,
-                      "\n"
-                      "//\n"
-                      "// Dynamic Array functions.\n"
-                      "//\n"
-                      "\n"
-                      "// Remove element from end of array, and return it by value.\n"
-                      "// TYPE pp_pop(pp_DynamicArray(TYPE) *da);\n"
-                      "#define pp_pop(da) (--(da)->size, (da)->e[(da)->size]);\n"
-                      "\n"
-                      "// Add an element onto the end of the array, and return a pointer to it.\n"
-                      "// TYPE *pp_push(pp_DynamicArray(TYPE) *da, TYPE v);\n"
-                      "#define pp_push(da, v) (pp_dynamic_array_grow_if_needed((pp_DynamicArray(void) *)(da), sizeof(v)), (da)->e[(da)->size++] = (v), &((da)->e[(da)->size - 1]))\n"
-                      "\n"
-                      "// Add an element at index i in the array, and return a pointer to it.\n"
-                      "// TYPE *pp_insert(pp_DynamicArray(TYPE) *da, TYPE v, int i);\n"
-                      "#define pp_insert(da, v, i) (pp_dynamic_array_grow_if_needed((pp_DynamicArray(void) *)(da), sizeof(v)), memmove((da)->e + (i) + 1, (da)->e + (i), (++(da)->size - (i)) * sizeof(*(da)->e)), (da)->e[i] = (v), &(da)->e[(i)])\n"
-                      "\n"
-                      "// Remove an element from the array.\n"
-                      "// void pp_remove(pp_DynamicArray(TYPE), int i);\n"
-                      "#define pp_remove(da, i) (memmove((da)->e + (i), (da)->e + (i) + 1, (--(da)->size - (i)) * sizeof(*(da)->e)))\n"
-                      "\n"
-                      "// Make the array grow by one, if needed.\n"
-                      "PP_STATIC void pp_dynamic_array_grow_if_needed(pp_DynamicArray(void) *da, int stride) {\n"
-                      "    if(!da->capacity) {\n"
-                      "        da->e = malloc(4 * stride);\n"
-                      "        if(da->e) {\n"
-                      "            da->capacity = 4;\n"
-                      "        } else {\n"
-                      "            // No Memory\n"
-                      "        }\n"
-                      "    } else if(da->size + 1 >= da->capacity) {\n"
-                      "        int new_capacity = da->capacity * 2;\n"
-                      "        void *p = realloc(da->e, new_capacity * stride);\n"
-                      "        if(p) {\n"
-                      "            da->e = p;\n"
-                      "            da->capacity = new_capacity;\n"
-                      "        } else {\n"
-                      "            // No memory.\n"
-                      "        }\n"
-                      "    }\n"
-                      "}\n");
-            }
-
-            // Typedef to origional.
+            // Typedef to original.
             {
                 write(&ob,
                       "\n"

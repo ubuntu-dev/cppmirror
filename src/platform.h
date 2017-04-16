@@ -13,8 +13,6 @@
 
 #include "shared.h"
 
-
-
 // Memory.
 #define system_alloc(Type, ...) (Type *)system_malloc(sizeof(Type), ##__VA_ARGS__)
 Void *system_malloc(PtrSize size, PtrSize cnt = 1);
@@ -31,8 +29,6 @@ Bool system_write_to_file(Char *fname, File file);
 File system_read_entire_file_and_null_terminate(Char *fname);
 
 // Utility stuff.
-Uint64 system_get_performance_counter(void);
-Void system_print_timer(Uint64 value);
 Void system_write_to_console(Char *str, ...);
 
 #define _PLATFORM_H

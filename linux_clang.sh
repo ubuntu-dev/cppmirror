@@ -2,53 +2,33 @@
 
 CLANG_VERSION=3.8
 RELEASE=false
-GTEST=false
-BUILD_TEST_CODE=true
-BUILD_BREAKOUT=false
+RUN_TEST=true
 
-# Preprocessor
+# Mirror
 WARNINGS="-Wno-unused-function -Wno-unused-variable -Wno-c++11-compat-deprecated-writable-strings -Wno-switch -Wno-sign-compare -Wno-unused-parameter -Wno-writable-strings -Wno-unknown-escape-sequence"
 
-FILES=""preprocessor/main.cpp" "preprocessor/utils.cpp" "preprocessor/lexer.cpp" "preprocessor/platform_linux.cpp" "preprocessor/write_file.cpp""
+FILES=""src/main.cpp" "src/utils.cpp" "src/lexer.cpp" "src/platform_linux.cpp" "src/write_file.cpp" "src/test.cpp""
 
-echo "Building preprocessor"
+echo "Building mirror"
 if [ "$RELEASE" = "true" ]; then
-    clang++-"$CLANG_VERSION" -Wall -Wextra $FILES -std=c++1z -fno-exceptions -fno-rtti -o preprocessor_exe -DERROR_LOGGING=0 -DRUN_TESTS=0 -DINTERNAL=0 -DMEM_CHECK=0 -DWIN32=0 -DLINUX=1 $WARNINGS -g -ldl
+    clang++-"$CLANG_VERSION" -Wall -Wextra $FILES -std=c++1z -fno-exceptions -fno-rtti -o mirror_exe -DINTERNAL=0 $WARNINGS -ldl
 else
-    if [ "$GTEST" = "false" ]; then
-        clang++-"$CLANG_VERSION" -Wall -Wextra $FILES -std=c++1z -fno-exceptions -fno-rtti -o preprocessor_exe -DERROR_LOGGING=1 -DRUN_TESTS=0 -DINTERNAL=1 -DMEM_CHECK=1 -DWIN32=0 -DLINUX=1 $WARNINGS -g -ldl
-    else
-        clang++-"$CLANG_VERSION" -Wall -Wextra $FILES "preprocessor/test.cpp" "preprocessor/google_test/gtest-all.cc" -std=c++1z -fno-exceptions -fno-rtti -o preprocessor_exe -DERROR_LOGGING=1 -DRUN_TESTS=1 -DINTERNAL=1 -DMEM_CHECK=1 -DWIN32=0 -DLINUX=1 $WARNINGS -g -ldl -pthread
-    fi
+    clang++-"$CLANG_VERSION" -Wall -Wextra $FILES -std=c++1z -fno-exceptions -fno-rtti -o mirror_exe -DINTERNAL=1 $WARNINGS -g -ldl
 fi
-mv "./preprocessor_exe" "build/preprocessor"
+mv "./mirror_exe" "build/mirror"
 
-# Run test code after building.
-if [ "$GTEST" = "true" ]; then
-    if [ "$RELEASE" = "false" ]; then      
-        echo "Running Preprocessor tests"
-        ./build/preprocessor -t
-    fi
+# Run tests
+if [ "$RELEASE" = "false" ]; then
+    build/mirror -t    
 fi
 
 # Test.
-if [ "$BUILD_TEST_CODE" = "true" ]; then
-    echo "Building test code"
+if [ "$RUN_TEST" = "true" ]; then
+    echo "Building Test"
     pushd "test"
-    "../build/preprocessor" test_code.cpp
+    "../build/mirror" test_code.cpp
     popd
 
     clang++-"$CLANG_VERSION" -Wall -Wextra "test/test_code.cpp" -std=c++1z -o test_exe -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable -Wno-c++11-compat-deprecated-writable-strings -Wno-switch -Wno-sign-compare -Wno-unused-private-field -Wno-unused-parameter -g -ldl
     mv "./test_exe" "build/test"
-fi
-
-# Breakout.
-if [ "$BUILD_BREAKOUT" = "true" ]; then
-    echo "Building Breakout."
-    pushd "breakout"
-    "../build/preprocessor" breakout.cpp
-    popd
-
-    clang++-"$CLANG_VERSION" -Wall -Wextra "breakout/breakout.cpp" -std=c++11 -o breakout_exe -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable -Wno-c++11-compat-deprecated-writable-strings -g -ldl -lSDL2
-    mv "./breakout_exe" "build/breakout"
 fi
