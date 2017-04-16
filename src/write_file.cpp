@@ -188,6 +188,57 @@ File write_data(ParseResult pr) {
               "    return(PP_FALSE);\n"
               "}\n");
 
+        // Dynamic Array
+        {
+            write(&ob,
+                  "#define pp_da_push(arr, element)       (pp_da_check_if_need_to_grow(arr, 1), (arr)[pp_da_get_cnt(arr)++] = (element))\n"
+                  "#define pp_da_pop(arr)                 (arr)[--pp_da_get_cnt(arr)];\n"
+                  "#define pp_da_size(arr)                ((arr) ? pp_da_get_cnt(arr) : 0)\n"
+                  "#define pp_da_free(arr)                ((arr) ? free(pp_da_raw_ptr(arr)), arr = 0);\n"
+                  "#define pp_da_get_last(arr)            ((arr) ? (arr)[pp_da_get_cnt(arr) - 1] : 0)\n"
+                  "#define pp_da_get_first(arr)           ((arr) ? (arr)[0] : 0)\n"
+                  "#define pp_da_is_empty(arr)            (((arr) == 0) || (pp_da_size(arr) == 0))\n"
+                  "#define pp_da_expand(arr, num)         (pp_da_check_if_need_to_grow(arr, num), pp_da_get_cnt(arr) += (num), &(arr)[pp_da_get_cnt(arr) - (num)])\n"
+                  "#define pp_da_assert_index(arr, Index) do { PP_ASSERT(arr); PP_ASSERT((Index) < pp_da_size(arr)); } while(0) \n"
+                  "\n"
+                  "#define pp_da_copy_entire(src, dst) do { PP_ASSERT(src); for(size_t ArrayIndex = 0, ArrayOneSize = pp_da_size(src); (ArrayIndex < ArrayOneSize); ++ArrayIndex) { pp_da_assert_index((src), ArrayIndex); pp_da_push(dst, (src)[ArrayIndex]); } } while(0)\n"
+                  "\n"
+                  "#define pp_da_insert(arr, insert_index, element) do { pp_da_expand(arr, 1); for(size_t ArrayIndex = pp_da_size(arr) - 1; (ArrayIndex > (insert_index)); --ArrayIndex) { pp_da_assert_index(arr, ArrayIndex); (arr)[ArrayIndex] = (arr)[ArrayIndex - 1]; } (arr)[(insert_index)] = (element); } while(0) \n"
+                  "\n"
+                  "#define pp_da_remove(arr, index_to_remove) do { (arr)[(index_to_remove)]; pp_da_assert_index((arr), (index_to_remove)); pp_da_push((arr), (arr)[index_to_remove]); for(size_t ArrayIndex = (index_to_remove), ArraySizeMinusOne = (pp_da_size(arr) - 1); (ArrayIndex < ArraySizeMinusOne); ++ArrayIndex) { pp_da_assert_index(arr, ArrayIndex); (arr)[ArrayIndex] = (arr)[ArrayIndex + 1]; } --pp_da_get_cnt(arr); } while(0) \n"
+                  "\n"
+                  "/* These methods shouldn't be directly used. */\n"
+                  "#define pp_da_raw_ptr(arr) ((size_t * )(arr) - 2)\n"
+                  "#define pp_da_mem_size(arr) pp_da_raw_ptr(arr)[0]\n"
+                  "#define pp_da_get_cnt(arr) pp_da_raw_ptr(arr)[1]\n"
+                  "#define pp_da_should_grow(arr, number) (((arr) == 0) || (pp_da_get_cnt(arr) + (number) >= pp_da_mem_size(arr)))\n"
+                  "#define pp_da_check_if_need_to_grow(arr, number) (pp_da_should_grow(arr,(number)) ? pp_da_grow(arr, number) : 0)\n"
+                  "\n"
+                  "#define pp_da_grow(arr, number) ((arr) = (decltype(arr))pp_da_grow_((arr), (number), sizeof(*(arr))))\n"
+                  "\n"
+                  "PP_STATIC void *pp_da_grow_(void *arr, size_t Increment, size_t ItemSize) {\n"
+                  "    void *res = 0; \n"
+                  "    size_t double_cur_size = (arr) ? 2 * pp_da_mem_size(arr) : 0; \n"
+                  "    size_t min_size_needed = pp_da_size(arr) + Increment; \n"
+                  "    size_t mem_size = (double_cur_size > min_size_needed) ? double_cur_size : min_size_needed; \n"
+                  "    size_t *raw_ptr = (arr) ? pp_da_raw_ptr(arr) : 0; \n"
+                  "    size_t *new_raw_ptr = (size_t *)PP_REALLOC(raw_ptr, (ItemSize * mem_size) + (sizeof(size_t) * 2)); \n"
+                  "\n"
+                  "    if(new_raw_ptr) {\n"
+                  "        if(!arr) {\n"
+                  "            new_raw_ptr[1] = 0; \n"
+                  "        }\n"
+                  "\n"
+                  "        new_raw_ptr[0] = mem_size; \n"
+                  "        res = (new_raw_ptr + 2); \n"
+                  "    } else {\n"
+                  "        PP_ASSERT(0);\n"
+                  "    }\n"
+                  "\n"
+                  "    return(res); \n"
+                  "}\n");
+        }
+
         // Create typedefs
         {
             write(&ob,
