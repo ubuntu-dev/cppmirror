@@ -154,6 +154,7 @@ File write_data(ParseResult pr) {
               "#define PP_OFFSETOF(T, var) ((size_t)&(((T *)0)->var))\n"
               "\n"
               "#if !defined(PP_SPRINTF)\n"
+
               "    #include \"stdio.h\" \n"
               "    #if defined(_MSC_VER)\n"
               "        #define PP_SPRINTF(buf, size, format, ...) sprintf_s(buf, size, format, ##__VA_ARGS__)\n"
@@ -391,7 +392,6 @@ File write_data(ParseResult pr) {
             // Dynamic array functions
             //
             {
-#if 0
                 write(&ob,
                       "//\n"
                       "//\n"
@@ -431,7 +431,6 @@ File write_data(ParseResult pr) {
                       "\n"
                       "    return(res);\n"
                       "}\n");
-#endif
             }
 
             // Typedef to original.
