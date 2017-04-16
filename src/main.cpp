@@ -150,8 +150,8 @@ int main(int argc, char **argv) {
             if(should_run_tests) {
                 Int tests_failed = run_tests();
 
-                if(tests_failed == 0) { system_write_to_console("all tests passed...");             }
-                else                  { system_write_to_console("%d tests failed\n", tests_failed); }
+                if(!tests_failed) { system_write_to_console("all tests passed...");             }
+                else              { system_write_to_console("%d tests failed\n", tests_failed); }
             } else {
                 if(!number_of_files) {
                     push_error(ErrorType_no_files_pass_in);

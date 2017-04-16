@@ -33,7 +33,6 @@ File system_read_entire_file_and_null_terminate(Char *fname);
 // Utility stuff.
 Uint64 system_get_performance_counter(void);
 Void system_print_timer(Uint64 value);
-Bool system_check_for_debugger(void);
 Void system_write_to_console(Char *str, ...);
 
 #define _PLATFORM_H

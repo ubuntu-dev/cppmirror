@@ -265,7 +265,6 @@ File write_data(ParseResult pr) {
         Int type_count = 0;
         String *types = system_alloc(String, max_type_count);
         if(types) {
-
             // Meta types enum.
             {
                 type_count = get_actual_type_count(types, pr.structs, pr.enums, pr.typedefs);
@@ -283,125 +282,125 @@ File write_data(ParseResult pr) {
                 }
 
                 write(&ob, "} pp_Type;\n");
+            }
 
-                //
-                // Dynamic array.
-                //
-                {
-                    write(&ob,
-                          "\n"
-                          "//\n"
-                          "// Dynamic Array.\n"
-                          "//\n"
-                          "#define pp_DynamicArray(Type) PP_CONCAT(pp_DynamicArray_, Type)\n"
-                          "\n");
+            //
+            // Dynamic array.
+            //
+            {
+                write(&ob,
+                      "\n"
+                      "//\n"
+                      "// Dynamic Array.\n"
+                      "//\n"
+                      "#define pp_DynamicArray(Type) PP_CONCAT(pp_DynamicArray_, Type)\n"
+                      "\n");
 
-                    write(&ob,
-                          "typedef struct pp_DynamicArray_void { "
-                          " pp_int capacity, size;"
-                          " void *e;"
-                          " } pp_DynamicArray_void, pp_pp_DynamicArray_void;\n");
+                write(&ob,
+                      "typedef struct pp_DynamicArray_void { "
+                      " pp_int capacity, size;"
+                      " void *e;"
+                      " } pp_DynamicArray_void, pp_pp_DynamicArray_void;\n");
 
 
-                    // Primitives.
-                    for(Int i = 0; (i < array_count(primitive_types)); ++i) {
-                        Char *p = primitive_types[i];
+                // Primitives.
+                for(Int i = 0; (i < array_count(primitive_types)); ++i) {
+                    Char *p = primitive_types[i];
 
-                        if(string_comp(p, "bool")) {
-                            write(&ob,
-                                  "#if defined(__cplusplus)\n");
-                        }
-
+                    if(string_comp(p, "bool")) {
                         write(&ob,
-                              "typedef struct pp_DynamicArray_%s { "
-                              " pp_int capacity, size;"
-                              " %s *e;"
-                              " } pp_DynamicArray_%s, pp_pp_DynamicArray_%s;\n",
-                              p, p, p, p);
-
-                        if(string_comp(p, "bool")) {
-                            write(&ob,
-                                  "#endif // defined(__cplusplus)\n");
-                        }
+                              "#if defined(__cplusplus)\n");
                     }
 
-                    // Structs.
-                    for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                        StructData *sd = pr.structs.e + i;
+                    write(&ob,
+                          "typedef struct pp_DynamicArray_%s { "
+                          " pp_int capacity, size;"
+                          " %s *e;"
+                          " } pp_DynamicArray_%s, pp_pp_DynamicArray_%s;\n",
+                          p, p, p, p);
 
+                    if(string_comp(p, "bool")) {
                         write(&ob,
-                              "typedef struct pp_DynamicArray_%.*s {"
-                              " pp_int capacity, size;"
-                              " struct %.*s *e;"
-                              "} pp_DynamicArray_%.*s, pp_pp_DynamicArray_%.*s;\n",
-                              sd->name.len, sd->name.e,
-                              sd->name.len, sd->name.e,
-                              sd->name.len, sd->name.e,
-                              sd->name.len, sd->name.e);
-
+                              "#endif // defined(__cplusplus)\n");
                     }
                 }
 
-                //
-                // Recreated structs.
-                //
-                {
+                // Structs.
+                for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                    StructData *sd = pr.structs.e + i;
+
                     write(&ob,
-                          "\n"
-                          "//\n"
-                          "// Recreated structs.\n"
-                          "//\n");
-                    for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                        StructData *sd = pr.structs.e + i;
+                          "typedef struct pp_DynamicArray_%.*s {"
+                          " pp_int capacity, size;"
+                          " struct %.*s *e;"
+                          "} pp_DynamicArray_%.*s, pp_pp_DynamicArray_%.*s;\n",
+                          sd->name.len, sd->name.e,
+                          sd->name.len, sd->name.e,
+                          sd->name.len, sd->name.e,
+                          sd->name.len, sd->name.e);
 
-                        write(&ob, "typedef %s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
-                              sd->name.len, sd->name.e);
+                }
+            }
 
-                        write(&ob, " { ");
+            //
+            // Recreated structs.
+            //
+            {
+                write(&ob,
+                      "\n"
+                      "//\n"
+                      "// Recreated structs.\n"
+                      "//\n");
+                for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                    StructData *sd = pr.structs.e + i;
 
-                        Bool is_inside_anonymous_struct = false;
-                        for(Int j = 0; (j < sd->member_count); ++j) {
-                            Variable *md = sd->members + j;
+                    write(&ob, "typedef %s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
+                          sd->name.len, sd->name.e);
 
-                            if(md->is_inside_anonymous_struct != is_inside_anonymous_struct) {
-                                is_inside_anonymous_struct = !is_inside_anonymous_struct;
+                    write(&ob, " { ");
 
-                                if(is_inside_anonymous_struct) {
-                                    write(&ob, " struct {");
-                                } else {
-                                    write(&ob, "};");
-                                }
+                    Bool is_inside_anonymous_struct = false;
+                    for(Int j = 0; (j < sd->member_count); ++j) {
+                        Variable *md = sd->members + j;
+
+                        if(md->is_inside_anonymous_struct != is_inside_anonymous_struct) {
+                            is_inside_anonymous_struct = !is_inside_anonymous_struct;
+
+                            if(is_inside_anonymous_struct) {
+                                write(&ob, " struct {");
+                            } else {
+                                write(&ob, "};");
                             }
-
-                            Char *arr = "";
-                            Char arr_buffer[256] = {};
-                            if(md->array_count > 1) {
-                                stbsp_snprintf(arr_buffer, 256, "[%u]", md->array_count);
-                                arr = arr_buffer;
-                            }
-
-                            char ptr_buf[max_ptr_size] = {};
-                            for(Int k = 0; (k < md->ptr); ++k) {
-                                ptr_buf[k] = '*';
-                            }
-
-                            write(&ob, " pp_%.*s %s%.*s%s; ",
-                                  md->type.len, md->type.e,
-                                  ptr_buf,
-                                  md->name.len, md->name.e,
-                                  (md->array_count > 1) ? arr_buffer : arr);
-
                         }
 
-                        if(is_inside_anonymous_struct) {
-                            write(&ob, " }");
+                        Char *arr = "";
+                        Char arr_buffer[256] = {};
+                        if(md->array_count > 1) {
+                            stbsp_snprintf(arr_buffer, 256, "[%u]", md->array_count);
+                            arr = arr_buffer;
                         }
 
-                        write(&ob, " } pp_%.*s, pp_pp_%.*s;\n",
-                              sd->name.len, sd->name.e,
-                              sd->name.len, sd->name.e);
+                        char ptr_buf[max_ptr_size] = {};
+                        for(Int k = 0; (k < md->ptr); ++k) {
+                            ptr_buf[k] = '*';
+                        }
+
+                        write(&ob, " pp_%.*s %s%.*s%s; ",
+                              md->type.len, md->type.e,
+                              ptr_buf,
+                              md->name.len, md->name.e,
+                              (md->array_count > 1) ? arr_buffer : arr);
 
                     }
+
+                    if(is_inside_anonymous_struct) {
+                        write(&ob, " }");
+                    }
+
+                    write(&ob, " } pp_%.*s, pp_pp_%.*s;\n",
+                          sd->name.len, sd->name.e,
+                          sd->name.len, sd->name.e);
+
                 }
             }
 
@@ -488,7 +487,7 @@ File write_data(ParseResult pr) {
                       "} pp_MemberDefinition;\n"
                       "\n"
                       "PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, pp_int i) {\n"
-                      "    pp_MemberDefinition res;\n"
+                      "    pp_MemberDefinition failres;\n"
                       "    pp_Type real_type = pp_typedef_to_original(type);\n");
                 for(Int i = 0; (i < pr.structs.cnt); ++i) {
                     StructData *sd = pr.structs.e + i;
@@ -528,8 +527,8 @@ File write_data(ParseResult pr) {
                 write(&ob,
                       "    // Not found\n"
                       "    PP_ASSERT(0);\n"
-                      "    memset(&res, 0, sizeof(res));\n"
-                      "    return(res);\n"
+                      "    memset(&failres, 0, sizeof(failres));\n"
+                      "    return(failres);\n"
                       "}\n");
             }
 

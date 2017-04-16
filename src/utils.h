@@ -93,6 +93,8 @@ Int const default_mem_alignment = 4; // TODO(Jonny): Should this be 8?
 
 PtrSize get_remaining_temp_memory();
 TempMemory create_temp_buffer(PtrSize size);
+
+// TODO(Jonny): I'm not sure I really like the alignment in here. Maybe size?
 #define push_type(tm, Type, ...) (Type *)push_size(tm, sizeof(Type), ##__VA_ARGS__)
 Void *push_size(TempMemory *tm, PtrSize size, PtrSize alignment = default_mem_alignment);
 

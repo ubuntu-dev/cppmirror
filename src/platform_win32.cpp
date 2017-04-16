@@ -14,11 +14,9 @@
 #include "utils.h"
 #include "stb_sprintf.h"
 
-#if OS_WIN32
 extern "C" { int _fltused; }
-#endif
 
-Uint64 system_get_performance_counter(void) {
+Uint64 system_get_performance_counter() {
     Uint64 res = 0;
 
     LARGE_INTEGER large_int;
@@ -29,18 +27,8 @@ Uint64 system_get_performance_counter(void) {
     return(res);
 }
 
-Void system_print_timer(Uint64 value) {
-    LARGE_INTEGER freq;
-    if(QueryPerformanceFrequency(&freq)) {
-        Uint64 duration = value * 1000 / freq.QuadPart;
-        //printf("The program took %llums.\n", duration);
-    }
-}
-
-Bool system_check_for_debugger(void) {
-    return IsDebuggerPresent() != 0;
-}
-
+// TODO(Jonny): Replace these with VirtualAlloc? Then I could make sure they all end of a page boundary,
+//              and I'd know I wasn't overwritting them. Realloc could be implemented as a VirtualAlloc/copy.
 Void *system_malloc(PtrSize size, PtrSize cnt/*= 1*/) {
     Void *res = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size * cnt);
 
@@ -57,7 +45,6 @@ Bool system_free(Void *ptr) {
 }
 
 Void *system_realloc(Void *ptr, PtrSize size) {
-
     Void *res = 0;
     if(ptr) {
         res = HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ptr, size);
@@ -187,6 +174,7 @@ Void system_write_to_console(Char *format, ...) {
 
 int main(int argc, char **argv);
 void mainCRTStartup() {
+    // Get the command line arguments.
     Char *cmdline = GetCommandLineA();
     Int args_len = string_length(cmdline);
 
