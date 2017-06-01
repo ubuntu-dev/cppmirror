@@ -29,7 +29,7 @@ Uint64 system_get_performance_counter() {
 
 // TODO(Jonny): Replace these with VirtualAlloc? Then I could make sure they all end of a page boundary,
 //              and I'd know I wasn't overwritting them. Realloc could be implemented as a VirtualAlloc/copy.
-Void *system_malloc(PtrSize size, PtrSize cnt/*= 1*/) {
+Void *system_malloc(Uintptr size, Uintptr cnt/*= 1*/) {
     Void *res = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size * cnt);
 
     return(res);
@@ -44,7 +44,7 @@ Bool system_free(Void *ptr) {
     return(res);
 }
 
-Void *system_realloc(Void *ptr, PtrSize size) {
+Void *system_realloc(Void *ptr, Uintptr size) {
     Void *res = 0;
     if(ptr) {
         res = HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ptr, size);
@@ -107,8 +107,8 @@ Bool system_write_to_file(Char *fname, File file) {
     return res;
 }
 
-PtrSize system_get_file_size(Char *fname) {
-    PtrSize res = 0;
+Uintptr system_get_file_size(Char *fname) {
+    Uintptr res = 0;
     HANDLE fhandle;
     LARGE_INTEGER large_int;
 
@@ -152,7 +152,7 @@ Bool system_create_folder(Char *name) {
 }
 
 Void system_write_to_console(Char *format, ...) {
-    PtrSize alloc_size = 1024;
+    Uintptr alloc_size = 1024;
     Char *buf = system_alloc(Char, alloc_size);
     if(buf) {
         va_list args;

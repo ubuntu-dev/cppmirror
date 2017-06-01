@@ -72,7 +72,7 @@ Bool print_errors(void);
         if(!Ignore) { \
             if(!(Expression)) { \
                 push_error(ErrorType_assert_failed); \
-                *cast(PtrSize volatile *)0 = 0; \
+                *cast(Uintptr volatile *)0 = 0; \
             } \
         } \
     } while(0)
@@ -85,18 +85,18 @@ Bool print_errors(void);
 //
 struct TempMemory {
     Void *e;
-    PtrSize size;
-    PtrSize used;
+    Uintptr size;
+    Uintptr used;
 };
 
 Int const default_mem_alignment = 4; // TODO(Jonny): Should this be 8?
 
-PtrSize get_remaining_temp_memory();
-TempMemory create_temp_buffer(PtrSize size);
+Uintptr get_remaining_temp_memory();
+TempMemory create_temp_buffer(Uintptr size);
 
 // TODO(Jonny): I'm not sure I really like the alignment in here. Maybe size?
 #define push_type(tm, Type, ...) (Type *)push_size(tm, sizeof(Type), ##__VA_ARGS__)
-Void *push_size(TempMemory *tm, PtrSize size, PtrSize alignment = default_mem_alignment);
+Void *push_size(TempMemory *tm, Uintptr size, Uintptr alignment = default_mem_alignment);
 
 Void free_temp_buffer(TempMemory *temp_memory);
 
@@ -181,9 +181,9 @@ Int absolute_value(Int v);
 // memset and memcpy
 //
 
-Void copy(Void *dst, Void *src, PtrSize size);
+Void copy(Void *dst, Void *src, Uintptr size);
 #define zero(dst, size) set(dst, 0, size)
-Void set(Void *dst, Byte v, PtrSize size);
+Void set(Void *dst, Byte v, Uintptr size);
 
 #if OS_WIN32 && !INTERNAL
 extern "C"

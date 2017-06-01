@@ -15,14 +15,14 @@
 
 // Memory.
 #define system_alloc(Type, ...) (Type *)system_malloc(sizeof(Type), ##__VA_ARGS__)
-Void *system_malloc(PtrSize size, PtrSize cnt = 1);
+Void *system_malloc(Uintptr size, Uintptr cnt = 1);
 Bool system_free(Void *ptr);
-Void *system_realloc(Void *ptr, PtrSize size);
+Void *system_realloc(Void *ptr, Uintptr size);
 
 // File IO.
 struct File {
     Char *e;
-    PtrSize size;
+    Uintptr size;
 };
 
 Bool system_write_to_file(Char *fname, File file);

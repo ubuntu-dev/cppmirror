@@ -121,7 +121,7 @@ int main(int argc, char **argv) {
         Int fnames_max_cnt = 16;
         Char **fnames = system_alloc(Char *, fnames_max_cnt);
         if(fnames) {
-            PtrSize total_file_size = 0;
+            Uintptr total_file_size = 0;
             Int number_of_files = 0;
             for(Int i = 1; (i < argc); ++i) {
                 Char *switch_name = argv[i];

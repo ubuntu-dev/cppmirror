@@ -117,6 +117,7 @@ internal Int get_actual_type_count(String *types, Structs structs, Enums enums, 
 
 File write_data(ParseResult pr) {
     File res = {};
+#if 1
 
     OutputBuffer ob = {};
     ob.size = 1024 * 1024;
@@ -415,20 +416,24 @@ File write_data(ParseResult pr) {
             {
                 write(&ob,
                       "\n"
-                      "PP_STATIC pp_Type pp_typedef_to_original(pp_Type type) {\n"
-                      "    switch(type) {\n");
+                      "PP_STATIC pp_Type pp_typedef_to_original(pp_Type type) {\n");
+                if(pr.typedefs.cnt) {
+                    write(&ob, "    switch(type) {\n");
 
-                for(Int i = 0; (i < pr.typedefs.cnt); ++i) {
-                    TypedefData *td = pr.typedefs.e + i;
+                    for(Int i = 0; (i < pr.typedefs.cnt); ++i) {
+                        TypedefData *td = pr.typedefs.e + i;
+
+                        write(&ob,
+                              "        case pp_Type_%.*s: { return(pp_Type_%.*s); } break;\n",
+                              td->fresh.len, td->fresh.e,
+                              td->original.len, td->original.e);
+                    }
 
                     write(&ob,
-                          "        case pp_Type_%.*s: { return(pp_Type_%.*s); } break;\n",
-                          td->fresh.len, td->fresh.e,
-                          td->original.len, td->original.e);
+                          "    }\n");
                 }
 
                 write(&ob,
-                      "    }\n"
                       "\n"
                       "    return(type);\n"
                       "}\n");
@@ -446,7 +451,7 @@ File write_data(ParseResult pr) {
                       "} pp_MemberDefinition;\n"
                       "\n"
                       "PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, pp_int i) {\n"
-                      "    pp_MemberDefinition failres;\n"
+                      "    pp_MemberDefinition failres = {};\n"
                       "    pp_Type real_type = pp_typedef_to_original(type);\n");
                 for(Int i = 0; (i < pr.structs.cnt); ++i) {
                     StructData *sd = pr.structs.e + i;
@@ -486,7 +491,6 @@ File write_data(ParseResult pr) {
                 write(&ob,
                       "    // Not found\n"
                       "    PP_ASSERT(0);\n"
-                      "    memset(&failres, 0, sizeof(failres));\n"
                       "    return(failres);\n"
                       "}\n");
             }
@@ -495,20 +499,25 @@ File write_data(ParseResult pr) {
             {
                 write(&ob,
                       "\n"
-                      "PP_STATIC int pp_get_number_of_members(pp_Type type) {\n"
-                      "    switch(pp_typedef_to_original(type)) {\n");
+                      "PP_STATIC int pp_get_number_of_members(pp_Type type) {\n");
+                if(pr.structs.cnt) {
+                    write(&ob,
+                          "    switch(pp_typedef_to_original(type)) {\n");
 
-                for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                    StructData *sd = pr.structs.e + i;
+                    for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                        StructData *sd = pr.structs.e + i;
+
+                        write(&ob,
+                              "        case pp_Type_%.*s: { return(%d); } break;\n",
+                              sd->name.len, sd->name.e, sd->member_count);
+
+                    }
 
                     write(&ob,
-                          "        case pp_Type_%.*s: { return(%d); } break;\n",
-                          sd->name.len, sd->name.e, sd->member_count);
-
+                          "    }\n");
                 }
 
                 write(&ob,
-                      "    }\n"
                       "\n"
                       "    PP_ASSERT(0);\n"
                       "    return(0);\n"
@@ -544,7 +553,7 @@ File write_data(ParseResult pr) {
                 }
 
                 // Enums
-                {
+                if(pr.enums.cnt) {
                     for(Int i = 0; (i < pr.enums.cnt); ++i) {
                         EnumData *ed = pr.enums.e + i;
 
@@ -558,7 +567,7 @@ File write_data(ParseResult pr) {
 
 
                 // Structs.
-                {
+                if(pr.structs.cnt) {
                     for(Int i = 0; (i < pr.structs.cnt); ++i) {
                         StructData *sd = pr.structs.e + i;
 
@@ -635,20 +644,25 @@ File write_data(ParseResult pr) {
                       "\n"
                       "PP_STATIC size_t pp_get_size_from_type(pp_Type _type) {\n"
                       "    pp_Type type = pp_typedef_to_original(_type);\n"
-                      "\n"
-                      "    switch(type) {\n");
+                      "\n");
 
-                for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                    StructData *sd = pr.structs.e + i;
-
+                if(pr.structs.cnt) {
                     write(&ob,
-                          "        case pp_Type_%.*s: { return(sizeof(pp_%.*s)); } break;\n",
-                          sd->name.len, sd->name.e,
-                          sd->name.len, sd->name.e);
+                          "    switch(type) {\n");
+
+                    for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                        StructData *sd = pr.structs.e + i;
+
+                        write(&ob,
+                              "        case pp_Type_%.*s: { return(sizeof(pp_%.*s)); } break;\n",
+                              sd->name.len, sd->name.e,
+                              sd->name.len, sd->name.e);
+                    }
+                    write(&ob,
+                          "    }\n");
                 }
 
                 write(&ob,
-                      "    }\n"
                       "\n"
                       "    PP_ASSERT(0);\n"
                       "    return(0);\n"
@@ -774,20 +788,26 @@ File write_data(ParseResult pr) {
                       "//\n"
                       "// Number of members in an enum.\n"
                       "//\n"
-                      "PP_STATIC size_t pp_get_enum_size(pp_Type type) {\n"
-                      "    switch(pp_typedef_to_original(type)) {\n");
+                      "PP_STATIC size_t pp_get_enum_size(pp_Type type) {\n");
 
-                for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                    EnumData *ed = pr.enums.e + i;
+                if(pr.enums.cnt) {
+                    write(&ob,
+                          "    switch(pp_typedef_to_original(type)) {\n");
+
+                    for(Int i = 0; (i < pr.enums.cnt); ++i) {
+                        EnumData *ed = pr.enums.e + i;
+
+                        write(&ob,
+                              "        case pp_Type_%.*s: { return(%d); } break;\n",
+                              ed->name.len, ed->name.e,
+                              ed->no_of_values);
+                    }
 
                     write(&ob,
-                          "        case pp_Type_%.*s: { return(%d); } break;\n",
-                          ed->name.len, ed->name.e,
-                          ed->no_of_values);
+                          "    }\n");
                 }
 
                 write(&ob,
-                      "    }\n"
                       "\n"
                       "    PP_ASSERT(0);\n"
                       "    return(0);\n"
@@ -801,34 +821,39 @@ File write_data(ParseResult pr) {
                       "//\n"
                       "// String to enum.\n"
                       "//\n"
-                      "PP_STATIC int pp_string_to_enum(pp_Type type, char const *str) {\n"
-                      "    switch(pp_typedef_to_original(type)) {\n");
+                      "PP_STATIC int pp_string_to_enum(pp_Type type, char const *str) {\n");
 
-                for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                    EnumData *ed = pr.enums.e + i;
+                if(pr.enums.cnt) {
+                    write(&ob, "    switch(pp_typedef_to_original(type)) {\n");
 
-                    write(&ob,
-                          "        case pp_Type_%.*s: {\n",
-                          ed->name.len, ed->name.e);
-
-                    for(Int j = 0; (j < ed->no_of_values); ++j) {
-                        EnumValue *ev = ed->values + j;
-
-                        if(!j) { write(&ob, "            ");      }
-                        else   { write(&ob, "            else "); }
+                    for(Int i = 0; (i < pr.enums.cnt); ++i) {
+                        EnumData *ed = pr.enums.e + i;
 
                         write(&ob,
-                              "if(pp_string_compare(str, \"%.*s\")) { return(%d); }\n",
-                              ev->name.len, ev->name.e, ev->value);
+                              "        case pp_Type_%.*s: {\n",
+                              ed->name.len, ed->name.e);
+
+                        for(Int j = 0; (j < ed->no_of_values); ++j) {
+                            EnumValue *ev = ed->values + j;
+
+                            if(!j) { write(&ob, "            ");      }
+                            else   { write(&ob, "            else "); }
+
+                            write(&ob,
+                                  "if(pp_string_compare(str, \"%.*s\")) { return(%d); }\n",
+                                  ev->name.len, ev->name.e, ev->value);
+                        }
+
+                        write(&ob,
+                              "        } break;\n");
+
                     }
 
                     write(&ob,
-                          "        } break;\n");
-
+                          "    }\n");
                 }
 
                 write(&ob,
-                      "    }\n"
                       "\n"
                       "    PP_ASSERT(0);\n"
                       "    return(0);\n"
@@ -842,32 +867,37 @@ File write_data(ParseResult pr) {
                       "//\n"
                       "// Enum to string.\n"
                       "//\n"
-                      "PP_STATIC char const * pp_enum_to_string(pp_Type type, int i) {\n"
-                      "    switch(pp_typedef_to_original(type)) {\n");
-                for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                    EnumData *ed = pr.enums.e + i;
+                      "PP_STATIC char const * pp_enum_to_string(pp_Type type, int i) {\n");
+                if(pr.enums.cnt) {
 
-                    write(&ob,
-                          "        case pp_Type_%.*s: {\n"
-                          "            switch(i) {\n",
-                          ed->name.len, ed->name.e);
-
-                    for(Int j = 0; (j < ed->no_of_values); ++j) {
-                        EnumValue *ev = ed->values + j;
+                    write(&ob, "    switch(pp_typedef_to_original(type)) {\n");
+                    for(Int i = 0; (i < pr.enums.cnt); ++i) {
+                        EnumData *ed = pr.enums.e + i;
 
                         write(&ob,
-                              "                case %d: { return(\"%.*s\"); } break;\n",
-                              ev->value, ev->name.len, ev->name.e);
+                              "        case pp_Type_%.*s: {\n"
+                              "            switch(i) {\n",
+                              ed->name.len, ed->name.e);
+
+                        for(Int j = 0; (j < ed->no_of_values); ++j) {
+                            EnumValue *ev = ed->values + j;
+
+                            write(&ob,
+                                  "                case %d: { return(\"%.*s\"); } break;\n",
+                                  ev->value, ev->name.len, ev->name.e);
+                        }
+
+                        write(&ob,
+                              "            }\n"
+                              "        } break;\n");
+
                     }
 
                     write(&ob,
-                          "            }\n"
-                          "        } break;\n");
-
+                          "    }\n");
                 }
 
                 write(&ob,
-                      "    }\n"
                       "\n"
                       "    PP_ASSERT(0);\n"
                       "    return(0);\n"
@@ -889,6 +919,7 @@ File write_data(ParseResult pr) {
         res.size = ob.index;
         res.e = ob.buffer;
     }
+#endif
 
     return(res);
 }

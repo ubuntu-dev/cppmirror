@@ -98,18 +98,18 @@ Bool print_errors(void) {
 //
 // Temp Memory.
 //
-PtrSize get_alignment(void *mem, PtrSize desired_alignment) {
-    PtrSize res = 0;
+Uintptr get_alignment(void *mem, Uintptr desired_alignment) {
+    Uintptr res = 0;
 
-    PtrSize alignment_mask = desired_alignment - 1;
-    if(cast(PtrSize)mem & alignment_mask) {
-        res = desired_alignment - (cast(PtrSize)mem & alignment_mask);
+    Uintptr alignment_mask = desired_alignment - 1;
+    if(cast(Uintptr)mem & alignment_mask) {
+        res = desired_alignment - (cast(Uintptr)mem & alignment_mask);
     }
 
     return(res);
 }
 
-TempMemory create_temp_buffer(PtrSize size) {
+TempMemory create_temp_buffer(Uintptr size) {
     TempMemory res = {};
 
     res.e = system_malloc(size);
@@ -121,10 +121,10 @@ TempMemory create_temp_buffer(PtrSize size) {
     return(res);
 }
 
-Void *push_size(TempMemory *tm, PtrSize size, PtrSize alignment/*= default_mem_alignment*/) {
+Void *push_size(TempMemory *tm, Uintptr size, Uintptr alignment/*= default_mem_alignment*/) {
     Void *res = 0;
 
-    PtrSize alignment_offset = get_alignment(cast(Byte *)tm->e + tm->used, alignment);
+    Uintptr alignment_offset = get_alignment(cast(Byte *)tm->e + tm->used, alignment);
 
     if(tm->used + alignment_offset < tm->size) {
         res = cast(Byte *)tm->e + tm->used + alignment_offset;
@@ -466,16 +466,16 @@ Int absolute_value(Int v) {
 //
 // Memory stuff.
 //
-Void copy(Void *dest, Void *src, PtrSize size) {
+Void copy(Void *dest, Void *src, Uintptr size) {
     Byte *dest8 = cast(Byte *)dest;
     Byte *src8 = cast(Byte *)src;
 
-    for(Int i = 0; (i < size); ++i, ++dest8, ++src8) {
-        *dest8 = *src8;
+    for(Int i = 0; (i < size); ++i) {
+        dest8[i] = src8[i];
     }
 }
 
-Void set(void *dest, Byte v, PtrSize n) {
+Void set(void *dest, Byte v, Uintptr n) {
     Byte *dest8 = cast(Byte *)dest;
     for(Int i = 0; (i < n); ++i, ++dest8) {
         *dest8 = cast(Byte)v;

@@ -643,7 +643,7 @@ internal ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_
                 Bool is_inside_anonymous_struct;
             };
 
-            PtrSize member_info_mem_cnt = 256;
+            Uintptr member_info_mem_cnt = 256;
             MemberInfo *member_info = system_alloc(MemberInfo, member_info_mem_cnt);
             if(member_info) {
                 Bool inside_anonymous_struct = false;
@@ -1323,14 +1323,14 @@ struct MacroData {
 };
 
 // TODO(Jonny): Replace these both with move stream.
-internal void move_bytes_forward(Void *ptr, PtrSize num_bytes_to_move, PtrSize move_pos) {
+internal void move_bytes_forward(Void *ptr, Uintptr num_bytes_to_move, Uintptr move_pos) {
     Byte *ptr8 = cast(Byte *)ptr;
     for(Int i = num_bytes_to_move - 1; (i >= 0); --i) {
         ptr8[i + move_pos] = ptr8[i];
     }
 }
 
-internal void move_bytes_backwards(Void *ptr, PtrSize num_bytes_to_move, PtrSize move_pos) {
+internal void move_bytes_backwards(Void *ptr, Uintptr num_bytes_to_move, Uintptr move_pos) {
     Byte *ptr8 = cast(Byte *)ptr;
     for(Int i = 0; (i < num_bytes_to_move); ++i) {
         ptr8[i + move_pos] = ptr8[i];
@@ -1339,24 +1339,37 @@ internal void move_bytes_backwards(Void *ptr, PtrSize num_bytes_to_move, PtrSize
     ptr8[num_bytes_to_move + move_pos] = 0;
 }
 
-internal Void move_stream(File *file, Char *offset_ptr, Int amount_to_move) {
-    PtrSize offset = offset_ptr - file->e;
+internal Void move_stream(File *file, Char *offset_ptr, Intptr amount_to_move) {
+    Uintptr offset = offset_ptr - file->e;
     if(amount_to_move < 0) {
-        Int abs_amount_to_move = absolute_value(amount_to_move);
+        Uintptr abs_amount_to_move = absolute_value(amount_to_move);
         file->size -= abs_amount_to_move;
-        for(Int i = offset; (i < file->size); ++i) {
+        for(Uintptr i = offset; (i < file->size); ++i) {
             file->e[i] = file->e[i + abs_amount_to_move];
         }
     } else {
-        PtrSize old_size = file->size;
-        PtrSize new_size = file->size + amount_to_move;
-        Void *p = system_realloc(file->e, new_size + 1);
+        Uintptr old_size = file->size;
+        Uintptr new_size = file->size + amount_to_move;
+        Void *p = system_realloc(file->e, (file->size + amount_to_move) + 1);
         if(p) {
             file->e = cast(Char *)p;
 
-            for(Int i = file->size - 1; (i >= offset); --i) {
-                file->e[i + amount_to_move] = file->e[i];
+            for(int i = old_size; (i < new_size); ++i) {
+                file->e[i] = 0;
             }
+
+            Char *end = file->e + offset + amount_to_move;
+            Char *start = file->e + offset;
+#if INTERNAL
+            Char *end_ = end;
+            Char *start_ = start;
+#endif
+
+            for(Int i = offset; (i <= old_size); ++i) {
+                *end++ = *start++;
+            }
+
+            file->e[file->size] = ' ';
 
             file->size += amount_to_move;
         }
@@ -1451,18 +1464,18 @@ internal Int macro_replace(Char *token_start, File *file, MacroData md) {
     // Replace macro identifier
     {
         Int amount_to_change = md.res.len - iden_len;
-        PtrSize old_size = file->size;
-        PtrSize offset = 0;
+        Uintptr old_size = file->size;
+        Uintptr offset = 0;
         if(md.res.len > iden_len) {
             file->size += md.res.len - iden_len;
             Void *p = system_realloc(file->e, file->size);
             if(p) {
                 file->e = cast(Char *)p;
-                offset = old_size - cast(PtrSize)(end - file->e);
+                offset = old_size - cast(Uintptr)(end - file->e);
                 move_bytes_forward(end, offset, amount_to_change);
             }
         } else {
-            offset = old_size - cast(PtrSize)(end - file->e);
+            offset = old_size - cast(Uintptr)(end - file->e);
             file->size += amount_to_change;
             move_bytes_backwards(end, offset, amount_to_change);
         }
@@ -1518,16 +1531,20 @@ internal Void add_include_file(Tokenizer *tokenizer, File *file) {
         File include_file = system_read_entire_file_and_null_terminate(name_buf);
 
         if(include_file.size) {
+            // Tokenizer is invalid after the move_stream call.
+            Uintptr offset = tokenizer->at - file->e;
             move_stream(file, tokenizer->at, include_file.size);
+            tokenizer->at = file->e + offset;
+
             copy(tokenizer->at, include_file.e, include_file.size);
 #if 0
-            PtrSize old_size = file->size;
+            Uintptr old_size = file->size;
             file->size += include_file.size;
             Void *p = system_realloc(file->e, file->size);
             if(p) {
                 file->e = cast(Char *)p;
 
-                //move_bytes_forward(tokenizer->at, old_size - cast(PtrSize)(tokenizer->at - file->e), include_file.size);
+                //move_bytes_forward(tokenizer->at, old_size - cast(Uintptr)(tokenizer->at - file->e), include_file.size);
                 move_stream(file, tokenizer->at, file->size);
                 copy(tokenizer->at, include_file.e, include_file.size);
             }
@@ -1588,7 +1605,7 @@ internal Void preprocess_macros(File *file) {
                 } else if(preprocessor_dir.type == TokenType_hash) {
                     Char *prev_token_end = prev_token.e + prev_token.len;
                     Token next_token = peak_token(&tokenizer);
-                    PtrSize diff = next_token.e - prev_token_end;
+                    Intptr diff = next_token.e - prev_token_end;
 
                     move_stream(file, token.e, -diff);
                 }
