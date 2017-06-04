@@ -256,11 +256,11 @@ File write_data(ParseResult pr) {
                 StructData *sd = pr.structs.e + i;
 
                 if(sd->struct_type == StructType_struct) {
-                    write(&ob, "typedef struct %.*s %.*s;\n", sd->name.len, sd->name.e, sd->name.len, sd->name.e);
+                    write(&ob, "struct %.*s;\n", sd->name.len, sd->name.e);
                 } else if(sd->struct_type == StructType_class) {
                     write(&ob, "class %.*s;\n", sd->name.len, sd->name.e);
                 } else if(sd->struct_type == StructType_union) {
-                    write(&ob, "typedef union %.*s %.*s;\n", sd->name.len, sd->name.e, sd->name.len, sd->name.e);
+                    write(&ob, "union %.*s;\n", sd->name.len, sd->name.e);
                 } else {
                     assert(0);
                 }
