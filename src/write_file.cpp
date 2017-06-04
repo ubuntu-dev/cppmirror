@@ -225,24 +225,6 @@ File write_data(ParseResult pr) {
                   "}\n");
         }
 #endif
-        // Create typedefs
-        {
-            write(&ob,
-                  "\n"
-                  "//\n"
-                  "// Create typedefs.\n"
-                  "//\n");
-
-            for(Int i = 0; (i < pr.typedefs.cnt); ++i) {
-                TypedefData *td = pr.typedefs.e + i;
-
-                write(&ob,
-                      "typedef pp_%.*s pp_%.*s;\n",
-                      td->original.len, td->original.e,
-                      td->fresh.len, td->fresh.e);
-            }
-        }
-
         // Forward declared structs/functions.
         {
             write(&ob,
@@ -255,14 +237,22 @@ File write_data(ParseResult pr) {
             for(Int i = 0; (i < pr.structs.cnt); ++i) {
                 StructData *sd = pr.structs.e + i;
 
-                if(sd->struct_type == StructType_struct) {
-                    write(&ob, "struct %.*s;\n", sd->name.len, sd->name.e);
-                } else if(sd->struct_type == StructType_class) {
-                    write(&ob, "class %.*s;\n", sd->name.len, sd->name.e);
-                } else if(sd->struct_type == StructType_union) {
-                    write(&ob, "union %.*s;\n", sd->name.len, sd->name.e);
-                } else {
-                    assert(0);
+                switch(sd->struct_type) {
+                    case StructType_struct: {
+                        write(&ob, "struct %.*s;\n", sd->name.len, sd->name.e);
+                    } break;
+
+                    case StructType_class: {
+                        write(&ob, "class %.*s;\n", sd->name.len, sd->name.e);
+                    } break;
+
+                    case StructType_union: {
+                        write(&ob, "union %.*s;\n", sd->name.len, sd->name.e);
+                    } break;
+
+                    default: {
+                        assert(0);
+                    } break;
                 }
             }
 
@@ -336,6 +326,40 @@ File write_data(ParseResult pr) {
                 write(&ob, "};\n");
             }
 
+            // Forward declared recreated structs.
+            write(&ob,
+                  "\n"
+                  "//\n"
+                  "// Forward declared recreated structs.\n"
+                  "//\n");
+            for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                StructData *sd = pr.structs.e + i;
+
+                write(&ob,
+                      "typedef struct pp_%.*s pp_%.*s, pp_pp_%.*s;\n",
+                      sd->name.len, sd->name.e,
+                      sd->name.len, sd->name.e,
+                      sd->name.len, sd->name.e);
+            }
+
+            // Create typedefs
+            {
+                write(&ob,
+                      "\n"
+                      "//\n"
+                      "// Create typedefs.\n"
+                      "//\n");
+
+                for(Int i = 0; (i < pr.typedefs.cnt); ++i) {
+                    TypedefData *td = pr.typedefs.e + i;
+
+                    write(&ob,
+                          "typedef pp_%.*s pp_%.*s;\n",
+                          td->original.len, td->original.e,
+                          td->fresh.len, td->fresh.e);
+                }
+            }
+
 
             //
             // Recreated structs.
@@ -349,7 +373,7 @@ File write_data(ParseResult pr) {
                 for(Int i = 0; (i < pr.structs.cnt); ++i) {
                     StructData *sd = pr.structs.e + i;
 
-                    write(&ob, "typedef %s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
+                    write(&ob, "%s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
                           sd->name.len, sd->name.e);
 
                     write(&ob, " { ");
@@ -392,9 +416,7 @@ File write_data(ParseResult pr) {
                         write(&ob, " }");
                     }
 
-                    write(&ob, " } pp_%.*s, pp_pp_%.*s;\n",
-                          sd->name.len, sd->name.e,
-                          sd->name.len, sd->name.e);
+                    write(&ob, " };\n");
 
                 }
             }
