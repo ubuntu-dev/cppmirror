@@ -190,6 +190,7 @@ File write_data(ParseResult pr) {
               "}\n");
 
         // Dynamic Array
+#if 0
         {
             write(&ob,
                   "#define pp_da_push(arr, element)       (pp_da_check_if_need_to_grow(arr, 1), (arr)[pp_da_get_cnt(arr)++] = (element))\n"
@@ -239,7 +240,7 @@ File write_data(ParseResult pr) {
                   "    return(res); \n"
                   "}\n");
         }
-
+#endif
         // Create typedefs
         {
             write(&ob,
