@@ -19,7 +19,7 @@
 #include "utils.h"
 #include "stb_sprintf.h"
 
-Void *system_malloc(PtrSize size, PtrSize cnt/*= 1*/) {
+Void *system_malloc(Uintptr size, Uintptr cnt/*= 1*/) {
     Void *res = malloc(size * cnt);
     if(res) {
         zero(res, size * cnt);
@@ -38,7 +38,7 @@ Bool system_free(Void *ptr) {
     return(res);
 }
 
-Void *system_realloc(Void *ptr, PtrSize new_size) {
+Void *system_realloc(Void *ptr, Uintptr new_size) {
     Void *res = realloc(ptr, new_size);
     // TODO(Jonny): Is there a realloc and zero for linux?
 
@@ -92,7 +92,7 @@ Bool system_create_folder(Char *name) {
 }
 
 Void system_write_to_console(Char *format, ...) {
-    PtrSize alloc_size = 1024;
+    Uintptr alloc_size = 1024;
     Char *buf = system_alloc(Char, alloc_size);
     if(buf) {
         va_list args;

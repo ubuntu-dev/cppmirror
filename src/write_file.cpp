@@ -133,26 +133,15 @@ File write_data(ParseResult pr) {
               "typedef long pp_long;\n"
               "typedef float pp_float;\n"
               "typedef double pp_double;\n"
-              "#if defined(__cplusplus)\n"
-              "    typedef bool pp_bool;\n"
-              "    #define PP_TRUE true\n"
-              "    #define PP_FALSE false\n"
-              "#else\n"
-              "    typedef int pp_bool;\n"
-              "    #define PP_TRUE 1\n"
-              "    #define PP_FALSE 0\n"
-              "#endif\n"
+              "typedef bool pp_bool;\n"
               "\n"
               "// Standard lib stuff.\n"
+              "#include <stdint.h>\n"
+              "\n"
               "#if !defined(PP_ASSERT)\n"
               "    #include <assert.h>\n"
               "    #define PP_ASSERT assert\n"
               "#endif\n"
-              "\n"
-              "#define PP_CONCAT(a, b) a##b\n"
-              "#define PP_TO_STRING(a) #a\n"
-              "\n"
-              "#define PP_OFFSETOF(T, var) ((size_t)&(((T *)0)->var))\n"
               "\n"
               "#if !defined(PP_SPRINTF)\n"
               "    #include \"stdio.h\" \n"
@@ -163,15 +152,10 @@ File write_data(ParseResult pr) {
               "    #endif\n"
               "#endif\n"
               "\n"
-              "#if !defined(PP_MALLOC)\n"
-              "    #define PP_MALLOC malloc\n"
-              "#endif\n"
-              "#if !defined(PP_REALLOC)\n"
-              "    #define PP_REALLOC realloc\n"
-              "#endif\n"
-              "#if !defined(PP_FREE)\n"
-              "    #define PP_FREE free\n"
-              "#endif\n"
+              "#define PP_CONCAT(a, b) a##b\n"
+              "#define PP_TO_STRING(a) #a\n"
+              "\n"
+              "#define PP_OFFSETOF(T, member) ((uintptr_t)&(((T *)0)->member))\n"
               "\n"
               "#if defined(PP_STATIC_FUNCS)\n"
               "    #define PP_STATIC static\n"
@@ -179,17 +163,18 @@ File write_data(ParseResult pr) {
               "    #define PP_STATIC\n"
               "#endif\n"
               "\n"
-              "PP_STATIC pp_bool pp_string_compare(char const *a, char const *b) {\n"
+              "PP_STATIC bool pp_string_compare(char const *a, char const *b) {\n"
               "    for(; (*a != *b); ++a, ++b) {\n"
               "        if(!(*a) && !(*b)) {\n"
-              "            return(PP_TRUE);\n"
+              "            return(true);\n"
               "        }\n"
               "    }\n"
               "\n"
-              "    return(PP_FALSE);\n"
+              "    return(false);\n"
               "}\n");
 
         // Dynamic Array
+#if 0
         {
             write(&ob,
                   "#define pp_da_push(arr, element)       (pp_da_check_if_need_to_grow(arr, 1), (arr)[pp_da_get_cnt(arr)++] = (element))\n"
@@ -202,14 +187,14 @@ File write_data(ParseResult pr) {
                   "#define pp_da_expand(arr, num)         (pp_da_check_if_need_to_grow(arr, num), pp_da_get_cnt(arr) += (num), &(arr)[pp_da_get_cnt(arr) - (num)])\n"
                   "#define pp_da_assert_index(arr, Index) do { PP_ASSERT(arr); PP_ASSERT((Index) < pp_da_size(arr)); } while(0) \n"
                   "\n"
-                  "#define pp_da_copy_entire(src, dst) do { PP_ASSERT(src); for(size_t ArrayIndex = 0, ArrayOneSize = pp_da_size(src); (ArrayIndex < ArrayOneSize); ++ArrayIndex) { pp_da_assert_index((src), ArrayIndex); pp_da_push(dst, (src)[ArrayIndex]); } } while(0)\n"
+                  "#define pp_da_copy_entire(src, dst) do { PP_ASSERT(src); for(uintptr_t ArrayIndex = 0, ArrayOneSize = pp_da_size(src); (ArrayIndex < ArrayOneSize); ++ArrayIndex) { pp_da_assert_index((src), ArrayIndex); pp_da_push(dst, (src)[ArrayIndex]); } } while(0)\n"
                   "\n"
-                  "#define pp_da_insert(arr, insert_index, element) do { pp_da_expand(arr, 1); for(size_t ArrayIndex = pp_da_size(arr) - 1; (ArrayIndex > (insert_index)); --ArrayIndex) { pp_da_assert_index(arr, ArrayIndex); (arr)[ArrayIndex] = (arr)[ArrayIndex - 1]; } (arr)[(insert_index)] = (element); } while(0) \n"
+                  "#define pp_da_insert(arr, insert_index, element) do { pp_da_expand(arr, 1); for(uintptr_t ArrayIndex = pp_da_size(arr) - 1; (ArrayIndex > (insert_index)); --ArrayIndex) { pp_da_assert_index(arr, ArrayIndex); (arr)[ArrayIndex] = (arr)[ArrayIndex - 1]; } (arr)[(insert_index)] = (element); } while(0) \n"
                   "\n"
-                  "#define pp_da_remove(arr, index_to_remove) do { (arr)[(index_to_remove)]; pp_da_assert_index((arr), (index_to_remove)); pp_da_push((arr), (arr)[index_to_remove]); for(size_t ArrayIndex = (index_to_remove), ArraySizeMinusOne = (pp_da_size(arr) - 1); (ArrayIndex < ArraySizeMinusOne); ++ArrayIndex) { pp_da_assert_index(arr, ArrayIndex); (arr)[ArrayIndex] = (arr)[ArrayIndex + 1]; } --pp_da_get_cnt(arr); } while(0) \n"
+                  "#define pp_da_remove(arr, index_to_remove) do { (arr)[(index_to_remove)]; pp_da_assert_index((arr), (index_to_remove)); pp_da_push((arr), (arr)[index_to_remove]); for(uintptr_t ArrayIndex = (index_to_remove), ArraySizeMinusOne = (pp_da_size(arr) - 1); (ArrayIndex < ArraySizeMinusOne); ++ArrayIndex) { pp_da_assert_index(arr, ArrayIndex); (arr)[ArrayIndex] = (arr)[ArrayIndex + 1]; } --pp_da_get_cnt(arr); } while(0) \n"
                   "\n"
                   "/* These methods shouldn't be directly used. */\n"
-                  "#define pp_da_raw_ptr(arr) ((size_t * )(arr) - 2)\n"
+                  "#define pp_da_raw_ptr(arr) ((uintptr_t * )(arr) - 2)\n"
                   "#define pp_da_mem_size(arr) pp_da_raw_ptr(arr)[0]\n"
                   "#define pp_da_get_cnt(arr) pp_da_raw_ptr(arr)[1]\n"
                   "#define pp_da_should_grow(arr, number) (((arr) == 0) || (pp_da_get_cnt(arr) + (number) >= pp_da_mem_size(arr)))\n"
@@ -217,13 +202,13 @@ File write_data(ParseResult pr) {
                   "\n"
                   "#define pp_da_grow(arr, number) ((arr) = (decltype(arr))pp_da_grow_((arr), (number), sizeof(*(arr))))\n"
                   "\n"
-                  "PP_STATIC void *pp_da_grow_(void *arr, size_t Increment, size_t ItemSize) {\n"
+                  "PP_STATIC void *pp_da_grow_(void *arr, uintptr_t Increment, uintptr_t ItemSize) {\n"
                   "    void *res = 0; \n"
-                  "    size_t double_cur_size = (arr) ? 2 * pp_da_mem_size(arr) : 0; \n"
-                  "    size_t min_size_needed = pp_da_size(arr) + Increment; \n"
-                  "    size_t mem_size = (double_cur_size > min_size_needed) ? double_cur_size : min_size_needed; \n"
-                  "    size_t *raw_ptr = (arr) ? pp_da_raw_ptr(arr) : 0; \n"
-                  "    size_t *new_raw_ptr = (size_t *)PP_REALLOC(raw_ptr, (ItemSize * mem_size) + (sizeof(size_t) * 2)); \n"
+                  "    uintptr_t double_cur_size = (arr) ? 2 * pp_da_mem_size(arr) : 0; \n"
+                  "    uintptr_t min_size_needed = pp_da_size(arr) + Increment; \n"
+                  "    uintptr_t mem_size = (double_cur_size > min_size_needed) ? double_cur_size : min_size_needed; \n"
+                  "    uintptr_t *raw_ptr = (arr) ? pp_da_raw_ptr(arr) : 0; \n"
+                  "    uintptr_t *new_raw_ptr = (uintptr_t *)PP_REALLOC(raw_ptr, (ItemSize * mem_size) + (sizeof(uintptr_t) * 2)); \n"
                   "\n"
                   "    if(new_raw_ptr) {\n"
                   "        if(!arr) {\n"
@@ -239,25 +224,7 @@ File write_data(ParseResult pr) {
                   "    return(res); \n"
                   "}\n");
         }
-
-        // Create typedefs
-        {
-            write(&ob,
-                  "\n"
-                  "//\n"
-                  "// Create typedefs.\n"
-                  "//\n");
-
-            for(Int i = 0; (i < pr.typedefs.cnt); ++i) {
-                TypedefData *td = pr.typedefs.e + i;
-
-                write(&ob,
-                      "typedef pp_%.*s pp_%.*s;\n",
-                      td->original.len, td->original.e,
-                      td->fresh.len, td->fresh.e);
-            }
-        }
-
+#endif
         // Forward declared structs/functions.
         {
             write(&ob,
@@ -270,14 +237,22 @@ File write_data(ParseResult pr) {
             for(Int i = 0; (i < pr.structs.cnt); ++i) {
                 StructData *sd = pr.structs.e + i;
 
-                if(sd->struct_type == StructType_struct) {
-                    write(&ob, "typedef struct %.*s %.*s;\n", sd->name.len, sd->name.e, sd->name.len, sd->name.e);
-                } else if(sd->struct_type == StructType_class) {
-                    write(&ob, "class %.*s;\n", sd->name.len, sd->name.e);
-                } else if(sd->struct_type == StructType_union) {
-                    write(&ob, "typedef union %.*s %.*s;\n", sd->name.len, sd->name.e, sd->name.len, sd->name.e);
-                } else {
-                    assert(0);
+                switch(sd->struct_type) {
+                    case StructType_struct: {
+                        write(&ob, "struct %.*s;\n", sd->name.len, sd->name.e);
+                    } break;
+
+                    case StructType_class: {
+                        write(&ob, "class %.*s;\n", sd->name.len, sd->name.e);
+                    } break;
+
+                    case StructType_union: {
+                        write(&ob, "union %.*s;\n", sd->name.len, sd->name.e);
+                    } break;
+
+                    default: {
+                        assert(0);
+                    } break;
                 }
             }
 
@@ -333,10 +308,14 @@ File write_data(ParseResult pr) {
                 type_count = get_actual_type_count(types, pr.structs, pr.enums, pr.typedefs);
 
                 write(&ob,
-                      "typedef enum pp_Type {\n"
+                      "\n"
+                      "//\n"
+                      "// An enum, with an index for each type in the codebase.\n"
+                      "//\n"
+                      "enum pp_Type {\n"
                       "    pp_Type_unknown,\n");
 
-                for(Int i =0; (i < type_count); ++i) {
+                for(Int i = 0; (i < type_count); ++i) {
                     String *t = types + i;
 
                     write(&ob,
@@ -344,7 +323,41 @@ File write_data(ParseResult pr) {
                           t->len, t->e);
                 }
 
-                write(&ob, "} pp_Type;\n");
+                write(&ob, "};\n");
+            }
+
+            // Forward declared recreated structs.
+            write(&ob,
+                  "\n"
+                  "//\n"
+                  "// Forward declared recreated structs.\n"
+                  "//\n");
+            for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                StructData *sd = pr.structs.e + i;
+
+                write(&ob,
+                      "typedef struct pp_%.*s pp_%.*s, pp_pp_%.*s;\n",
+                      sd->name.len, sd->name.e,
+                      sd->name.len, sd->name.e,
+                      sd->name.len, sd->name.e);
+            }
+
+            // Create typedefs
+            {
+                write(&ob,
+                      "\n"
+                      "//\n"
+                      "// Create typedefs.\n"
+                      "//\n");
+
+                for(Int i = 0; (i < pr.typedefs.cnt); ++i) {
+                    TypedefData *td = pr.typedefs.e + i;
+
+                    write(&ob,
+                          "typedef pp_%.*s pp_%.*s;\n",
+                          td->original.len, td->original.e,
+                          td->fresh.len, td->fresh.e);
+                }
             }
 
 
@@ -360,7 +373,7 @@ File write_data(ParseResult pr) {
                 for(Int i = 0; (i < pr.structs.cnt); ++i) {
                     StructData *sd = pr.structs.e + i;
 
-                    write(&ob, "typedef %s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
+                    write(&ob, "%s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
                           sd->name.len, sd->name.e);
 
                     write(&ob, " { ");
@@ -403,11 +416,7 @@ File write_data(ParseResult pr) {
                         write(&ob, " }");
                     }
 
-                    write(&ob, " } pp_%.*s, pp_pp_%.*s, * pp_%.*s_ptr, * pp_pp_%.*s_ptr;\n",
-                          sd->name.len, sd->name.e,
-                          sd->name.len, sd->name.e,
-                          sd->name.len, sd->name.e,
-                          sd->name.len, sd->name.e);
+                    write(&ob, " };\n");
 
                 }
             }
@@ -416,6 +425,7 @@ File write_data(ParseResult pr) {
             {
                 write(&ob,
                       "\n"
+                      "// Turn a typedef'd type into it's original type.\n"
                       "PP_STATIC pp_Type pp_typedef_to_original(pp_Type type) {\n");
                 if(pr.typedefs.cnt) {
                     write(&ob, "    switch(type) {\n");
@@ -442,15 +452,15 @@ File write_data(ParseResult pr) {
             // get members from type.
             {
                 write(&ob,
-                      "typedef struct pp_MemberDefinition {\n"
+                      "struct pp_MemberDefinition {\n"
                       "    pp_Type type;\n"
                       "    char const *name;\n"
-                      "    size_t offset;\n"
-                      "    int ptr;\n"
-                      "    int arr_size;\n"
-                      "} pp_MemberDefinition;\n"
+                      "    uintptr_t offset;\n"
+                      "    uintptr_t arr_size;\n"
+                      "    bool ptr;\n"
+                      "};\n"
                       "\n"
-                      "PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, pp_int i) {\n"
+                      "PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, pp_int index) {\n"
                       "    pp_Type real_type = pp_typedef_to_original(type);\n");
                 for(Int i = 0; (i < pr.structs.cnt); ++i) {
                     StructData *sd = pr.structs.e + i;
@@ -460,7 +470,7 @@ File write_data(ParseResult pr) {
 
                     write(&ob,
                           "if(real_type == pp_Type_%.*s) {\n"
-                          "        switch(i) {\n",
+                          "        switch(index) {\n",
                           sd->name.len, sd->name.e);
 
                     for(Int j = 0; (j < sd->member_count); ++j) {
@@ -488,9 +498,10 @@ File write_data(ParseResult pr) {
 
 
                 write(&ob,
+                      "\n"
                       "    // Not found\n"
                       "    PP_ASSERT(0);\n"
-                      "    pp_MemberDefinition failres = {};\n"
+                      "    pp_MemberDefinition failres = {}; // Zero all the results for failure case.\n"
                       "    return(failres);\n"
                       "}\n");
             }
@@ -499,7 +510,7 @@ File write_data(ParseResult pr) {
             {
                 write(&ob,
                       "\n"
-                      "PP_STATIC int pp_get_number_of_members(pp_Type type) {\n");
+                      "PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {\n");
                 if(pr.structs.cnt) {
                     write(&ob,
                           "    switch(pp_typedef_to_original(type)) {\n");
@@ -528,13 +539,13 @@ File write_data(ParseResult pr) {
             {
                 write(&ob,
                       "\n"
-                      "typedef enum pp_StructureType {\n"
+                      "enum pp_StructureType {\n"
                       "    pp_StructureType_unknown,\n"
                       "    pp_StructureType_primitive,\n"
                       "    pp_StructureType_struct,\n"
                       "    pp_StructureType_enum,\n"
                       "    pp_StructureType_count,\n"
-                      "} pp_StructureType;\n"
+                      "};\n"
                       "\n"
                       "PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {\n"
                       "    switch(pp_typedef_to_original(type)) {\n"
@@ -642,27 +653,32 @@ File write_data(ParseResult pr) {
             {
                 write(&ob,
                       "\n"
-                      "PP_STATIC size_t pp_get_size_from_type(pp_Type _type) {\n"
+                      "PP_STATIC uintptr_t pp_get_size_from_type(pp_Type _type) {\n"
                       "    pp_Type type = pp_typedef_to_original(_type);\n"
-                      "\n");
+                      "    switch(type) {\n");
 
-                if(pr.structs.cnt) {
+                // Primitives.
+                write(&ob, "        // Primitives\n");
+                for(Int i = 0; (i < array_count(primitive_types)); ++i) {
+                    Char *prim = primitive_types[i];
+
                     write(&ob,
-                          "    switch(type) {\n");
+                          "        case pp_Type_%s: { return(sizeof(pp_%s)); } break;\n",
+                          prim, prim);
+                }
 
-                    for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                        StructData *sd = pr.structs.e + i;
+                write(&ob, "\n        // Structs\n");
+                for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                    StructData *sd = pr.structs.e + i;
 
-                        write(&ob,
-                              "        case pp_Type_%.*s: { return(sizeof(pp_%.*s)); } break;\n",
-                              sd->name.len, sd->name.e,
-                              sd->name.len, sd->name.e);
-                    }
                     write(&ob,
-                          "    }\n");
+                          "        case pp_Type_%.*s: { return(sizeof(pp_%.*s)); } break;\n",
+                          sd->name.len, sd->name.e,
+                          sd->name.len, sd->name.e);
                 }
 
                 write(&ob,
+                      "    }\n"
                       "\n"
                       "    PP_ASSERT(0);\n"
                       "    return(0);\n"
@@ -673,31 +689,31 @@ File write_data(ParseResult pr) {
             {
                 write_to_output_buffer_no_var_args(&ob,
                                                    "\n"
+                                                   "// uintptr_t pp_serialize_struct(TYPE *var, TYPE, buffer, buffer_size);\n"
                                                    "#define pp_serialize_struct(var, Type, buf, size) pp_serialize_struct_(var, PP_CONCAT(pp_Type_, Type), PP_TO_STRING(var), 0, buf, size, 0)\n"
-                                                   "PP_STATIC size_t\n"
-                                                   "pp_serialize_struct_(void *var, pp_Type type, char const *name, int indent, char *buffer, size_t buf_size, size_t bytes_written) {\n"
+                                                   "PP_STATIC uintptr_t\n"
+                                                   "pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent, char *buffer, uintptr_t buf_size, uintptr_t bytes_written) {\n"
                                                    "    char indent_buf[256] = {0};\n"
-                                                   "    int i, j, k, num_members;\n"
                                                    "    PP_ASSERT((buffer) && (buf_size > 0)); // Check params.\n"
                                                    "\n"
                                                    "    // Setup the indent buffer.\n"
                                                    "    indent += 4;\n"
-                                                   "    for(i = 0; (i < indent); ++i) {indent_buf[i] = ' ';}\n"
+                                                   "    for(uintptr_t i = 0; (i < indent); ++i) {indent_buf[i] = ' ';}\n"
                                                    "\n"
-                                                   "    num_members = pp_get_number_of_members(type); PP_ASSERT(num_members != -1); // Get the number of members for the for loop.\n"
-                                                   "    for(i = 0; (i < num_members); ++i) {\n"
+                                                   "    uintptr_t num_members = pp_get_number_of_members(type); PP_ASSERT(num_members != -1); // Get the number of members for the for loop.\n"
+                                                   "    for(uintptr_t i = 0; (i < num_members); ++i) {\n"
                                                    "        pp_MemberDefinition member = pp_get_members_from_type(type, i);\n"
-                                                   "        size_t *member_ptr = (size_t *)((char *)var + member.offset); // Get the actual pointer to the memory address.\n"
+                                                   "        uintptr_t *member_ptr = (uintptr_t *)((char *)var + member.offset); // Get the actual pointer to the memory address.\n"
                                                    "        pp_StructureType struct_type = pp_get_structure_type(member.type);\n"
                                                    "        if(struct_type == pp_StructureType_primitive) {\n"
                                                    "            char const *type_as_string = pp_type_to_string(member.type);\n"
                                                    "            if(member.arr_size > 1) {\n"
-                                                   "                for(j = 0; (j < member.arr_size); ++j) {\n"
-                                                   "                    size_t *member_ptr_as_size_t = (size_t *)member_ptr; // For arrays of pointers.\n"
-                                                   "                    pp_bool is_null = (member.ptr) ? member_ptr_as_size_t[j] == 0 : PP_FALSE;\n"
+                                                   "                for(int j = 0; (j < member.arr_size); ++j) {\n"
+                                                   "                    uintptr_t *member_ptr_as_size_t = (uintptr_t *)member_ptr; // For arrays of pointers.\n"
+                                                   "                    bool is_null = (member.ptr) ? member_ptr_as_size_t[j] == 0 : false;\n"
                                                    "                    if(!is_null) {\n"
                                                    "\n"
-                                                   "#define print_prim_arr(m, Type, p) Type *v = (member.ptr) ? *(Type **)((char unsigned *)member_ptr + (sizeof(size_t) * j)) : &((Type *)member_ptr)[j]; bytes_written += PP_SPRINTF((char *)buffer + bytes_written, buf_size - bytes_written, \"\\n%s \" #Type \" %s%s[%d] = \" m \"\", indent_buf, (member.ptr) ? \"*\" : \"\", member.name, j, p (Type *)v)\n"
+                                                   "#define print_prim_arr(m, Type, p) Type *v = (member.ptr) ? *(Type **)((char unsigned *)member_ptr + (sizeof(uintptr_t) * j)) : &((Type *)member_ptr)[j]; bytes_written += PP_SPRINTF((char *)buffer + bytes_written, buf_size - bytes_written, \"\\n%s \" #Type \" %s%s[%d] = \" m \"\", indent_buf, (member.ptr) ? \"*\" : \"\", member.name, j, p (Type *)v)\n"
                                                    "                        pp_Type original_type = pp_typedef_to_original(member.type);\n"
                                                    "                        if(original_type == pp_Type_double)     { print_prim_arr(\"%f\",  double, *); }\n"
                                                    "                        else if(original_type == pp_Type_float) { print_prim_arr(\"%f\",  float, *);  }\n"
@@ -718,14 +734,14 @@ File write_data(ParseResult pr) {
                                                    "                    }\n"
                                                    "                }\n"
                                                    "            } else {\n"
-                                                   "                size_t *v;\n"
+                                                   "                uintptr_t *v;\n"
                                                    "                if(member.ptr) {\n"
-                                                   "                    v = *(size_t **)member_ptr;\n"
-                                                   "                    for(k = 0; (k < member.ptr - 1); ++k) {\n"
-                                                   "                        v = *(size_t **)v;\n"
+                                                   "                    v = *(uintptr_t **)member_ptr;\n"
+                                                   "                    for(uintptr_t k = 0; (k < member.ptr - 1); ++k) {\n"
+                                                   "                        v = *(uintptr_t **)v;\n"
                                                    "                    }\n"
                                                    "                } else {\n"
-                                                   "                    v= (size_t *)member_ptr;\n"
+                                                   "                    v= (uintptr_t *)member_ptr;\n"
                                                    "                }\n"
                                                    "                if(v) {\n"
                                                    "#define print_prim(m, Type, p) bytes_written += PP_SPRINTF((char *)buffer + bytes_written, buf_size - bytes_written, \"\\n%s \" #Type \" %s%s = \" m \"\", indent_buf, (member.ptr) ? \"*\" : \"\", member.name, p (Type *)v)\n"
@@ -751,21 +767,21 @@ File write_data(ParseResult pr) {
                                                    "        } else if(struct_type == pp_StructureType_enum) {\n"
                                                    "// Unsupported, for now.\n"
                                                    "        } else if(struct_type == pp_StructureType_struct) {\n"
-                                                   "            char tmp_arr_buf[32] = {0};\n"
+                                                   "            char tmp_arr_buf[64] = {0};\n"
                                                    "            if(member.arr_size > 1) {\n"
-                                                   "                PP_SPRINTF(tmp_arr_buf, 32, \"[%d]\", member.arr_size);\n"
+                                                   "                PP_SPRINTF(tmp_arr_buf, 32, \"[%d]\", (int)member.arr_size);\n"
                                                    "            }\n"
                                                    "            bytes_written += PP_SPRINTF((char *)buffer + bytes_written, buf_size - bytes_written, \"\\n%s%s %s%s%s\", indent_buf, pp_type_to_string(member.type), (member.ptr) ? \"*\" : \"\",member.name, tmp_arr_buf);\n"
                                                    "            if(member.arr_size <= 1) {\n"
-                                                   "                void *ptr = (member.ptr) ? *(size_t **)member_ptr : member_ptr;\n"
+                                                   "                void *ptr = (member.ptr) ? *(uintptr_t **)member_ptr : member_ptr;\n"
                                                    "                bytes_written = pp_serialize_struct_(ptr, member.type, member.name, indent, buffer, buf_size - bytes_written, bytes_written);\n"
                                                    "            } else {\n"
-                                                   "                for(j = 0; (j < member.arr_size); ++j) {\n"
-                                                   "                    size_t size_of_struct = pp_get_size_from_type(member.type);\n"
+                                                   "                for(uintptr_t j = 0; (j < member.arr_size); ++j) {\n"
+                                                   "                    uintptr_t size_of_struct = pp_get_size_from_type(member.type);\n"
                                                    "\n"
                                                    "                    char unsigned *ptr;\n"
                                                    "                    if(member.ptr) {\n"
-                                                   "                        ptr = *(char unsigned **)((char unsigned *)member_ptr + (j * sizeof(size_t)));\n"
+                                                   "                        ptr = *(char unsigned **)((char unsigned *)member_ptr + (j * sizeof(uintptr_t)));\n"
                                                    "                    } else {\n"
                                                    "                        ptr = ((char unsigned *)member_ptr + (j * size_of_struct));\n"
                                                    "                    }\n"
@@ -788,7 +804,7 @@ File write_data(ParseResult pr) {
                       "//\n"
                       "// Number of members in an enum.\n"
                       "//\n"
-                      "PP_STATIC size_t pp_get_enum_size(pp_Type type) {\n");
+                      "PP_STATIC uintptr_t pp_get_enum_size(pp_Type type) {\n");
 
                 if(pr.enums.cnt) {
                     write(&ob,
@@ -821,7 +837,7 @@ File write_data(ParseResult pr) {
                       "//\n"
                       "// String to enum.\n"
                       "//\n"
-                      "PP_STATIC int pp_string_to_enum(pp_Type type, char const *str) {\n");
+                      "PP_STATIC intptr_t pp_string_to_enum(pp_Type type, char const *str) {\n");
 
                 if(pr.enums.cnt) {
                     write(&ob, "    switch(pp_typedef_to_original(type)) {\n");
@@ -867,7 +883,7 @@ File write_data(ParseResult pr) {
                       "//\n"
                       "// Enum to string.\n"
                       "//\n"
-                      "PP_STATIC char const * pp_enum_to_string(pp_Type type, int i) {\n");
+                      "PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t index) {\n");
                 if(pr.enums.cnt) {
 
                     write(&ob, "    switch(pp_typedef_to_original(type)) {\n");
@@ -876,7 +892,7 @@ File write_data(ParseResult pr) {
 
                         write(&ob,
                               "        case pp_Type_%.*s: {\n"
-                              "            switch(i) {\n",
+                              "            switch(index) {\n",
                               ed->name.len, ed->name.e);
 
                         for(Int j = 0; (j < ed->no_of_values); ++j) {
