@@ -144,7 +144,7 @@ File write_data(ParseResult pr) {
               "#define PP_CONCAT(a, b) a##b\n"
               "#define PP_TO_STRING(a) #a\n"
               "\n"
-              "#define PP_OFFSETOF(T, var) ((uintptr_t)&(((T *)0)->var))\n"
+              "#define PP_OFFSETOF(T, member) ((uintptr_t)&(((T *)0)->member))\n"
               "\n"
               "#if !defined(PP_SPRINTF)\n"
               "    #include \"stdio.h\" \n"
