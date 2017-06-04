@@ -326,12 +326,14 @@ File write_data(ParseResult pr) {
                 write(&ob, "};\n");
             }
 
-            // Forward declared recreated structs.
             write(&ob,
                   "\n"
                   "//\n"
-                  "// Forward declared recreated structs.\n"
+                  "// Forward declared recreated stuff.\n"
                   "//\n");
+
+            // Forward declared recreated structs.
+            write(&ob, "// Structs.\n");
             for(Int i = 0; (i < pr.structs.cnt); ++i) {
                 StructData *sd = pr.structs.e + i;
 
@@ -340,6 +342,19 @@ File write_data(ParseResult pr) {
                       sd->name.len, sd->name.e,
                       sd->name.len, sd->name.e,
                       sd->name.len, sd->name.e);
+            }
+
+            // Forward declared recreated enums.
+            write(&ob, "// Enums\n");
+            for(Int i = 0; (i < pr.enums.cnt); ++i)  {
+                EnumData *ed = pr.enums.e + i;
+
+                if(ed->type.len) {
+                    write(&ob,
+                          "enum pp_%.*s : %.*s;\n",
+                          ed->name.len, ed->name.e,
+                          ed->type.len, ed->type.e);
+                }
             }
 
             // Create typedefs
@@ -456,8 +471,8 @@ File write_data(ParseResult pr) {
                       "    pp_Type type;\n"
                       "    char const *name;\n"
                       "    uintptr_t offset;\n"
+                      "    uintptr_t ptr;\n"
                       "    uintptr_t arr_size;\n"
-                      "    bool ptr;\n"
                       "};\n"
                       "\n"
                       "PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, pp_int index) {\n"
