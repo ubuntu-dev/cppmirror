@@ -136,15 +136,12 @@ File write_data(ParseResult pr) {
               "typedef bool pp_bool;\n"
               "\n"
               "// Standard lib stuff.\n"
+              "#include <stdint.h>\n"
+              "\n"
               "#if !defined(PP_ASSERT)\n"
               "    #include <assert.h>\n"
               "    #define PP_ASSERT assert\n"
               "#endif\n"
-              "\n"
-              "#define PP_CONCAT(a, b) a##b\n"
-              "#define PP_TO_STRING(a) #a\n"
-              "\n"
-              "#define PP_OFFSETOF(T, member) ((uintptr_t)&(((T *)0)->member))\n"
               "\n"
               "#if !defined(PP_SPRINTF)\n"
               "    #include \"stdio.h\" \n"
@@ -155,13 +152,16 @@ File write_data(ParseResult pr) {
               "    #endif\n"
               "#endif\n"
               "\n"
+              "#define PP_CONCAT(a, b) a##b\n"
+              "#define PP_TO_STRING(a) #a\n"
+              "\n"
+              "#define PP_OFFSETOF(T, member) ((uintptr_t)&(((T *)0)->member))\n"
+              "\n"
               "#if defined(PP_STATIC_FUNCS)\n"
               "    #define PP_STATIC static\n"
               "#else\n"
               "    #define PP_STATIC\n"
               "#endif\n"
-              "\n"
-              "#include <stdint.h>\n"
               "\n"
               "PP_STATIC bool pp_string_compare(char const *a, char const *b) {\n"
               "    for(; (*a != *b); ++a, ++b) {\n"
@@ -318,6 +318,10 @@ File write_data(ParseResult pr) {
                 type_count = get_actual_type_count(types, pr.structs, pr.enums, pr.typedefs);
 
                 write(&ob,
+                      "\n"
+                      "//\n"
+                      "// An enum, with an index for each type in the codebase.\n"
+                      "//\n"
                       "enum pp_Type {\n"
                       "    pp_Type_unknown,\n");
 
@@ -399,6 +403,7 @@ File write_data(ParseResult pr) {
             {
                 write(&ob,
                       "\n"
+                      "// Turn a typedef'd type into it's original type.\n"
                       "PP_STATIC pp_Type pp_typedef_to_original(pp_Type type) {\n");
                 if(pr.typedefs.cnt) {
                     write(&ob, "    switch(type) {\n");
