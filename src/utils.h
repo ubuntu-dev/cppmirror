@@ -72,7 +72,7 @@ Bool print_errors(void);
         if(!Ignore) { \
             if(!(Expression)) { \
                 push_error(ErrorType_assert_failed); \
-                *cast(PtrSize volatile *)0 = 0; \
+                *cast(Uintptr volatile *)0 = 0; \
             } \
         } \
     } while(0)
@@ -85,19 +85,20 @@ Bool print_errors(void);
 //
 struct TempMemory {
     Void *e;
-    PtrSize size;
-    PtrSize alignment_offset;
-    PtrSize used;
-
-    // TODO(Jonny): Pop memory in destructor??
+    Uintptr size;
+    Uintptr used;
 };
 
 Int const default_mem_alignment = 4; // TODO(Jonny): Should this be 8?
 
-Bool allocate_temp_memory(PtrSize size);
-TempMemory push_temp_memory(PtrSize size, PtrSize alignment = default_mem_alignment);
-Void pop_temp_memory(TempMemory *temp_memory);
-Void free_temp_memory();
+Uintptr get_remaining_temp_memory();
+TempMemory create_temp_buffer(Uintptr size);
+
+// TODO(Jonny): I'm not sure I really like the alignment in here. Maybe size?
+#define push_type(tm, Type, ...) (Type *)push_size(tm, sizeof(Type), ##__VA_ARGS__)
+Void *push_size(TempMemory *tm, Uintptr size, Uintptr alignment = default_mem_alignment);
+
+Void free_temp_buffer(TempMemory *temp_memory);
 
 //
 // String
@@ -113,11 +114,14 @@ Bool string_concat(Char *dest, Int len, Char *a, Int a_len, Char *b, Int b_len);
 Void string_copy(Char *dest, Char *src);
 Bool string_comp(String a, Char *b);
 Bool string_comp(String a, String b);
+Bool string_comp(Char *a, Char *b);
 Bool string_comp_len(Char *a, Char *b, Int len);
 Bool string_comp_array(String *a, String *b, Int cnt);
 
+Bool string_contains(String str, Char target);
 Bool string_contains(String str, Char *target);
-Bool string_contains(Char *str, Char *target);
+Bool string_contains(Char *str,  Char target);
+Bool string_contains(Char *str,  Char *target);
 
 Bool is_in_string_array(String target, String *arr, Int arr_cnt);
 
@@ -171,15 +175,17 @@ Char to_caps(Char c);
 
 const Int max_ptr_size = 4;
 
+Int absolute_value(Int v);
+
 //
 // memset and memcpy
 //
 
-Void copy(Void *dst, Void *src, PtrSize size);
+Void copy(Void *dst, Void *src, Uintptr size);
 #define zero(dst, size) set(dst, 0, size)
-Void set(Void *dst, Byte v, PtrSize size);
+Void set(Void *dst, Byte v, Uintptr size);
 
-#if OS_WIN32
+#if OS_WIN32 && !INTERNAL
 extern "C"
 {
     void *memset(void *dest, int c, size_t count);

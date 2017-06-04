@@ -105,7 +105,7 @@ internal Void print_help(void) {
     system_write_to_console(help);
 }
 
-Int main(Int argc, Char **argv) {
+int main(int argc, char **argv) {
     Int res = 0;
 
     system_write_to_console("Starting Mirror...");
@@ -121,7 +121,7 @@ Int main(Int argc, Char **argv) {
         Int fnames_max_cnt = 16;
         Char **fnames = system_alloc(Char *, fnames_max_cnt);
         if(fnames) {
-            PtrSize total_file_size = 0;
+            Uintptr total_file_size = 0;
             Int number_of_files = 0;
             for(Int i = 1; (i < argc); ++i) {
                 Char *switch_name = argv[i];
@@ -150,22 +150,24 @@ Int main(Int argc, Char **argv) {
             if(should_run_tests) {
                 Int tests_failed = run_tests();
 
-                if(tests_failed == 0) { system_write_to_console("all tests passed...");             }
-                else                  { system_write_to_console("%d tests failed\n", tests_failed); }
+                if(!tests_failed) { system_write_to_console("all tests passed...");             }
+                else              { system_write_to_console("%d tests failed\n", tests_failed); }
             } else {
-                allocate_temp_memory(gigabytes(1));
-
                 if(!number_of_files) {
                     push_error(ErrorType_no_files_pass_in);
                 } else {
-                    File file = system_read_multiple_files_into_one(fnames, number_of_files);
-                    if(file.size) {
-                        ParseResult parse_res = parse_stream(file.data);
-                        File file_to_write = write_data(parse_res);
-                        Bool write_success = system_write_to_file("pp_generated.h", file_to_write);
+                    // TODO(Jonny): Remove this!
 
-                        system_free(file.data);
-                    }
+                    ParseResult parse_res = parse_streams(number_of_files, fnames);
+                    File file_to_write = write_data(parse_res);
+                    Bool write_success = system_write_to_file("pp_generated.h", file_to_write);
+
+#if INTERNAL
+                    system_free(parse_res.enums.e);
+                    system_free(parse_res.structs.e);
+                    system_free(parse_res.funcs.e);
+                    system_free(parse_res.typedefs.e);
+#endif
                 }
             }
 

@@ -13,27 +13,22 @@
 
 #include "shared.h"
 
-
-
 // Memory.
 #define system_alloc(Type, ...) (Type *)system_malloc(sizeof(Type), ##__VA_ARGS__)
-Void *system_malloc(PtrSize size, PtrSize cnt = 1);
+Void *system_malloc(Uintptr size, Uintptr cnt = 1);
 Bool system_free(Void *ptr);
-Void *system_realloc(Void *ptr, PtrSize size);
+Void *system_realloc(Void *ptr, Uintptr size);
 
 // File IO.
 struct File {
-    Char *data;
-    PtrSize size;
+    Char *e;
+    Uintptr size;
 };
 
 Bool system_write_to_file(Char *fname, File file);
-File system_read_multiple_files_into_one(Char **fnames, Int cnt);
+File system_read_entire_file_and_null_terminate(Char *fname);
 
 // Utility stuff.
-Uint64 system_get_performance_counter(void);
-Void system_print_timer(Uint64 value);
-Bool system_check_for_debugger(void);
 Void system_write_to_console(Char *str, ...);
 
 #define _PLATFORM_H
