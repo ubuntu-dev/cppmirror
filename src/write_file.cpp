@@ -451,7 +451,6 @@ File write_data(ParseResult pr) {
                       "} pp_MemberDefinition;\n"
                       "\n"
                       "PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, pp_int i) {\n"
-                      "    pp_MemberDefinition failres = {};\n"
                       "    pp_Type real_type = pp_typedef_to_original(type);\n");
                 for(Int i = 0; (i < pr.structs.cnt); ++i) {
                     StructData *sd = pr.structs.e + i;
@@ -491,6 +490,7 @@ File write_data(ParseResult pr) {
                 write(&ob,
                       "    // Not found\n"
                       "    PP_ASSERT(0);\n"
+                      "    pp_MemberDefinition failres = {};\n"
                       "    return(failres);\n"
                       "}\n");
             }
