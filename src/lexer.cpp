@@ -1347,35 +1347,36 @@ internal Void move_stream(File *file, Char *offset_ptr, Intptr amount_to_move) {
         for(Uintptr i = offset; (i < file->size); ++i) {
             file->e[i] = file->e[i + abs_amount_to_move];
         }
+
+        file->e[file->size] = 0;
     } else {
         Uintptr old_size = file->size;
         Uintptr new_size = file->size + amount_to_move;
-        Void *p = system_realloc(file->e, (file->size + amount_to_move) + 1);
+        Void *p = system_realloc(file->e, new_size + 1);
         if(p) {
             file->e = cast(Char *)p;
 
-            for(int i = old_size; (i < new_size); ++i) {
+            // Zero the new bit.
+            for(Uintptr i = old_size; (i < new_size); ++i) {
                 file->e[i] = 0;
             }
 
-            Char *end = file->e + offset + amount_to_move;
-            Char *start = file->e + offset;
+            Uintptr tmp = old_size - offset;
+
+            Char *end = file->e + amount_to_move + offset + tmp;
+            Char *start = file->e + offset + tmp;
 #if INTERNAL
             Char *end_ = end;
             Char *start_ = start;
 #endif
 
-            for(Int i = offset; (i <= old_size); ++i) {
-                *end++ = *start++;
+            for(Uintptr i = old_size; (i > offset); --i) {
+                *end-- = *start--;
             }
 
-            file->e[file->size] = ' ';
-
-            file->size += amount_to_move;
+            file->size = new_size;
         }
     }
-
-    file->e[file->size] = 0;
 }
 
 struct ParseMacroResult {
