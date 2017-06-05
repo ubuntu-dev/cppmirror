@@ -15,10 +15,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "platform.h"
-#include "utils.h"
-#include "stb_sprintf.h"
-
 Void *system_malloc(Uintptr size, Uintptr cnt/*= 1*/) {
     Void *res = malloc(size * cnt);
     if(res) {

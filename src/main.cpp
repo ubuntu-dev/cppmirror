@@ -47,12 +47,6 @@
     - A function which gets a pointer to a base class, from a normal class?
 */
 
-#include "utils.h"
-#include "lexer.h"
-#include "platform.h"
-#include "write_file.h"
-#include "test.h"
-
 enum SwitchType {
     SwitchType_unknown,
 

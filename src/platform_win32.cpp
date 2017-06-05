@@ -10,9 +10,6 @@
   ===================================================================================================*/
 
 #include <windows.h>
-#include "platform.h"
-#include "utils.h"
-#include "stb_sprintf.h"
 
 extern "C" { int _fltused; }
 

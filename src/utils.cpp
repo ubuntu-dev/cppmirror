@@ -9,11 +9,6 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-#define MEM_ROOT_FILE
-#include "shared.h"
-#include "utils.h"
-#include "platform.h"
-
 #define STB_SPRINTF_IMPLEMENTATION
 #define STB_SPRINTF_NOFLOAT
 #include "stb_sprintf.h"

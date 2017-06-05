@@ -9,14 +9,7 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-#include "platform.h"
-#include "utils.h"
-
 #if INTERNAL
-
-namespace {
-#include "lexer.cpp"
-}
 
 internal StructData parse_struct_test(Char *str, StructType type = StructType_struct) {
     Tokenizer t = {str};

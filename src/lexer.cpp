@@ -9,9 +9,6 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-#include "lexer.h"
-#include "platform.h"
-
 // TODO(Jonny): Rename some of these so they're more clear.
 enum TokenType {
     TokenType_unknown,

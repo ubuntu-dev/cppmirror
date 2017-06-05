@@ -9,11 +9,6 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-#include "write_file.h"
-#include "lexer.h"
-#include "stb_sprintf.h"
-#include "platform.h"
-
 struct OutputBuffer {
     Char *buffer;
     Int index;
@@ -910,7 +905,6 @@ File write_data(ParseResult pr) {
                       "//\n"
                       "PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t index) {\n");
                 if(pr.enums.cnt) {
-
                     write(&ob, "    switch(pp_typedef_to_original(type)) {\n");
                     for(Int i = 0; (i < pr.enums.cnt); ++i) {
                         EnumData *ed = pr.enums.e + i;
