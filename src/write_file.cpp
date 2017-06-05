@@ -122,8 +122,6 @@ internal Int get_actual_type_count(String *types, Structs structs, Enums enums, 
 
 File write_data(ParseResult pr) {
     File res = {};
-#if 1
-
     OutputBuffer ob = {};
     ob.size = 1024 * 1024;
     ob.buffer = system_alloc(Char, ob.size);
@@ -157,18 +155,6 @@ File write_data(ParseResult pr) {
               "#else\n"
               "    #define PP_STATIC\n"
               "#endif\n");
-#if 0
-        "typedef void pp_void;\n"
-        "typedef char pp_char;\n"
-        "typedef short pp_short;\n"
-        "typedef int pp_int;\n"
-        "typedef long pp_long;\n"
-        "typedef float pp_float;\n"
-        "typedef double pp_double;\n"
-        "typedef bool pp_bool;\n"
-        "\n"
-#endif
-
 
         write(&ob, "\n// Primitive types.\n");
         for(Int i = 0; (i < array_count(primitive_types)); ++i) {
@@ -974,7 +960,6 @@ File write_data(ParseResult pr) {
         res.size = ob.index;
         res.e = ob.buffer;
     }
-#endif
 
     return(res);
 }
