@@ -1494,7 +1494,11 @@ internal Int macro_replace(Char *token_start, File *file, MacroData md) {
         do {
             for(Int i = 0; (i < md.param_cnt); ++i) {
                 if(token_compare(token, md.params[i])) {
+                    // Tokenizer may be invalidated after the move_stream call.
+                    Uintptr offset = tokenizer.at - file->e;
                     move_stream(file, tokenizer.at - 1, params[i].len - token.len);
+                    tokenizer.at = file->e + offset;
+
                     res += params[i].len - token.len;
 
                     iden_len += params[i].len - token.len;
@@ -1538,18 +1542,6 @@ internal Void add_include_file(Tokenizer *tokenizer, File *file) {
             tokenizer->at = file->e + offset;
 
             copy(tokenizer->at, include_file.e, include_file.size);
-#if 0
-            Uintptr old_size = file->size;
-            file->size += include_file.size;
-            Void *p = system_realloc(file->e, file->size);
-            if(p) {
-                file->e = cast(Char *)p;
-
-                //move_bytes_forward(tokenizer->at, old_size - cast(Uintptr)(tokenizer->at - file->e), include_file.size);
-                move_stream(file, tokenizer->at, file->size);
-                copy(tokenizer->at, include_file.e, include_file.size);
-            }
-#endif
 
             system_free(include_file.e);
         }
@@ -1557,33 +1549,12 @@ internal Void add_include_file(Tokenizer *tokenizer, File *file) {
 }
 
 
-internal Void preload_macros(MacroData *macro_data, Int *macro_cnt, TempMemory *param_memory) {
-    //#define pp_DA(Type) PP_CONCAT(pp_DynamicArray_, Type)
-    macro_data[*macro_cnt].iden = create_string("pp_DA");
-    macro_data[*macro_cnt].res = create_string("pp_DA_##Type");
-    macro_data[*macro_cnt].params = push_type(param_memory, String);
-    macro_data[*macro_cnt].params[0] = create_string("Type");
-    macro_data[*macro_cnt].param_cnt = 1;
-    *macro_cnt += 1;
-
-    //#define PP_CONCAT(a, b) a##b
-    macro_data[*macro_cnt].iden = create_string("PP_CONCAT");
-    macro_data[*macro_cnt].res = create_string("a##b");
-    macro_data[*macro_cnt].params = cast(String *)push_size(param_memory, sizeof(String) * 2);
-    macro_data[*macro_cnt].params[0] = create_string("a");
-    macro_data[*macro_cnt].params[1] = create_string("b");
-    macro_data[*macro_cnt].param_cnt = 2;
-    *macro_cnt += 1;
-}
-
 internal Void preprocess_macros(File *file) {
     TempMemory macro_memory = create_temp_buffer(sizeof(MacroData) * 128);
     TempMemory param_memory = create_temp_buffer(sizeof(String) * 128);
 
     Int macro_cnt = 0;
     MacroData *macro_data = cast(MacroData *)macro_memory.e;
-
-    preload_macros(macro_data, &macro_cnt, &param_memory);
 
     Tokenizer tokenizer = { file->e };
 
