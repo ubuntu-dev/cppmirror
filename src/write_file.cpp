@@ -37,7 +37,12 @@ internal Void write_to_output_buffer_no_var_args(OutputBuffer *ob, Char *format)
     }
 }
 
-internal Char *primitive_types[] = {"char", "short", "int", "long", "float", "double", "bool"};
+internal Char *primitive_types[] = {
+    "char", "short", "int", "long", "float", "double", "bool",
+    "uint64_t", "uint32_t", "uint16_t", "uint8_t",
+    "int64_t", "int32_t", "int16_t", "int8_t",
+    "uintptr_t", "intptr_t", "size_t"
+};
 
 internal StructData *find_struct(String str, Structs structs) {
     StructData *res = 0;
@@ -125,16 +130,6 @@ File write_data(ParseResult pr) {
     if(ob.buffer) {
         write(&ob,
               "#if !defined(PP_GENERATED_H)\n"
-              "\n"
-              "typedef void pp_void;\n"
-              "typedef char pp_char;\n"
-              "typedef short pp_short;\n"
-              "typedef int pp_int;\n"
-              "typedef long pp_long;\n"
-              "typedef float pp_float;\n"
-              "typedef double pp_double;\n"
-              "typedef bool pp_bool;\n"
-              "\n"
               "// Standard lib stuff.\n"
               "#include <stdint.h>\n"
               "\n"
@@ -161,7 +156,30 @@ File write_data(ParseResult pr) {
               "    #define PP_STATIC static\n"
               "#else\n"
               "    #define PP_STATIC\n"
-              "#endif\n"
+              "#endif\n");
+#if 0
+        "typedef void pp_void;\n"
+        "typedef char pp_char;\n"
+        "typedef short pp_short;\n"
+        "typedef int pp_int;\n"
+        "typedef long pp_long;\n"
+        "typedef float pp_float;\n"
+        "typedef double pp_double;\n"
+        "typedef bool pp_bool;\n"
+        "\n"
+#endif
+
+
+        write(&ob, "\n// Primitive types.\n");
+        for(Int i = 0; (i < array_count(primitive_types)); ++i) {
+            Char const *p = primitive_types[i];
+
+            write(&ob,
+                  "typedef %s pp_%s;\n",
+                  p, p);
+        }
+
+        write(&ob,
               "\n"
               "PP_STATIC bool pp_string_compare(char const *a, char const *b) {\n"
               "    for(; (*a != *b); ++a, ++b) {\n"
@@ -724,8 +742,8 @@ File write_data(ParseResult pr) {
                                                    "            char const *type_as_string = pp_type_to_string(member.type);\n"
                                                    "            if(member.arr_size > 1) {\n"
                                                    "                for(int j = 0; (j < member.arr_size); ++j) {\n"
-                                                   "                    uintptr_t *member_ptr_as_size_t = (uintptr_t *)member_ptr; // For arrays of pointers.\n"
-                                                   "                    bool is_null = (member.ptr) ? member_ptr_as_size_t[j] == 0 : false;\n"
+                                                   "                    uintptr_t *member_ptr_as_uintptr = (uintptr_t *)member_ptr; // For arrays of pointers.\n"
+                                                   "                    bool is_null = (member.ptr) ? member_ptr_as_uintptr[j] == 0 : false;\n"
                                                    "                    if(!is_null) {\n"
                                                    "\n"
                                                    "#define print_prim_arr(m, Type, p) Type *v = (member.ptr) ? *(Type **)((char unsigned *)member_ptr + (sizeof(uintptr_t) * j)) : &((Type *)member_ptr)[j]; bytes_written += PP_SPRINTF((char *)buffer + bytes_written, buf_size - bytes_written, \"\\n%s \" #Type \" %s%s[%d] = \" m \"\", indent_buf, (member.ptr) ? \"*\" : \"\", member.name, j, p (Type *)v)\n"

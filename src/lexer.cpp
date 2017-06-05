@@ -1548,7 +1548,6 @@ internal Void add_include_file(Tokenizer *tokenizer, File *file) {
     }
 }
 
-
 internal Void preprocess_macros(File *file) {
     TempMemory macro_memory = create_temp_buffer(sizeof(MacroData) * 128);
     TempMemory param_memory = create_temp_buffer(sizeof(String) * 128);
