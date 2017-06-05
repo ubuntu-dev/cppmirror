@@ -130,7 +130,7 @@ File write_data(ParseResult pr) {
     if(ob.buffer) {
         write(&ob,
               "#if !defined(PP_GENERATED_H)\n"
-              "// Standard lib stuff.\n"
+              "\n"
               "#include <stdint.h>\n"
               "\n"
               "#if !defined(PP_ASSERT)\n"
@@ -331,7 +331,8 @@ File write_data(ParseResult pr) {
                       "// An enum, with an index for each type in the codebase.\n"
                       "//\n"
                       "enum pp_Type {\n"
-                      "    pp_Type_unknown,\n");
+                      "    pp_Type_unknown,\n"
+                      "\n");
 
                 for(Int i = 0; (i < type_count); ++i) {
                     String *t = types + i;
@@ -341,7 +342,10 @@ File write_data(ParseResult pr) {
                           t->len, t->e);
                 }
 
-                write(&ob, "};\n");
+                write(&ob,
+                      "\n"
+                      "    pp_Type_count,\n"
+                      "};\n");
             }
 
             write(&ob,
@@ -574,30 +578,32 @@ File write_data(ParseResult pr) {
                       "\n"
                       "enum pp_StructureType {\n"
                       "    pp_StructureType_unknown,\n"
+                      "\n"
                       "    pp_StructureType_primitive,\n"
                       "    pp_StructureType_struct,\n"
                       "    pp_StructureType_enum,\n"
+                      "\n"
                       "    pp_StructureType_count,\n"
                       "};\n"
                       "\n"
                       "PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {\n"
-                      "    switch(pp_typedef_to_original(type)) {\n"
-                      "        ");
+                      "    switch(pp_typedef_to_original(type)) {\n");
 
                 // Primitive.
                 {
+                    write(&ob, "        ");
                     for(Int i = 0; (i < array_count(primitive_types)); ++i) {
                         write(&ob, "case pp_Type_%s: ", primitive_types[i]);
                     }
                     write(&ob,
                           " {\n"
                           "            return(pp_StructureType_primitive);\n"
-                          "        } break;\n"
-                          "        ");
+                          "        } break;\n");
                 }
 
                 // Enums
                 if(pr.enums.cnt) {
+                    write(&ob, "\n        ");
                     for(Int i = 0; (i < pr.enums.cnt); ++i) {
                         EnumData *ed = pr.enums.e + i;
 
@@ -612,6 +618,7 @@ File write_data(ParseResult pr) {
 
                 // Structs.
                 if(pr.structs.cnt) {
+                    write(&ob, "\n        ");
                     for(Int i = 0; (i < pr.structs.cnt); ++i) {
                         StructData *sd = pr.structs.e + i;
 
@@ -686,9 +693,8 @@ File write_data(ParseResult pr) {
             {
                 write(&ob,
                       "\n"
-                      "PP_STATIC uintptr_t pp_get_size_from_type(pp_Type _type) {\n"
-                      "    pp_Type type = pp_typedef_to_original(_type);\n"
-                      "    switch(type) {\n");
+                      "PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {\n"
+                      "    switch(pp_typedef_to_original(type)) {\n");
 
                 // Primitives.
                 write(&ob, "        // Primitives\n");
