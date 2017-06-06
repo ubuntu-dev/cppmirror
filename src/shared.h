@@ -14,30 +14,30 @@
 #include <stdint.h>
 #include <stdarg.h>
 
-using Uint64 = uint64_t;
-using Uint32 = uint32_t;
-using Uint16 = uint16_t;
-using Uint8 = uint8_t;
+typedef uint64_t Uint64;
+typedef uint32_t Uint32;
+typedef uint16_t Uint16;
+typedef uint8_t Uint8;
 
-using Int64 = int64_t;
-using Int32 = int32_t;
-using Int16 = int16_t;
-using Int8 = int8_t;
+typedef int64_t Int64;
+typedef int32_t Int32;
+typedef int16_t Int16;
+typedef int8_t Int8;
 
-using Bool = Int32;
-using Void = void;
-using Char = char;
+typedef Int32 Bool;
+typedef void Void;
+typedef char Char;
 
-using Int = Int32;
-using Uint = Uint32;
+typedef Int32 Int;
+typedef Uint32 Uint;
 
-using Byte = Uint8;
-using Uintptr = uintptr_t;
-using Intptr = intptr_t;
+typedef Uint8 Byte;
+typedef uintptr_t Uintptr;
+typedef intptr_t Intptr;
 
-using Float32 = float;
-using Float64 = double;
-using Float = Float32;
+typedef float Float32;
+typedef double Float64;
+typedef Float32 Float;
 
 #define cast(type) (type)
 #define array_count(arr) (sizeof(arr) / (sizeof(*(arr))))
