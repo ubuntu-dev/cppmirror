@@ -1,5 +1,5 @@
 /*===================================================================================================
-  File:                    shared.h
+  File:                    types.h
   Author:                  Jonathan Livingstone
   Email:                   seagull127@ymail.com
   Licence:                 Public Domain
@@ -8,11 +8,6 @@
                            The use of this code is at your own risk
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
-
-#if !defined(_SHARED_H)
-
-#include <stdint.h>
-#include <stdarg.h>
 
 typedef uint64_t Uint64;
 typedef uint32_t Uint32;
@@ -24,12 +19,12 @@ typedef int32_t Int32;
 typedef int16_t Int16;
 typedef int8_t Int8;
 
+typedef Int32 Int;
+typedef Uint32 Uint;
+
 typedef Int32 Bool;
 typedef void Void;
 typedef char Char;
-
-typedef Int32 Int;
-typedef Uint32 Uint;
 
 typedef Uint8 Byte;
 typedef uintptr_t Uintptr;
@@ -43,7 +38,7 @@ typedef Float32 Float;
 #define array_count(arr) (sizeof(arr) / (sizeof(*(arr))))
 #define preprocessor_concat(a, b) a##b
 
-#define internal static
+#define global static
 
 //
 // Detect compiler/platform.
@@ -99,5 +94,17 @@ typedef Float32 Float;
     #endif
 #endif
 
-#define _SHARED_H
+#if INTERNAL
+#define assert(Expression) \
+    do { \
+        static Bool ignore = false; \
+        if(!ignore) { \
+            if(!(Expression)) { \
+                push_error(ErrorType_assert_failed); \
+                *cast(Uintptr volatile *)0 = 0; \
+            } \
+        } \
+    } while(0)
+#else
+#define assert(Expression) {}
 #endif

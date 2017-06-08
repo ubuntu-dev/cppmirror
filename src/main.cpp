@@ -28,15 +28,15 @@ enum SwitchType {
     SwitchType_count,
 };
 
-internal SwitchType get_switch_type(Char *str) {
+SwitchType get_switch_type(Char *str) {
     SwitchType res = {};
 
     Int len = string_length(str);
     if(len >= 2) {
         if(str[0] == '-') {
             switch(str[1]) {
-                case 'e': res = SwitchType_log_errors;         break;
-                case 'h': res = SwitchType_print_help;         break;
+                case 'e': res = SwitchType_log_errors; break;
+                case 'h': res = SwitchType_print_help; break;
 #if INTERNAL
                 case 's': res = SwitchType_silent;    break;
                 case 't': res = SwitchType_run_tests; break;
@@ -52,9 +52,9 @@ internal SwitchType get_switch_type(Char *str) {
     return(res);
 }
 
-internal Bool should_write_to_file = false;
+global Bool should_write_to_file = false;
 
-internal Void print_help(void) {
+Void print_help(void) {
     Char *help = "    List of Commands.\n"
                  "        -e - Print errors to the console.\n"
                  "        -h - Print this help.\n"
@@ -66,6 +66,15 @@ internal Void print_help(void) {
                  "\n";
 
     system_write_to_console(help);
+}
+
+Int run_tests() {
+    Int res = 0;
+#if INTERNAL
+    res += struct_tests();
+#endif
+
+    return(res);
 }
 
 int main(int argc, char **argv) {

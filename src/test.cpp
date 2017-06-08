@@ -9,9 +9,7 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-#if INTERNAL
-
-internal StructData parse_struct_test(Char *str, StructType type = StructType_struct) {
+StructData parse_struct_test(Char *str, StructType type = StructType_struct) {
     Tokenizer t = {str};
 
     eat_token(&t);
@@ -20,7 +18,7 @@ internal StructData parse_struct_test(Char *str, StructType type = StructType_st
     return(res.sd);
 }
 
-internal Int struct_tests() {
+Int struct_tests() {
     Int res = 0;
 
     //
@@ -113,17 +111,6 @@ internal Int struct_tests() {
             ++res;
         }
     }
-
-    return(res);
-}
-
-#endif // INTERNAL
-
-Int run_tests() {
-    Int res = 0;
-#if INTERNAL
-    res += struct_tests();
-#endif
 
     return(res);
 }

@@ -9,10 +9,6 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-#if !defined(_PLATFORM_H)
-
-#include "shared.h"
-
 // Memory.
 #define system_alloc(Type, ...) (Type *)system_malloc(sizeof(Type), ##__VA_ARGS__)
 Void *system_malloc(Uintptr size, Uintptr cnt = 1);
@@ -30,6 +26,3 @@ File system_read_entire_file_and_null_terminate(Char *fname);
 
 // Utility stuff.
 Void system_write_to_console(Char *str, ...);
-
-#define _PLATFORM_H
-#endif

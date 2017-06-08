@@ -15,7 +15,7 @@ struct OutputBuffer {
     Int size;
 };
 
-internal Void write(OutputBuffer *ob, Char *format, ...) {
+Void write(OutputBuffer *ob, Char *format, ...) {
     va_list args;
     va_start(args, format);
     ob->index += stbsp_vsnprintf(ob->buffer + ob->index, ob->size - ob->index, format, args);
@@ -23,7 +23,7 @@ internal Void write(OutputBuffer *ob, Char *format, ...) {
     va_end(args);
 }
 
-internal Void write_to_output_buffer_no_var_args(OutputBuffer *ob, Char *format) {
+Void write_to_output_buffer_no_var_args(OutputBuffer *ob, Char *format) {
     Char *fat = format;
     Char *obat = ob->buffer + ob->index;
     while(*fat) {
@@ -32,14 +32,14 @@ internal Void write_to_output_buffer_no_var_args(OutputBuffer *ob, Char *format)
     }
 }
 
-internal Char *primitive_types[] = {
+global Char *primitive_types[] = {
     "char", "short", "int", "long", "float", "double", "bool",
     "uint64_t", "uint32_t", "uint16_t", "uint8_t",
     "int64_t", "int32_t", "int16_t", "int8_t",
     "uintptr_t", "intptr_t", "size_t"
 };
 
-internal StructData *find_struct(String str, Structs structs) {
+StructData *find_struct(String str, Structs structs) {
     StructData *res = 0;
 
     if(str.len) {
@@ -56,7 +56,7 @@ internal StructData *find_struct(String str, Structs structs) {
     return(res);
 }
 
-internal Bool is_meta_type_already_in_array(String *array, Int len, String test) {
+Bool is_meta_type_already_in_array(String *array, Int len, String test) {
     Bool res = false;
 
     for(Int i = 0; (i < len); ++i) {
@@ -69,7 +69,7 @@ internal Bool is_meta_type_already_in_array(String *array, Int len, String test)
     return(res);
 }
 
-internal Int get_actual_type_count(String *types, Structs structs, Enums enums, Typedefs typedefs) {
+Int get_actual_type_count(String *types, Structs structs, Enums enums, Typedefs typedefs) {
     Int res = 0;
 
     // Primitives.
