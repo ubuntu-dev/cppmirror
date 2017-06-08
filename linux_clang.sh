@@ -7,13 +7,11 @@ RUN_TEST=true
 # Mirror
 WARNINGS="-Wno-unused-function -Wno-unused-variable -Wno-switch -Wno-sign-compare -Wno-unused-parameter -Wno-writable-strings -Wno-unknown-escape-sequence"
 
-FILES=""src/main.cpp" "src/utils.cpp" "src/lexer.cpp" "src/platform_linux.cpp" "src/write_file.cpp" "src/test.cpp""
-
 echo "Building mirror"
 if [ "$RELEASE" = "true" ]; then
-    clang++-"$CLANG_VERSION" -Wall -Wextra $FILES -std=c++1z -fno-exceptions -fno-rtti -o mirror_exe -DINTERNAL=0 $WARNINGS -ldl
+    clang++-"$CLANG_VERSION" -Wall -Wextra src/build.cpp -std=c++1z -fno-exceptions -fno-rtti -o mirror_exe -DINTERNAL=0 $WARNINGS -ldl
 else
-    clang++-"$CLANG_VERSION" -Wall -Wextra $FILES -std=c++1z -fno-exceptions -fno-rtti -o mirror_exe -DINTERNAL=1 $WARNINGS -g -ldl
+    clang++-"$CLANG_VERSION" -Wall -Wextra src/build.cpp -std=c++1z -fno-exceptions -fno-rtti -o mirror_exe -DINTERNAL=1 $WARNINGS -g -ldl
 fi
 mv "./mirror_exe" "build/mirror"
 
