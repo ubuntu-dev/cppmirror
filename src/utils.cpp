@@ -465,14 +465,14 @@ Void copy(Void *dest, Void *src, Uintptr size) {
     Byte *dest8 = cast(Byte *)dest;
     Byte *src8 = cast(Byte *)src;
 
-    for(Int i = 0; (i < size); ++i) {
+    for(Uintptr i = 0; (i < size); ++i) {
         dest8[i] = src8[i];
     }
 }
 
 Void set(void *dest, Byte v, Uintptr n) {
     Byte *dest8 = cast(Byte *)dest;
-    for(Int i = 0; (i < n); ++i, ++dest8) {
+    for(Uintptr i = 0; (i < n); ++i, ++dest8) {
         *dest8 = cast(Byte)v;
     }
 }
@@ -482,21 +482,23 @@ extern "C"
 {
 #pragma function(memset)
     void *memset(void *dest, int c, size_t count) {
-        char *bytes = (char *)dest;
-        while (count--) {
-            *bytes++ = (char)c;
+        Byte *dest8 = (char *)dest;
+        while(count--) {
+            *dest8++ = (char)c;
         }
-        return dest;
+
+        return(dest);
     }
 
 #pragma function(memcpy)
     void *memcpy(void *dest, const void *src, size_t count) {
-        char *dest8 = (char *)dest;
-        const char *src8 = (const char *)src;
+        Byte *dst8 = (Char *)dest;
+        Byte *src8 = (Char *)src;
         while (count--) {
-            *dest8++ = *src8++;
+            *dst8++ = *src8++;
         }
-        return dest;
+
+        return(dest);
     }
 }
 #endif
