@@ -13,6 +13,7 @@
     - In serialize struct, if there is a member which is an enum, call enum_to_string on it's value.
     - Allow mathematical macros (1 + 1) to be the index for an array.
     - Global consts for arrays.
+    - Support modifiers (unnsigned, volatile, const).
 */
 
 enum SwitchType {
