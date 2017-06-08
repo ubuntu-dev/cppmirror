@@ -28,7 +28,7 @@ enum SwitchType {
 };
 
 internal SwitchType get_switch_type(Char *str) {
-    SwitchType res = SwitchType_unknown;
+    SwitchType res = {};
 
     Int len = string_length(str);
     if(len >= 2) {
