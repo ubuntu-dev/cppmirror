@@ -9,7 +9,6 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-
 enum StructType {
     StructType_unknown,
     StructType_struct,
@@ -19,6 +18,7 @@ enum StructType {
     StructType_count
 };
 
+// TODO(Jonny): Check if this is right. Then google how to actually read the values.
 enum Modifier {
     Modifier_unknown = 0x00,
 
