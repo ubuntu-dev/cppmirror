@@ -340,8 +340,18 @@ File write_data(ParseResult pr) {
             for(Int i = 0; (i < pr.structs.cnt); ++i) {
                 StructData *sd = pr.structs.e + i;
 
+                Char *type = 0;
+                switch(sd->struct_type) {
+                    case StructType_struct: { type = "struct"; } break;
+                    case StructType_class:  { type = "class"; } break;
+                    case StructType_union:  { type = "union"; } break;
+
+                    default: { assert(0); } break;
+                }
+
                 write(&ob,
-                      "typedef struct pp_%.*s pp_%.*s, pp_pp_%.*s;\n",
+                      "typedef %s pp_%.*s pp_%.*s, pp_pp_%.*s;\n",
+                      type,
                       sd->name.len, sd->name.e,
                       sd->name.len, sd->name.e,
                       sd->name.len, sd->name.e);
