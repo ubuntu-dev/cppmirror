@@ -115,20 +115,20 @@ enum TokenType {
     TokenType_ampersand,
     TokenType_inclusive_or,
     TokenType_not,
-    TokenType_var_args,
 
     TokenType_plus,
     TokenType_minus,
     TokenType_divide,
 
-    TokenType_number,
-    TokenType_identifier,
-    TokenType_string,
-
     TokenType_equal,
     TokenType_not_equal,
     TokenType_greater_than_or_equal,
     TokenType_less_than_or_equal,
+
+    TokenType_number,
+    TokenType_identifier,
+    TokenType_string,
+    TokenType_var_args,
 
     TokenType_error,
 
@@ -1308,7 +1308,7 @@ Void parse_stream(Char *stream, ParseResult *res) {
                 if(token_equals(token, "template")) {
                     template_header = parse_template(&tokenizer);
                 } else if((token_equals(token, "struct")) || (token_equals(token, "class")) || (token_equals(token, "union"))) {
-                    StructType struct_type = StructType_unknown;
+                    StructType struct_type = {};
 
                     if(token_equals(token, "struct"))     { struct_type = StructType_struct; }
                     else if(token_equals(token, "class")) { struct_type = StructType_class;  }
