@@ -252,23 +252,28 @@ Bool token_compare(Token a, Char *b, Int string_len = 0) {
 Modifier is_modifier(Token token) {
     Modifier res = {};
 
-    Char *modifiers[] = {
-        "unsigned",
-        "const",
-        "volatile",
-        "mutable"
+    struct ModifierWithString {
+        String str;
+        Modifier mod;
     };
 
-    if(token_compare(token, modifiers[0], string_length(modifiers[0]))) {
-        res = Modifier_unsigned;
-    } else if(token_compare(token, modifiers[1], string_length(modifiers[1]))) {
-        res = Modifier_const;
-    } else if(token_compare(token, modifiers[2], string_length(modifiers[2]))) {
-        res = Modifier_volatile;
-    } else if(token_compare(token, modifiers[3], string_length(modifiers[3]))) {
-        res = Modifier_mutable;
-    }
+#define CREATE_MODIFIER(name) { create_string(#name), Modifier_##name }
 
+    ModifierWithString modifiers[] = {
+        CREATE_MODIFIER(unsigned),
+        CREATE_MODIFIER(const),
+        CREATE_MODIFIER(volatile),
+        CREATE_MODIFIER(mutable)
+    };
+
+    for(Int i = 0; (i < array_count(modifiers)); ++i) {
+        ModifierWithString *mod = modifiers + i;
+
+        if(token_compare(token, mod->str)) {
+            res = mod->mod;
+        }
+    }
+    g
     return(res);
 }
 
