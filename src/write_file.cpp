@@ -335,6 +335,8 @@ File write_data(ParseResult pr) {
                   "// Forward declared recreated stuff.\n"
                   "//\n");
 
+            // TODO(Jonny): Actually use the modifiers in the recreated stuff.
+
             // Forward declared recreated structs.
             write(&ob, "// Structs.\n");
             for(Int i = 0; (i < pr.structs.cnt); ++i) {
