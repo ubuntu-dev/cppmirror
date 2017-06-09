@@ -20,7 +20,7 @@
 #include "stb_sprintf.h"
 
 // Anoymous namespaces make every function inside them "static", which help with optimizations, even in a unity build.
-namespace {
+//namespace {
 
 // Headers
 #include "types.h"
@@ -47,7 +47,7 @@ namespace {
     #include "platform_win32.cpp"
 #endif
 
-} // namespace
+//} // namespace
 
 // main.
 #include "main.cpp"

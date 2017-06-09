@@ -65,9 +65,12 @@ enum ErrorType {
     ErrorType_did_not_write_entire_file,
     ErrorType_did_not_read_entire_file,
     ErrorType_could_not_create_directory,
+
     ErrorType_incorrect_number_of_members_for_struct,
     ErrorType_incorrect_struct_name,
     ErrorType_incorrect_number_of_base_structs,
+    ErrorType_incorrect_members_in_struct,
+    ErrorType_incorrect_data_structure_type,
 
     ErrorType_count,
 };
@@ -117,6 +120,8 @@ Char *ErrorTypeToString(ErrorType e) {
         case ERROR_TYPE_TO_STRING(ErrorType_incorrect_number_of_members_for_struct);
         case ERROR_TYPE_TO_STRING(ErrorType_incorrect_struct_name);
         case ERROR_TYPE_TO_STRING(ErrorType_incorrect_number_of_base_structs);
+        case ERROR_TYPE_TO_STRING(ErrorType_incorrect_members_in_struct);
+        case ERROR_TYPE_TO_STRING(ErrorType_incorrect_data_structure_type);
 
         default: assert(0); break;
     }
@@ -300,6 +305,12 @@ Bool string_comp(String a, Char *b) {
             break;
         }
     }
+
+    return(res);
+}
+
+Bool string_comp(Char *a, String b) {
+    Bool res = string_comp(b, a);
 
     return(res);
 }
