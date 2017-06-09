@@ -9,20 +9,89 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-#define MEM_ROOT_FILE
-#include "shared.h"
-#include "utils.h"
-#include "platform.h"
+const Int max_ptr_size = 4;
 
-#define STB_SPRINTF_IMPLEMENTATION
-#define STB_SPRINTF_NOFLOAT
-#include "stb_sprintf.h"
+//
+// Memset and Memcpy
+//
+Void copy(Void *dest, Void *src, Uintptr size) {
+    Byte *dest8 = cast(Byte *)dest;
+    Byte *src8 = cast(Byte *)src;
+
+    for(Uintptr i = 0; (i < size); ++i) {
+        dest8[i] = src8[i];
+    }
+}
+
+#define zero(dst, size) set(dst, 0, size)
+Void set(void *dest, Byte v, Uintptr n) {
+    Byte *dest8 = cast(Byte *)dest;
+    for(Uintptr i = 0; (i < n); ++i, ++dest8) {
+        *dest8 = cast(Byte)v;
+    }
+}
 
 //
 // Error stuff.
 //
-internal Error global_errors[32];
-internal Int global_error_count = 0;
+#if COMPILER_MSVC
+    #define GUID__(file, seperator, line) file seperator line ")"
+    #define GUID_(file, line) GUID__(file, "(", #line)
+    #define GUID(file, line) GUID_(file, line)
+    #define MAKE_GUID GUID(__FILE__, __LINE__)
+#else
+    #define GUID__(file, seperator, line) file seperator line ":1: error:"
+    #define GUID_(file, line) GUID__(file, ":", #line)
+    #define GUID(file, line) GUID_(file, line)
+    #define MAKE_GUID GUID(__FILE__, __LINE__)
+#endif
+
+enum ErrorType {
+    ErrorType_ran_out_of_memory,
+    ErrorType_assert_failed,
+    ErrorType_no_parameters,
+    ErrorType_cannot_find_file,
+    ErrorType_could_not_write_to_disk,
+    ErrorType_could_not_load_file,
+    ErrorType_no_files_pass_in,
+    ErrorType_could_not_find_mallocd_ptr,
+    ErrorType_memory_not_freed,
+    ErrorType_could_not_detect_struct_name,
+    ErrorType_could_not_find_struct,
+    ErrorType_unknown_token_found,
+    ErrorType_failed_to_parse_enum,
+    ErrorType_failed_parsing_variable,
+    ErrorType_failed_to_find_size_of_array,
+    ErrorType_did_not_write_entire_file,
+    ErrorType_did_not_read_entire_file,
+    ErrorType_could_not_create_directory,
+
+    ErrorType_incorrect_number_of_members_for_struct,
+    ErrorType_incorrect_struct_name,
+    ErrorType_incorrect_number_of_base_structs,
+    ErrorType_incorrect_members_in_struct,
+    ErrorType_incorrect_data_structure_type,
+
+    ErrorType_count,
+};
+
+struct Error {
+    ErrorType type;
+    Char *guid;
+};
+
+global Error global_errors[32];
+global Int global_error_count;
+
+#define push_error(type) push_error_(type, MAKE_GUID)
+Void push_error_(ErrorType type, Char *guid) {
+    if(global_error_count + 1 < array_count(global_errors)) {
+        Error *e = global_errors + global_error_count++;
+
+        e->type = type;
+        e->guid = guid;
+    }
+}
 
 Char *ErrorTypeToString(ErrorType e) {
     Char *res = 0;
@@ -51,27 +120,20 @@ Char *ErrorTypeToString(ErrorType e) {
         case ERROR_TYPE_TO_STRING(ErrorType_incorrect_number_of_members_for_struct);
         case ERROR_TYPE_TO_STRING(ErrorType_incorrect_struct_name);
         case ERROR_TYPE_TO_STRING(ErrorType_incorrect_number_of_base_structs);
+        case ERROR_TYPE_TO_STRING(ErrorType_incorrect_members_in_struct);
+        case ERROR_TYPE_TO_STRING(ErrorType_incorrect_data_structure_type);
 
         default: assert(0); break;
     }
 
     if(res) {
-        Int offset = string_length("ErrorType_");
+        Int offset = 10;//string_length("ErrorType_");
         res += offset;
     }
 
 #undef ERROR_TYPE_TO_STRING
 
     return(res);
-}
-
-Void push_error_(ErrorType type, Char *guid) {
-    if(global_error_count + 1 < array_count(global_errors)) {
-        Error *e = global_errors + global_error_count++;
-
-        e->type = type;
-        e->guid = guid;
-    }
 }
 
 Bool print_errors(void) {
@@ -98,6 +160,14 @@ Bool print_errors(void) {
 //
 // Temp Memory.
 //
+Int const default_mem_alignment = 4;
+
+struct TempMemory {
+    Void *e;
+    Uintptr size;
+    Uintptr used;
+};
+
 Uintptr get_alignment(void *mem, Uintptr desired_alignment) {
     Uintptr res = 0;
 
@@ -121,7 +191,8 @@ TempMemory create_temp_buffer(Uintptr size) {
     return(res);
 }
 
-Void *push_size(TempMemory *tm, Uintptr size, Uintptr alignment/*= default_mem_alignment*/) {
+#define push_type(tm, Type, ...) (Type *)push_size(tm, sizeof(Type), ##__VA_ARGS__)
+Void *push_size(TempMemory *tm, Uintptr size, Uintptr alignment= default_mem_alignment) {
     Void *res = 0;
 
     Uintptr alignment_offset = get_alignment(cast(Byte *)tm->e + tm->used, alignment);
@@ -144,11 +215,10 @@ Void free_temp_buffer(TempMemory *temp_memory) {
 //
 // Strings.
 //
-String create_string(Char *str, Int len/*= 0*/) {
-    String res = {str, (len) ? len : string_length(str)};
-
-    return(res);
-}
+struct String {
+    Char *e;
+    Int len;
+};
 
 Int string_length(Char *str) {
     Int res = 0;
@@ -156,6 +226,12 @@ Int string_length(Char *str) {
     while(*str++) {
         ++res;
     }
+
+    return(res);
+}
+
+String create_string(Char *str, Int len= 0) {
+    String res = {str, (len) ? len : string_length(str)};
 
     return(res);
 }
@@ -233,6 +309,12 @@ Bool string_comp(String a, Char *b) {
     return(res);
 }
 
+Bool string_comp(Char *a, String b) {
+    Bool res = string_comp(b, a);
+
+    return(res);
+}
+
 Bool string_comp_array(String *a, String *b, Int cnt) {
     Bool res = true;
     for(Int i = 0; (i < cnt); ++i) {
@@ -301,6 +383,11 @@ Bool string_contains(Char *str, Char *target) {
 //
 // Stuff
 //
+struct ResultInt {
+    Int e;
+    Bool success;
+};
+
 ResultInt char_to_int(Char c) {
     ResultInt res = {};
     switch(c) {
@@ -417,7 +504,27 @@ Uint32 safe_truncate_size_64(Uint64 v) {
     return(res);
 }
 
-Variable create_variable(Char *type, Char *name, Int ptr/*= 0*/, Int array_count/*= 1*/) {
+//
+// Variable.
+//
+enum Access {
+    Access_public,
+    Access_private,
+    Access_protected,
+
+    Access_count,
+};
+
+struct Variable {
+    String type;
+    String name;
+    Access access;
+    Int ptr;
+    Int array_count; // This is 1 if it's not an array. TODO(Jonny): Is this true anymore?
+    Bool is_inside_anonymous_struct;
+};
+
+Variable create_variable(Char *type, Char *name, Int ptr = 0, Int array_count = 0) {
     Variable res;
     res.type = create_string(type);
     res.name = create_string(name);
@@ -430,10 +537,22 @@ Variable create_variable(Char *type, Char *name, Int ptr/*= 0*/, Int array_count
 Bool compare_variable(Variable a, Variable b) {
     Bool res = true;
 
-    if(!string_comp(a.type, b.type))      res = false;
-    else if(!string_comp(a.name, b.name)) res = false;
-    else if(a.ptr != b.ptr)                  res = false;
-    else if(a.array_count != b.array_count)  res = false;
+    if(!string_comp(a.type, b.type))        res = false;
+    else if(!string_comp(a.name, b.name))   res = false;
+    else if(a.ptr != b.ptr)                 res = false;
+    else if(a.array_count != b.array_count) res = false;
+
+    return(res);
+}
+
+Bool operator==(Variable a, Variable b) {
+    Bool res = compare_variable(a, b);
+
+    return(res);
+}
+
+Bool operator!=(Variable a, Variable b) {
+    Bool res = !compare_variable(a, b);
 
     return(res);
 }
@@ -447,6 +566,13 @@ Bool compare_variable_array(Variable *a, Variable *b, Int count) {
 
     return(true);
 }
+
+//
+// Utils.
+//
+#define kilobytes(v) ((v)            * (1024LL))
+#define megabytes(v) ((kilobytes(v)) * (1024LL))
+#define gigabytes(v) ((megabytes(v)) * (1024LL))
 
 Char to_caps(Char c) {
     Char res = c;
@@ -462,46 +588,3 @@ Int absolute_value(Int v) {
 
     return(res);
 }
-
-//
-// Memory stuff.
-//
-Void copy(Void *dest, Void *src, Uintptr size) {
-    Byte *dest8 = cast(Byte *)dest;
-    Byte *src8 = cast(Byte *)src;
-
-    for(Int i = 0; (i < size); ++i) {
-        dest8[i] = src8[i];
-    }
-}
-
-Void set(void *dest, Byte v, Uintptr n) {
-    Byte *dest8 = cast(Byte *)dest;
-    for(Int i = 0; (i < n); ++i, ++dest8) {
-        *dest8 = cast(Byte)v;
-    }
-}
-
-#if OS_WIN32 && !INTERNAL
-extern "C"
-{
-#pragma function(memset)
-    void *memset(void *dest, int c, size_t count) {
-        char *bytes = (char *)dest;
-        while (count--) {
-            *bytes++ = (char)c;
-        }
-        return dest;
-    }
-
-#pragma function(memcpy)
-    void *memcpy(void *dest, const void *src, size_t count) {
-        char *dest8 = (char *)dest;
-        const char *src8 = (const char *)src;
-        while (count--) {
-            *dest8++ = *src8++;
-        }
-        return dest;
-    }
-}
-#endif

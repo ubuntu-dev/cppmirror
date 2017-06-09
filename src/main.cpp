@@ -10,48 +10,11 @@
   ===================================================================================================*/
 
 /* TODO(Jonny):
-    - struct to tuple.
-    - std::map, std::unordered_map, std::set, std::array.
-    - Struct meta data.
-        - Have a way to test if a member is private or not.
-        - An alternative to pp::print and pp::serialize that hide private members.
-        - It breaks if you use a comma to declare members of the same type.
-        - Have a way to get the type of different elements (as strings or types).
-        - Get a get_member(v, i) function, which simple returns the member at index i.
-        - Output a _useful_ error message if the user declares the same struct twice.
-        - In serialize struct, if there is a member which is an enum, call enum_to_string on it's value.
-        - Create bool is_primitive(T) which returns if something is a primitive or not.
-    - Union meta data.
-        - Simple version of struct.
-    - Function meta data.
-        - Get name (as string).
-        - Get linkage (as string).
-        - Get return type.
-        - Get param count.
-        - Get params types, and names as strings.
-    - References.
-    - Templates.
+    - In serialize struct, if there is a member which is an enum, call enum_to_string on it's value.
     - Allow mathematical macros (1 + 1) to be the index for an array.
     - Global consts for arrays.
-    - Handle typedefs.
-    - Base type macro. If the programmer enters non-pointer (or non reference) value, just return the same value.
-    - Make a is_primitive function.
-    - Make a function tell if something's a pointer or not. Could return false if not a pointer, and a positive integer
-      for the level of pointer otherwise. Should work with references too.
-    - If the user puts a directory in front of the file name ("dir/source.cpp") then the outputted code will get
-      placed in the directories parent, not the directory with the code.
-    - I could handle user-defined containers, assuming they conform to some strict set of rules. These could be:
-        - Does it implement the nessessary member functions to use the C++11 range-based for loops?
-        - It it a template struct where the template can only take one type?
-    - I don't think #if 1 #else blocks work correctly...
-    - A function which gets a pointer to a base class, from a normal class?
+    - Support modifiers (unnsigned, volatile, const).
 */
-
-#include "utils.h"
-#include "lexer.h"
-#include "platform.h"
-#include "write_file.h"
-#include "test.h"
 
 enum SwitchType {
     SwitchType_unknown,
@@ -65,15 +28,15 @@ enum SwitchType {
     SwitchType_count,
 };
 
-internal SwitchType get_switch_type(Char *str) {
-    SwitchType res = SwitchType_unknown;
+SwitchType get_switch_type(Char *str) {
+    SwitchType res = {};
 
     Int len = string_length(str);
     if(len >= 2) {
         if(str[0] == '-') {
             switch(str[1]) {
-                case 'e': res = SwitchType_log_errors;         break;
-                case 'h': res = SwitchType_print_help;         break;
+                case 'e': res = SwitchType_log_errors; break;
+                case 'h': res = SwitchType_print_help; break;
 #if INTERNAL
                 case 's': res = SwitchType_silent;    break;
                 case 't': res = SwitchType_run_tests; break;
@@ -89,9 +52,9 @@ internal SwitchType get_switch_type(Char *str) {
     return(res);
 }
 
-internal Bool should_write_to_file = false;
+global Bool should_write_to_file = false;
 
-internal Void print_help(void) {
+Void print_help(void) {
     Char *help = "    List of Commands.\n"
                  "        -e - Print errors to the console.\n"
                  "        -h - Print this help.\n"
@@ -103,6 +66,15 @@ internal Void print_help(void) {
                  "\n";
 
     system_write_to_console(help);
+}
+
+Int run_tests() {
+    Int res = 0;
+#if INTERNAL
+    res += struct_tests();
+#endif
+
+    return(res);
 }
 
 int main(int argc, char **argv) {

@@ -144,7 +144,7 @@
         #endif
     #endif
 
-    #include <stdarg.h>  // for va_list()
+    //#include <stdarg.h>  // for va_list()
 
     #ifndef STB_SPRINTF_MIN
         #define STB_SPRINTF_MIN 512 // how many characters per callback
@@ -1277,10 +1277,10 @@ static stbsp__uint64 const stbsp__powten[20]= {1,10,100,1000, 10000,100000,10000
         *ohi = ph; *olo = pl;
     }
 
-// given a float value, returns the significant bits in bits, and the position of the
-//   decimal point in decimal_pos.  +/-INF and NAN are specified by special values
-//   returned in the decimal_pos parameter.
-// frac_digits is absolute normally, but if you want from first significant digits (got %g and %e), or in 0x80000000
+    // given a float value, returns the significant bits in bits, and the position of the
+    //   decimal point in decimal_pos.  +/-INF and NAN are specified by special values
+    //   returned in the decimal_pos parameter.
+    // frac_digits is absolute normally, but if you want from first significant digits (got %g and %e), or in 0x80000000
     static stbsp__int32 stbsp__real_to_str( char const * * start, stbsp__uint32 *len, char *out, stbsp__int32 *decimal_pos, double value, stbsp__uint32 frac_digits ) {
         double d;
         stbsp__int64 bits = 0;

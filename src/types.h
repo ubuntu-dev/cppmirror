@@ -1,5 +1,5 @@
 /*===================================================================================================
-  File:                    shared.h
+  File:                    types.h
   Author:                  Jonathan Livingstone
   Email:                   seagull127@ymail.com
   Licence:                 Public Domain
@@ -9,41 +9,36 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-#if !defined(_SHARED_H)
+typedef uint64_t Uint64;
+typedef uint32_t Uint32;
+typedef uint16_t Uint16;
+typedef uint8_t Uint8;
 
-#include <stdint.h>
-#include <stdarg.h>
+typedef int64_t Int64;
+typedef int32_t Int32;
+typedef int16_t Int16;
+typedef int8_t Int8;
 
-using Uint64 = uint64_t;
-using Uint32 = uint32_t;
-using Uint16 = uint16_t;
-using Uint8 = uint8_t;
+typedef Int32 Int;
+typedef Uint32 Uint;
 
-using Int64 = int64_t;
-using Int32 = int32_t;
-using Int16 = int16_t;
-using Int8 = int8_t;
+typedef Int32 Bool;
+typedef void Void;
+typedef char Char;
 
-using Bool = Int32;
-using Void = void;
-using Char = char;
+typedef Uint8 Byte;
+typedef uintptr_t Uintptr;
+typedef intptr_t Intptr;
 
-using Int = Int32;
-using Uint = Uint32;
-
-using Byte = Uint8;
-using Uintptr = uintptr_t;
-using Intptr = intptr_t;
-
-using Float32 = float;
-using Float64 = double;
-using Float = Float32;
+typedef float Float32;
+typedef double Float64;
+typedef Float32 Float;
 
 #define cast(type) (type)
 #define array_count(arr) (sizeof(arr) / (sizeof(*(arr))))
 #define preprocessor_concat(a, b) a##b
 
-#define internal static
+#define global static
 
 //
 // Detect compiler/platform.
@@ -99,5 +94,17 @@ using Float = Float32;
     #endif
 #endif
 
-#define _SHARED_H
+#if INTERNAL
+#define assert(Expression) \
+    do { \
+        static Bool ignore = false; \
+        if(!ignore) { \
+            if(!(Expression)) { \
+                push_error(ErrorType_assert_failed); \
+                *cast(Uintptr volatile *)0 = 0; \
+            } \
+        } \
+    } while(0)
+#else
+#define assert(Expression) {}
 #endif

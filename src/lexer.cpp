@@ -9,8 +9,99 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-#include "lexer.h"
-#include "platform.h"
+enum StructType {
+    StructType_unknown,
+    StructType_struct,
+    StructType_class,
+    StructType_union,
+
+    StructType_count
+};
+
+// TODO(Jonny): Check if this is right. Then google how to actually read the values.
+enum Modifier {
+    Modifier_unknown = 0x00,
+
+    Modifier_unsigned = 0x01,
+    Modifier_const    = 0x02,
+    Modifier_volatile = 0x04,
+    Modifier_mutable  = 0x08,
+};
+
+struct StructData {
+    String template_header;
+    String name;
+    Int member_count;
+    Variable *members;
+
+    Int inherited_count;
+    String *inherited;
+
+    Uint32 mod;
+
+    StructType struct_type;
+};
+
+struct EnumValue {
+    String name;
+    Int value;
+};
+
+struct EnumData {
+    String name;
+    String type;
+    Bool is_struct;
+
+    EnumValue *values;
+    Int no_of_values;
+};
+
+struct FunctionData {
+    String linkage;
+    String return_type;
+    Int return_type_ptr;
+    String name;
+
+    Variable *params;
+    Int param_cnt;
+};
+
+struct TypedefData {
+    String original;
+    String fresh;
+};
+
+struct Structs {
+    StructData *e;
+    Int cnt;
+};
+
+struct Enums {
+    EnumData *e;
+    Int cnt;
+};
+
+struct Functions {
+    FunctionData *e;
+    Int cnt;
+};
+
+struct Typedefs {
+    TypedefData *e;
+    Int cnt;
+};
+
+struct ParseResult {
+    Structs structs;
+    Enums enums;
+    Functions funcs;
+    Typedefs typedefs;
+
+    Int struct_max;
+    Int enum_max;
+    Int func_max;
+    Int typedef_max;
+};
 
 // TODO(Jonny): Rename some of these so they're more clear.
 enum TokenType {
@@ -35,20 +126,20 @@ enum TokenType {
     TokenType_ampersand,
     TokenType_inclusive_or,
     TokenType_not,
-    TokenType_var_args,
 
     TokenType_plus,
     TokenType_minus,
     TokenType_divide,
 
-    TokenType_number,
-    TokenType_identifier,
-    TokenType_string,
-
     TokenType_equal,
     TokenType_not_equal,
     TokenType_greater_than_or_equal,
     TokenType_less_than_or_equal,
+
+    TokenType_number,
+    TokenType_identifier,
+    TokenType_string,
+    TokenType_var_args,
 
     TokenType_error,
 
@@ -67,7 +158,7 @@ struct Tokenizer {
 };
 
 // TODO(Jonny): Line numbers won't match now, remove tokenizer.
-internal Bool is_end_of_line(Char c) {
+Bool is_end_of_line(Char c) {
     Bool res = ((c == '\n') || (c == '\r'));
 
     return(res);
@@ -79,26 +170,26 @@ Bool is_whitespace(Char c) {
     return(res);
 }
 
-internal Bool is_whitespace_no_end_line(Char c) {
+Bool is_whitespace_no_end_line(Char c) {
     Bool res = ((c == ' ') || (c == '\t') || (c == '\v') || (c == '\f'));
 
     return(res);
 }
 
 
-internal Void skip_to_end_of_line(Tokenizer *tokenizer) {
+Void skip_to_end_of_line(Tokenizer *tokenizer) {
     while(is_end_of_line(*tokenizer->at)) {
         ++tokenizer->at;
     }
 }
 
-internal String token_to_string(Token token) {
+String token_to_string(Token token) {
     String res = { token.e, token.len };
 
     return(res);
 }
 
-internal Void token_to_string(Token token, Char *buf, Int size) {
+Void token_to_string(Token token, Char *buf, Int size) {
     assert(size > token.len);
     for(Int i = 0; (i < token.len); ++i, ++buf) {
         *buf = token.e[i];
@@ -107,7 +198,7 @@ internal Void token_to_string(Token token, Char *buf, Int size) {
     *buf = 0;
 }
 
-internal Bool token_compare(Token a, Token b) {
+Bool token_compare(Token a, Token b) {
     Bool res = false;
 
     if(a.len == b.len) {
@@ -124,7 +215,7 @@ internal Bool token_compare(Token a, Token b) {
     return(res);
 }
 
-internal Bool token_compare(Token a, String b) {
+Bool token_compare(Token a, String b) {
     Bool res = false;
 
     if(a.len == b.len) {
@@ -141,10 +232,14 @@ internal Bool token_compare(Token a, String b) {
     return(res);
 }
 
-internal Bool token_compare(Token a, Char *b) {
+Bool token_compare(Token a, Char *b, Int string_len = 0) {
     Bool res = true;
 
-    for(Int i = 0; (i < a.len); ++i) {
+    if(!string_len) {
+        string_len = a.len;
+    }
+
+    for(Int i = 0; (i < string_len); ++i) {
         if(a.e[i] != b[i]) {
             res = false;
             break;
@@ -154,7 +249,35 @@ internal Bool token_compare(Token a, Char *b) {
     return(res);
 }
 
-internal ResultInt token_to_int(Token t) {
+Modifier is_modifier(Token token) {
+    Modifier res = {};
+
+    struct ModifierWithString {
+        String str;
+        Modifier mod;
+    };
+
+#define CREATE_MODIFIER(name) { create_string(#name), Modifier_##name }
+
+    ModifierWithString modifiers[] = {
+        CREATE_MODIFIER(unsigned),
+        CREATE_MODIFIER(const),
+        CREATE_MODIFIER(volatile),
+        CREATE_MODIFIER(mutable)
+    };
+
+    for(Int i = 0; (i < array_count(modifiers)); ++i) {
+        ModifierWithString *mod = modifiers + i;
+
+        if(token_compare(token, mod->str)) {
+            res = mod->mod;
+        }
+    }
+
+    return(res);
+}
+
+ResultInt token_to_int(Token t) {
     String str = token_to_string(t);
     ResultInt res = string_to_int(str);
 
@@ -164,7 +287,7 @@ internal ResultInt token_to_int(Token t) {
 // TODO(Jonny): Create a token_equals_keyword function. This could also test macro'd aliases for keywords,
 //              as well as the actual keyword.
 
-internal Bool token_equals(Token token, Char *str) {
+Bool token_equals(Token token, Char *str) {
     Bool res = false;
 
     Int len = string_length(str);
@@ -175,24 +298,32 @@ internal Bool token_equals(Token token, Char *str) {
     return(res);
 }
 
-internal Token get_token(Tokenizer *tokenizer); // Because C/C++...
-internal Token peak_token(Tokenizer *tokenizer) {
+Token get_token(Tokenizer *tokenizer); // Because C/C++...
+Token peak_token(Tokenizer *tokenizer) {
     Tokenizer cpy = *tokenizer;
     Token res = get_token(&cpy);
 
     return(res);
 }
 
-internal Void loop_until_token(Tokenizer *tokenizer, TokenType type) {
+#define eat_token(tokenizer) eat_tokens(tokenizer, 1)
+Void eat_tokens(Tokenizer *tokenizer, Int num_tokens_to_eat) {
+    for(Int i = 0; (i < num_tokens_to_eat); ++i) {
+        get_token(tokenizer);
+    }
+}
+
+Void loop_until_token(Tokenizer *tokenizer, TokenType type) {
     Token token = get_token(tokenizer);
     while(token.type != type) {
         token = get_token(tokenizer);
     }
 }
 
-internal Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
+Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
     Variable res = {};
-    res.array_count = 1;
+
+    Uint32 modifier = 0;
 
     Token type = get_token(tokenizer);
     if(token_equals(type, "std")) {
@@ -212,6 +343,16 @@ internal Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
         }
     }
 
+    // Modifiers
+    {
+        Modifier tmp = is_modifier(type);
+        while(tmp) {
+            modifier |= tmp;
+            type = get_token(tokenizer);
+            tmp = is_modifier(type);
+        }
+    }
+
     res.type = token_to_string(type);
 
     if(var_to_parse) {
@@ -228,6 +369,16 @@ internal Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
     Bool parsing = true;
     while(parsing) {
         Token token = get_token(tokenizer);
+
+        {
+            Modifier tmp = is_modifier(token);
+            while(tmp) {
+                modifier |= tmp;
+                token = get_token(tokenizer);
+                tmp = is_modifier(token);
+            }
+        }
+
         switch(token.type) {
             case TokenType_semi_colon: case TokenType_comma: case TokenType_end_of_stream: {
                 parsing = false;
@@ -263,7 +414,7 @@ internal Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
     return(res);
 }
 
-internal Void eat_whitespace(Tokenizer *tokenizer) {
+Void eat_whitespace(Tokenizer *tokenizer) {
     for(;;) {
         if(!tokenizer->at[0]) { // Nul terminator.
             break;
@@ -377,37 +528,30 @@ internal Void eat_whitespace(Tokenizer *tokenizer) {
     }
 }
 
-internal Bool is_alphabetical(Char c) {
+Bool is_alphabetical(Char c) {
     Bool res = (((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z')));
 
     return(res);
 }
 
-internal Bool is_num(Char c) {
+Bool is_num(Char c) {
     Bool res = ((c >= '0') && (c <= '9'));
 
     return(res);
 }
 
-internal Void parse_number(Tokenizer *tokenizer) {
+Void parse_number(Tokenizer *tokenizer) {
     // TODO(Jonny): Implement.
 }
 
-#define eat_token(tokenizer) eat_tokens(tokenizer, 1)
-internal Void eat_tokens(Tokenizer *tokenizer, Int num_tokens_to_eat) {
-    for(Int i = 0; (i < num_tokens_to_eat); ++i) {
-        get_token(tokenizer);
-    }
-}
-
-internal Bool require_token(Tokenizer *tokenizer, TokenType desired_type) {
+Bool require_token(Tokenizer *tokenizer, TokenType desired_type) {
     Token token = get_token(tokenizer);
     Bool res = (token.type == desired_type);
 
     return(res);
 }
 
-internal Bool peak_require_token(Tokenizer *tokenizer, Char *str) {
+Bool peak_require_token(Tokenizer *tokenizer, Char *str) {
     Bool res = false;
     Tokenizer cpy = *tokenizer;
     Token token = get_token(&cpy);
@@ -419,7 +563,7 @@ internal Bool peak_require_token(Tokenizer *tokenizer, Char *str) {
     return(res);
 }
 
-internal Bool peak_require_token_type(Tokenizer *tokenizer, TokenType type) {
+Bool peak_require_token_type(Tokenizer *tokenizer, TokenType type) {
     Bool res = false;
     Tokenizer cpy = *tokenizer;
     Token token = get_token(&cpy);
@@ -432,7 +576,7 @@ internal Bool peak_require_token_type(Tokenizer *tokenizer, TokenType type) {
 }
 
 
-internal Bool is_stupid_class_keyword(Token t) {
+Bool is_stupid_class_keyword(Token t) {
     Bool res = false;
     Char *keywords[] = { "private", "public", "protected" };
     for(Int i = 0, cnt = array_count(keywords); (i < cnt); ++i) {
@@ -447,7 +591,7 @@ func_exit:;
     return(res);
 }
 
-internal Void skip_to_matching_bracket(Tokenizer *tokenizer) {
+Void skip_to_matching_bracket(Tokenizer *tokenizer) {
     Int brace_count = 1;
     Token token = {};
     Bool should_loop = true;
@@ -466,7 +610,7 @@ internal Void skip_to_matching_bracket(Tokenizer *tokenizer) {
     }
 }
 
-internal String parse_template(Tokenizer *tokenizer) {
+String parse_template(Tokenizer *tokenizer) {
     String res = {};
 
     res.e = tokenizer->at;
@@ -499,13 +643,15 @@ struct ParseVariableRes {
     Bool success;
 };
 
-internal ParseVariableRes parse_variable(Tokenizer *tokenizer, TokenType end_token_type_1,
-                                         TokenType end_token_type_2 = TokenType_unknown) {
+ParseVariableRes parse_variable(Tokenizer *tokenizer, TokenType end_token_type_1,
+                                TokenType end_token_type_2 = TokenType_unknown) {
 #if INTERNAL
     Tokenizer debug_copy_tokenizer = *tokenizer;
 #endif
 
     ParseVariableRes res = {};
+
+    Uint32 mod = {};
 
     // Return type.
     Token type = get_token(tokenizer);
@@ -587,7 +733,7 @@ struct ParseStructResult {
     StructData sd;
     Bool success;
 };
-internal ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_type, String template_header = create_string("") ) {
+ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_type, String template_header = create_string("") ) {
     ParseStructResult res = {};
 
     if(!is_forward_declared(tokenizer)) {
@@ -597,7 +743,8 @@ internal ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_
 
         Tokenizer start = *tokenizer;
 
-        Access current_access = ((struct_type == StructType_struct) || (struct_type == StructType_union)) ? Access_public : Access_private;
+        Access current_access = ((struct_type == StructType_struct) || (struct_type == StructType_union)) ?
+                                Access_public : Access_private;
         res.sd.struct_type = struct_type;
 
         Bool have_name = false;
@@ -627,7 +774,9 @@ internal ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_
                 }
 
                 next = peak_token(tokenizer);
-                if(next.type != TokenType_open_brace) { eat_token(tokenizer); }
+                if(next.type != TokenType_open_brace) {
+                    eat_token(tokenizer);
+                }
             }
         }
 
@@ -674,8 +823,11 @@ internal ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_
                                     continue;
                                 } else if(!have_name) {
                                     name = get_token(tokenizer);
-                                    if(name.type == TokenType_identifier) res.sd.name = token_to_string(name);
-                                    else                                  push_error(ErrorType_could_not_detect_struct_name);
+                                    if(name.type == TokenType_identifier) {
+                                        res.sd.name = token_to_string(name);
+                                    } else {
+                                        push_error(ErrorType_could_not_detect_struct_name);
+                                    }
                                 }
 
                                 break; // for
@@ -808,7 +960,7 @@ struct ParseEnumResult {
     EnumData ed;
     Bool success;
 };
-internal ParseEnumResult parse_enum(Tokenizer *tokenizer) {
+ParseEnumResult parse_enum(Tokenizer *tokenizer) {
     ParseEnumResult res = {};
 
     if(!is_forward_declared(tokenizer)) {
@@ -894,7 +1046,7 @@ internal ParseEnumResult parse_enum(Tokenizer *tokenizer) {
     return(res);
 }
 
-internal TokenType get_token_type(String s) {
+TokenType get_token_type(String s) {
     assert(s.len);
 
     TokenType res = TokenType_unknown;
@@ -951,7 +1103,7 @@ internal TokenType get_token_type(String s) {
     return(res);
 }
 
-internal Token string_to_token(String str) {
+Token string_to_token(String str) {
     Token res = {};
 
     res.e = str.e;
@@ -961,7 +1113,7 @@ internal Token string_to_token(String str) {
     return(res);
 }
 
-internal Token get_token(Tokenizer *tokenizer) {
+Token get_token(Tokenizer *tokenizer) {
     eat_whitespace(tokenizer);
 
     Token res = {};
@@ -1080,7 +1232,7 @@ internal Token get_token(Tokenizer *tokenizer) {
     return(res);
 }
 
-internal Bool is_linkage_token(Token token) {
+Bool is_linkage_token(Token token) {
     Bool res = token_equals(token, "static");
     if(!res) {
         res = token_equals(token, "inline");
@@ -1089,7 +1241,7 @@ internal Bool is_linkage_token(Token token) {
     return(res);
 }
 
-internal Bool is_ptr_or_ref(Token token) {
+Bool is_ptr_or_ref(Token token) {
     if((token.type == TokenType_ampersand) || (token.type == TokenType_asterisk)) {
         return(true);
     } else {
@@ -1097,7 +1249,7 @@ internal Bool is_ptr_or_ref(Token token) {
     }
 }
 
-internal Bool is_control_keyword(Token token) {
+Bool is_control_keyword(Token token) {
     if(token_equals(token, "if")) {
         return(true);
     } else if(token_equals(token, "do")) {
@@ -1114,7 +1266,7 @@ struct AttemptFunctionResult {
     FunctionData fd;
 };
 
-internal AttemptFunctionResult attempt_to_parse_function(Token token, Tokenizer *tokenizer) {
+AttemptFunctionResult attempt_to_parse_function(Token token, Tokenizer *tokenizer) {
 #if INTERNAL
     Tokenizer debug_copy_tokenizer = *tokenizer;
 #endif
@@ -1206,7 +1358,7 @@ internal AttemptFunctionResult attempt_to_parse_function(Token token, Tokenizer 
     return(res);
 }
 
-internal Void parse_stream(Char *stream, ParseResult *res) {
+Void parse_stream(Char *stream, ParseResult *res) {
     Tokenizer tokenizer = { stream };
 
     String template_header = {};
@@ -1228,7 +1380,7 @@ internal Void parse_stream(Char *stream, ParseResult *res) {
                 if(token_equals(token, "template")) {
                     template_header = parse_template(&tokenizer);
                 } else if((token_equals(token, "struct")) || (token_equals(token, "class")) || (token_equals(token, "union"))) {
-                    StructType struct_type = StructType_unknown;
+                    StructType struct_type = {};
 
                     if(token_equals(token, "struct"))     { struct_type = StructType_struct; }
                     else if(token_equals(token, "class")) { struct_type = StructType_class;  }
@@ -1323,14 +1475,14 @@ struct MacroData {
 };
 
 // TODO(Jonny): Replace these both with move stream.
-internal void move_bytes_forward(Void *ptr, Uintptr num_bytes_to_move, Uintptr move_pos) {
+void move_bytes_forward(Void *ptr, Uintptr num_bytes_to_move, Uintptr move_pos) {
     Byte *ptr8 = cast(Byte *)ptr;
     for(Int i = num_bytes_to_move - 1; (i >= 0); --i) {
         ptr8[i + move_pos] = ptr8[i];
     }
 }
 
-internal void move_bytes_backwards(Void *ptr, Uintptr num_bytes_to_move, Uintptr move_pos) {
+void move_bytes_backwards(Void *ptr, Uintptr num_bytes_to_move, Uintptr move_pos) {
     Byte *ptr8 = cast(Byte *)ptr;
     for(Int i = 0; (i < num_bytes_to_move); ++i) {
         ptr8[i + move_pos] = ptr8[i];
@@ -1339,7 +1491,7 @@ internal void move_bytes_backwards(Void *ptr, Uintptr num_bytes_to_move, Uintptr
     ptr8[num_bytes_to_move + move_pos] = 0;
 }
 
-internal Void move_stream(File *file, Char *offset_ptr, Intptr amount_to_move) {
+Void move_stream(File *file, Char *offset_ptr, Intptr amount_to_move) {
     Uintptr offset = offset_ptr - file->e;
     if(amount_to_move < 0) {
         Uintptr abs_amount_to_move = absolute_value(amount_to_move);
@@ -1347,42 +1499,43 @@ internal Void move_stream(File *file, Char *offset_ptr, Intptr amount_to_move) {
         for(Uintptr i = offset; (i < file->size); ++i) {
             file->e[i] = file->e[i + abs_amount_to_move];
         }
+
+        file->e[file->size] = 0;
     } else {
         Uintptr old_size = file->size;
         Uintptr new_size = file->size + amount_to_move;
-        Void *p = system_realloc(file->e, (file->size + amount_to_move) + 1);
+        Void *p = system_realloc(file->e, new_size + 1);
         if(p) {
             file->e = cast(Char *)p;
 
-            for(int i = old_size; (i < new_size); ++i) {
+            // Zero the new bit.
+            for(Uintptr i = old_size; (i < new_size); ++i) {
                 file->e[i] = 0;
             }
 
-            Char *end = file->e + offset + amount_to_move;
-            Char *start = file->e + offset;
+            Uintptr tmp = old_size - offset;
+
+            Char *end = file->e + amount_to_move + offset + tmp;
+            Char *start = file->e + offset + tmp;
 #if INTERNAL
             Char *end_ = end;
             Char *start_ = start;
 #endif
 
-            for(Int i = offset; (i <= old_size); ++i) {
-                *end++ = *start++;
+            for(Uintptr i = old_size; (i > offset); --i) {
+                *end-- = *start--;
             }
 
-            file->e[file->size] = ' ';
-
-            file->size += amount_to_move;
+            file->size = new_size;
         }
     }
-
-    file->e[file->size] = 0;
 }
 
 struct ParseMacroResult {
     MacroData md;
     Bool success;
 };
-internal ParseMacroResult parse_macro(Tokenizer *tokenizer, TempMemory *param_memory) {
+ParseMacroResult parse_macro(Tokenizer *tokenizer, TempMemory *param_memory) {
     ParseMacroResult res = {};
 
     Token iden = get_token(tokenizer);
@@ -1424,7 +1577,7 @@ internal ParseMacroResult parse_macro(Tokenizer *tokenizer, TempMemory *param_me
     return(res);
 }
 
-internal Int macro_replace(Char *token_start, File *file, MacroData md) {
+Int macro_replace(Char *token_start, File *file, MacroData md) {
     Int res = 0;
 
     TempMemory tm = create_temp_buffer(megabytes(1));
@@ -1493,7 +1646,11 @@ internal Int macro_replace(Char *token_start, File *file, MacroData md) {
         do {
             for(Int i = 0; (i < md.param_cnt); ++i) {
                 if(token_compare(token, md.params[i])) {
+                    // Tokenizer may be invalidated after the move_stream call.
+                    Uintptr offset = tokenizer.at - file->e;
                     move_stream(file, tokenizer.at - 1, params[i].len - token.len);
+                    tokenizer.at = file->e + offset;
+
                     res += params[i].len - token.len;
 
                     iden_len += params[i].len - token.len;
@@ -1513,7 +1670,7 @@ internal Int macro_replace(Char *token_start, File *file, MacroData md) {
     return(res);
 }
 
-internal Void add_include_file(Tokenizer *tokenizer, File *file) {
+Void add_include_file(Tokenizer *tokenizer, File *file) {
     eat_whitespace(tokenizer);
 
     // Get a copy of the name.
@@ -1537,52 +1694,18 @@ internal Void add_include_file(Tokenizer *tokenizer, File *file) {
             tokenizer->at = file->e + offset;
 
             copy(tokenizer->at, include_file.e, include_file.size);
-#if 0
-            Uintptr old_size = file->size;
-            file->size += include_file.size;
-            Void *p = system_realloc(file->e, file->size);
-            if(p) {
-                file->e = cast(Char *)p;
-
-                //move_bytes_forward(tokenizer->at, old_size - cast(Uintptr)(tokenizer->at - file->e), include_file.size);
-                move_stream(file, tokenizer->at, file->size);
-                copy(tokenizer->at, include_file.e, include_file.size);
-            }
-#endif
 
             system_free(include_file.e);
         }
     }
 }
 
-
-internal Void preload_macros(MacroData *macro_data, Int *macro_cnt, TempMemory *param_memory) {
-    //#define pp_DA(Type) PP_CONCAT(pp_DynamicArray_, Type)
-    macro_data[*macro_cnt].iden = create_string("pp_DA");
-    macro_data[*macro_cnt].res = create_string("pp_DA_##Type");
-    macro_data[*macro_cnt].params = push_type(param_memory, String);
-    macro_data[*macro_cnt].params[0] = create_string("Type");
-    macro_data[*macro_cnt].param_cnt = 1;
-    *macro_cnt += 1;
-
-    //#define PP_CONCAT(a, b) a##b
-    macro_data[*macro_cnt].iden = create_string("PP_CONCAT");
-    macro_data[*macro_cnt].res = create_string("a##b");
-    macro_data[*macro_cnt].params = cast(String *)push_size(param_memory, sizeof(String) * 2);
-    macro_data[*macro_cnt].params[0] = create_string("a");
-    macro_data[*macro_cnt].params[1] = create_string("b");
-    macro_data[*macro_cnt].param_cnt = 2;
-    *macro_cnt += 1;
-}
-
-internal Void preprocess_macros(File *file) {
+Void preprocess_macros(File *file) {
     TempMemory macro_memory = create_temp_buffer(sizeof(MacroData) * 128);
     TempMemory param_memory = create_temp_buffer(sizeof(String) * 128);
 
     Int macro_cnt = 0;
     MacroData *macro_data = cast(MacroData *)macro_memory.e;
-
-    preload_macros(macro_data, &macro_cnt, &param_memory);
 
     Tokenizer tokenizer = { file->e };
 

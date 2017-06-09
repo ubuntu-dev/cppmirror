@@ -9,12 +9,31 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-#include <windows.h>
-#include "platform.h"
-#include "utils.h"
-#include "stb_sprintf.h"
-
 extern "C" { int _fltused; }
+
+extern "C"
+{
+#pragma function(memset)
+    void *memset(void *dest, int c, size_t count) {
+        Byte *dest8 = (char *)dest;
+        while(count--) {
+            *dest8++ = (char)c;
+        }
+
+        return(dest);
+    }
+
+#pragma function(memcpy)
+    void *memcpy(void *dest, const void *src, size_t count) {
+        Byte *dst8 = (Char *)dest;
+        Byte *src8 = (Char *)src;
+        while (count--) {
+            *dst8++ = *src8++;
+        }
+
+        return(dest);
+    }
+}
 
 Uint64 system_get_performance_counter() {
     Uint64 res = 0;
@@ -57,16 +76,15 @@ Void *system_realloc(Void *ptr, Uintptr size) {
 
 File system_read_entire_file_and_null_terminate(Char *fname) {
     File res = {};
-    HANDLE fhandle;
-    LARGE_INTEGER fsize;
-    DWORD bytes_read;
 
-    fhandle = CreateFileA(fname, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+    HANDLE fhandle = CreateFileA(fname, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
     if(fhandle != INVALID_HANDLE_VALUE) {
+        LARGE_INTEGER fsize;
         if(GetFileSizeEx(fhandle, &fsize)) {
-            Void *memory;
             DWORD fsize32 = safe_truncate_size_64(fsize.QuadPart);
-            memory = system_malloc(fsize32 + 1);
+            void *memory = system_malloc(fsize32 + 1);
+
+            DWORD bytes_read;
             if(ReadFile(fhandle, memory, fsize32, &bytes_read, 0)) {
                 if(bytes_read != fsize32) {
                     push_error(ErrorType_did_not_read_entire_file);
@@ -86,16 +104,16 @@ File system_read_entire_file_and_null_terminate(Char *fname) {
 
 Bool system_write_to_file(Char *fname, File file) {
     Bool res = false;
-    HANDLE fhandle;
-    DWORD fsize32, bytes_written;
 
-    fhandle = CreateFileA(fname, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, 0, CREATE_ALWAYS, 0, 0);
+    HANDLE fhandle = CreateFileA(fname, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, 0, CREATE_ALWAYS, 0, 0);
     if(fhandle != INVALID_HANDLE_VALUE) {
+        DWORD fsize32;
 #if ENVIRONMENT32
         fsize32 = file.size;
 #else
         fsize32 = safe_truncate_size_64(file.size);
 #endif
+        DWORD bytes_written;
         if(WriteFile(fhandle, file.e, fsize32, &bytes_written, 0)) {
             if(bytes_written != fsize32) push_error(ErrorType_did_not_write_entire_file);
             else                         res = true;
@@ -109,11 +127,10 @@ Bool system_write_to_file(Char *fname, File file) {
 
 Uintptr system_get_file_size(Char *fname) {
     Uintptr res = 0;
-    HANDLE fhandle;
-    LARGE_INTEGER large_int;
 
-    fhandle = CreateFileA(fname, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+    HANDLE fhandle = CreateFileA(fname, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
     if(fhandle != INVALID_HANDLE_VALUE) {
+        LARGE_INTEGER large_int;
         if(GetFileSizeEx(fhandle, &large_int)) {
 #if ENVIRONMENT32
             res = safe_truncate_size_64(large_int.QuadPart);
