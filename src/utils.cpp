@@ -524,7 +524,7 @@ struct Variable {
     Bool is_inside_anonymous_struct;
 };
 
-Variable create_variable(Char *type, Char *name, Int ptr = 0, Int array_count = 1) {
+Variable create_variable(Char *type, Char *name, Int ptr = 0, Int array_count = 0) {
     Variable res;
     res.type = create_string(type);
     res.name = create_string(name);

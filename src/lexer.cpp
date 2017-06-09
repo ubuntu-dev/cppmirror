@@ -272,7 +272,6 @@ Void loop_until_token(Tokenizer *tokenizer, TokenType type) {
 
 Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
     Variable res = {};
-    res.array_count = 1;
 
     Token type = get_token(tokenizer);
     if(token_equals(type, "std")) {
