@@ -537,10 +537,22 @@ Variable create_variable(Char *type, Char *name, Int ptr = 0, Int array_count = 
 Bool compare_variable(Variable a, Variable b) {
     Bool res = true;
 
-    if(!string_comp(a.type, b.type))      res = false;
-    else if(!string_comp(a.name, b.name)) res = false;
-    else if(a.ptr != b.ptr)                  res = false;
-    else if(a.array_count != b.array_count)  res = false;
+    if(!string_comp(a.type, b.type))        res = false;
+    else if(!string_comp(a.name, b.name))   res = false;
+    else if(a.ptr != b.ptr)                 res = false;
+    else if(a.array_count != b.array_count) res = false;
+
+    return(res);
+}
+
+Bool operator==(Variable a, Variable b) {
+    Bool res = compare_variable(a, b);
+
+    return(res);
+}
+
+Bool operator!=(Variable a, Variable b) {
+    Bool res = !compare_variable(a, b);
 
     return(res);
 }

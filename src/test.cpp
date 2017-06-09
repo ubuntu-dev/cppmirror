@@ -146,20 +146,30 @@ Int struct_test_inheritance_count() {
 Int struct_test_members() {
     Int res = 0;
 
-    {
-        StructData sd = parse_struct_test("struct Foo { int a; float b; char *c; short *d[10]; };");
-        Variable a = create_variable("int",    "a");
-        Variable b = create_variable("float",  "b");
-        Variable c = create_variable("char",   "c", 1);
-        Variable d = create_variable("short",  "d", 1, 10);
+    StructData sd = parse_struct_test("struct Foo { int a; float b; char *c; short *d[10]; };");
+    Variable a = create_variable("int",    "a");
+    Variable b = create_variable("float",  "b");
+    Variable c = create_variable("char",   "c", 1);
+    Variable d = create_variable("short",  "d", 1, 10);
 
-        if((!compare_variable(a, sd.members[0])) ||
-                (!compare_variable(b, sd.members[1])) ||
-                (!compare_variable(c, sd.members[2])) ||
-                (!compare_variable(d, sd.members[3]))) {
-            push_error(ErrorType_incorrect_members_in_struct);
-            ++res;
-        }
+    if(a != sd.members[0]) {
+        push_error(ErrorType_incorrect_members_in_struct);
+        ++res;
+    }
+
+    if(b != sd.members[1]) {
+        push_error(ErrorType_incorrect_members_in_struct);
+        ++res;
+    }
+
+    if(c != sd.members[2]) {
+        push_error(ErrorType_incorrect_members_in_struct);
+        ++res;
+    }
+
+    if(d != sd.members[3]) {
+        push_error(ErrorType_incorrect_members_in_struct);
+        ++res;
     }
 
     return(res);
