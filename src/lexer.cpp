@@ -273,7 +273,7 @@ Modifier is_modifier(Token token) {
             res = mod->mod;
         }
     }
-    g
+
     return(res);
 }
 
