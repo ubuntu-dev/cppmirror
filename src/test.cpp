@@ -179,7 +179,7 @@ Int struct_test_type() {
     Int res = 0;
 
     {
-        StructData sd = parse_struct_test("struct Foo {};");
+        StructData sd = parse_struct_test("struct Foo {};", StructType_struct);
         if(sd.struct_type != StructType_struct) {
             push_error(ErrorType_incorrect_data_structure_type);
             ++res;
@@ -187,7 +187,7 @@ Int struct_test_type() {
     }
 
     {
-        StructData sd = parse_struct_test("class Foo {};");
+        StructData sd = parse_struct_test("class Foo {};", StructType_class);
         if(sd.struct_type != StructType_class) {
             push_error(ErrorType_incorrect_data_structure_type);
             ++res;
@@ -195,7 +195,7 @@ Int struct_test_type() {
     }
 
     {
-        StructData sd = parse_struct_test("union Foo {};");
+        StructData sd = parse_struct_test("union Foo {};", StructType_union);
         if(sd.struct_type != StructType_union) {
             push_error(ErrorType_incorrect_data_structure_type);
             ++res;
