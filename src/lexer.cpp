@@ -19,6 +19,15 @@ enum StructType {
     StructType_count
 };
 
+enum Modifier {
+    Modifier_unknown = 0x00,
+
+    Modifier_unsigned = 0x01,
+    Modifier_const    = 0x02,
+    Modifier_volatile = 0x04,
+    Modifier_mutable  = 0x08,
+};
+
 struct StructData {
     String template_header;
     String name;
@@ -27,6 +36,8 @@ struct StructData {
 
     Int inherited_count;
     String *inherited;
+
+    Uint32 mod;
 
     StructType struct_type;
 };
@@ -221,14 +232,41 @@ Bool token_compare(Token a, String b) {
     return(res);
 }
 
-Bool token_compare(Token a, Char *b) {
+Bool token_compare(Token a, Char *b, Int string_len = 0) {
     Bool res = true;
 
-    for(Int i = 0; (i < a.len); ++i) {
+    if(!string_len) {
+        string_len = a.len;
+    }
+
+    for(Int i = 0; (i < string_len); ++i) {
         if(a.e[i] != b[i]) {
             res = false;
             break;
         }
+    }
+
+    return(res);
+}
+
+Modifier is_modifier(Token token) {
+    Modifier res = {};
+
+    Char *modifiers[] = {
+        "unsigned",
+        "const",
+        "volatile",
+        "mutable"
+    };
+
+    if(token_compare(token, modifiers[0], string_length(modifiers[0]))) {
+        res = Modifier_unsigned;
+    } else if(token_compare(token, modifiers[1], string_length(modifiers[1]))) {
+        res = Modifier_const;
+    } else if(token_compare(token, modifiers[2], string_length(modifiers[2]))) {
+        res = Modifier_volatile;
+    } else if(token_compare(token, modifiers[3], string_length(modifiers[3]))) {
+        res = Modifier_mutable;
     }
 
     return(res);
@@ -263,6 +301,13 @@ Token peak_token(Tokenizer *tokenizer) {
     return(res);
 }
 
+#define eat_token(tokenizer) eat_tokens(tokenizer, 1)
+Void eat_tokens(Tokenizer *tokenizer, Int num_tokens_to_eat) {
+    for(Int i = 0; (i < num_tokens_to_eat); ++i) {
+        get_token(tokenizer);
+    }
+}
+
 Void loop_until_token(Tokenizer *tokenizer, TokenType type) {
     Token token = get_token(tokenizer);
     while(token.type != type) {
@@ -272,6 +317,8 @@ Void loop_until_token(Tokenizer *tokenizer, TokenType type) {
 
 Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
     Variable res = {};
+
+    Uint32 modifier = 0;
 
     Token type = get_token(tokenizer);
     if(token_equals(type, "std")) {
@@ -291,6 +338,16 @@ Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
         }
     }
 
+    // Modifiers
+    {
+        Modifier tmp = is_modifier(type);
+        while(tmp) {
+            modifier |= tmp;
+            type = get_token(tokenizer);
+            tmp = is_modifier(type);
+        }
+    }
+
     res.type = token_to_string(type);
 
     if(var_to_parse) {
@@ -307,6 +364,16 @@ Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
     Bool parsing = true;
     while(parsing) {
         Token token = get_token(tokenizer);
+
+        {
+            Modifier tmp = is_modifier(token);
+            while(tmp) {
+                modifier |= tmp;
+                token = get_token(tokenizer);
+                tmp = is_modifier(token);
+            }
+        }
+
         switch(token.type) {
             case TokenType_semi_colon: case TokenType_comma: case TokenType_end_of_stream: {
                 parsing = false;
@@ -472,13 +539,6 @@ Void parse_number(Tokenizer *tokenizer) {
     // TODO(Jonny): Implement.
 }
 
-#define eat_token(tokenizer) eat_tokens(tokenizer, 1)
-Void eat_tokens(Tokenizer *tokenizer, Int num_tokens_to_eat) {
-    for(Int i = 0; (i < num_tokens_to_eat); ++i) {
-        get_token(tokenizer);
-    }
-}
-
 Bool require_token(Tokenizer *tokenizer, TokenType desired_type) {
     Token token = get_token(tokenizer);
     Bool res = (token.type == desired_type);
@@ -586,6 +646,8 @@ ParseVariableRes parse_variable(Tokenizer *tokenizer, TokenType end_token_type_1
 
     ParseVariableRes res = {};
 
+    Uint32 mod = {};
+
     // Return type.
     Token type = get_token(tokenizer);
     if(type.type == TokenType_identifier) {
@@ -676,7 +738,8 @@ ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_type, Str
 
         Tokenizer start = *tokenizer;
 
-        Access current_access = ((struct_type == StructType_struct) || (struct_type == StructType_union)) ? Access_public : Access_private;
+        Access current_access = ((struct_type == StructType_struct) || (struct_type == StructType_union)) ?
+                                Access_public : Access_private;
         res.sd.struct_type = struct_type;
 
         Bool have_name = false;
@@ -706,7 +769,9 @@ ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_type, Str
                 }
 
                 next = peak_token(tokenizer);
-                if(next.type != TokenType_open_brace) { eat_token(tokenizer); }
+                if(next.type != TokenType_open_brace) {
+                    eat_token(tokenizer);
+                }
             }
         }
 
@@ -753,8 +818,11 @@ ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_type, Str
                                     continue;
                                 } else if(!have_name) {
                                     name = get_token(tokenizer);
-                                    if(name.type == TokenType_identifier) res.sd.name = token_to_string(name);
-                                    else                                  push_error(ErrorType_could_not_detect_struct_name);
+                                    if(name.type == TokenType_identifier) {
+                                        res.sd.name = token_to_string(name);
+                                    } else {
+                                        push_error(ErrorType_could_not_detect_struct_name);
+                                    }
                                 }
 
                                 break; // for
