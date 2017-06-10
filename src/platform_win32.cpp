@@ -15,9 +15,9 @@ extern "C"
 {
 #pragma function(memset)
     void *memset(void *dest, int c, size_t count) {
-        Byte *dest8 = (char *)dest;
+        Byte *dest8 = (Byte *)dest;
         while(count--) {
-            *dest8++ = (char)c;
+            *dest8++ = (Byte)c;
         }
 
         return(dest);
@@ -25,8 +25,8 @@ extern "C"
 
 #pragma function(memcpy)
     void *memcpy(void *dest, const void *src, size_t count) {
-        Byte *dst8 = (Char *)dest;
-        Byte *src8 = (Char *)src;
+        Byte *dst8 = (Byte *)dest;
+        Byte *src8 = (Byte *)src;
         while (count--) {
             *dst8++ = *src8++;
         }
@@ -145,7 +145,7 @@ Uintptr system_get_file_size(Char *fname) {
     return(res);
 }
 
-internal Bool is_valid_cpp_file(Char *fname) {
+Bool is_valid_cpp_file(Char *fname) {
     Bool res = false;
 
     Int len = string_length(fname);
