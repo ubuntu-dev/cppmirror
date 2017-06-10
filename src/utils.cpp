@@ -93,6 +93,7 @@ Void push_error_(ErrorType type, Char *guid) {
     }
 }
 
+Int string_length(Char *str);
 Char *ErrorTypeToString(ErrorType e) {
     Char *res = 0;
 
@@ -127,7 +128,7 @@ Char *ErrorTypeToString(ErrorType e) {
     }
 
     if(res) {
-        Int offset = 10;//string_length("ErrorType_");
+        Int offset = string_length("ErrorType_");
         res += offset;
     }
 
