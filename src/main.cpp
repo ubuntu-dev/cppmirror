@@ -131,7 +131,8 @@ int main(int argc, char **argv) {
                     // TODO(Jonny): Remove this!
 
                     ParseResult parse_res = parse_streams(number_of_files, fnames);
-                    File file_to_write = write_data(parse_res);
+                    Bool is_cpp = true; // TODO(Jonny): Detect this.
+                    File file_to_write = write_data(parse_res, is_cpp);
                     Bool write_success = system_write_to_file("pp_generated.h", file_to_write);
 
 #if INTERNAL
