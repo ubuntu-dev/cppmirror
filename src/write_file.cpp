@@ -313,9 +313,9 @@ File write_data(ParseResult pr, Bool is_cpp) {
             }
         }
 
-        Int max_type_count = array_count(primitive_types);
+        Int max_type_count = array_count(primitive_types) + pr.structs.cnt + pr.enums.cnt + pr.typedefs.cnt;
         for(Int i = 0; (i < pr.structs.cnt); ++i) {
-            max_type_count += pr.structs.e[i].member_count + 1;
+            max_type_count += pr.structs.e[i].member_count;
         }
 
         Int type_count = 0;
