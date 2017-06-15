@@ -251,6 +251,28 @@ File write_data(ParseResult pr, Bool is_cpp) {
                   "// Forward declared structs, enums, and functions\n"
                   "//\n");
 
+            if(!is_cpp) {
+                for(Int i = 0; (i < pr.enums.cnt); ++i) {
+                    EnumData *ed = pr.enums.e + i;
+
+                    write(&ob,
+                          "typedef enum %.*s %.*s;\n",
+                          ed->name.len, ed->name.e,
+                          ed->name.len, ed->name.e);
+                }
+            } else {
+                for(Int i = 0; (i < pr.enums.cnt); ++i) {
+                    EnumData *ed = pr.enums.e + i;
+
+                    if(ed->type.len) {
+                        write(&ob,
+                              "enum %.*s : %.*s;\n",
+                              ed->name.len, ed->name.e,
+                              ed->type.len, ed->type.e);
+                    }
+                }
+            }
+
             // Forward declare structs.
             for(Int i = 0; (i < pr.structs.cnt); ++i) {
                 StructData *sd = pr.structs.e + i;
