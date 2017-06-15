@@ -21,12 +21,14 @@ enum SwitchType {
 
     SwitchType_silent,
     SwitchType_log_errors,
+    SwitchType_log_errors_as_c,
     SwitchType_run_tests,
     SwitchType_print_help,
     SwitchType_source_file,
 
     SwitchType_count,
 };
+
 
 SwitchType get_switch_type(Char *str) {
     SwitchType res = {};
@@ -35,16 +37,16 @@ SwitchType get_switch_type(Char *str) {
     if(len >= 2) {
         if(str[0] == '-') {
             switch(str[1]) {
-                case 'e': res = SwitchType_log_errors; break;
-                case 'h': res = SwitchType_print_help; break;
+                case 'e': res = SwitchType_log_errors;      break;
+                case 'h': res = SwitchType_print_help;      break;
 #if INTERNAL
-                case 's': res = SwitchType_silent;    break;
-                case 't': res = SwitchType_run_tests; break;
+                case 's': res = SwitchType_silent;          break;
+                case 't': res = SwitchType_run_tests;       break;
+                case 'c': res = SwitchType_log_errors_as_c; break;
 #endif
                 default: assert(0); break;
             }
         } else {
-            // If it's not a flag, assume it's a source file. This may not actually be true though...
             res = SwitchType_source_file;
         }
     }
@@ -82,6 +84,7 @@ int main(int argc, char **argv) {
 
     system_write_to_console("Starting Mirror...");
 
+    Bool is_c = false;
     Bool should_log_errors = true;
     if(argc <= 1) {
         push_error(ErrorType_no_parameters);
@@ -100,10 +103,11 @@ int main(int argc, char **argv) {
 
                 SwitchType type = get_switch_type(switch_name);
                 switch(type) {
-                    case SwitchType_silent:     { should_write_to_file = false; } break;
-                    case SwitchType_log_errors: { should_log_errors = true;     } break;
-                    case SwitchType_run_tests:  { should_run_tests = true;      } break;
-                    case SwitchType_print_help: { print_help();                 } break;
+                    case SwitchType_silent:          { should_write_to_file = false; } break;
+                    case SwitchType_log_errors:      { should_log_errors = true;     } break;
+                    case SwitchType_run_tests:       { should_run_tests = true;      } break;
+                    case SwitchType_print_help:      { print_help();                 } break;
+                    case SwitchType_log_errors_as_c: { is_c = true;                  } break;
 
                     case SwitchType_source_file: {
                         if(number_of_files >= fnames_max_cnt - 1) {
@@ -131,8 +135,7 @@ int main(int argc, char **argv) {
                     // TODO(Jonny): Remove this!
 
                     ParseResult parse_res = parse_streams(number_of_files, fnames);
-                    Bool is_cpp = true; // TODO(Jonny): Detect this.
-                    File file_to_write = write_data(parse_res, is_cpp);
+                    File file_to_write = write_data(parse_res, !is_c);
                     Bool write_success = system_write_to_file("pp_generated.h", file_to_write);
 
 #if INTERNAL
