@@ -1581,7 +1581,7 @@ ParseMacroResult parse_macro(Tokenizer *tokenizer, TempMemory *param_memory) {
 Int macro_replace(Char *token_start, File *file, MacroData md) {
     Int res = 0;
 
-    TempMemory tm = create_temp_buffer(megabytes(1));
+    TempMemory tm = create_temp_buffer(megabytes(1)); // TODO(Jonny): Arbitrary Size.
 
     Tokenizer tokenizer = { token_start };
 
