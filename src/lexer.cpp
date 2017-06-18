@@ -1738,11 +1738,8 @@ Void preprocess_macros(File *file) {
                 for(Int i = 0; (i < macro_cnt); ++i) {
                     if(token_compare(token, macro_data[i].iden)) {
                         if(macro_data[i].res.len) {
-                            // TODO(Jonny): This passes in the tokenizer, but maybe it should pass
-                            //              in the token??
                             Int tokenizer_offset = macro_replace(token.e, file, macro_data[i]);
-                            tokenizer.at += tokenizer_offset;
-                            token.e += tokenizer_offset;
+                            tokenizer.at = token.e;
                         }
                     }
                 }
