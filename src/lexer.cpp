@@ -1496,6 +1496,7 @@ Void move_stream(File *file, Char *offset_ptr, Intptr amount_to_move) {
     if(amount_to_move < 0) {
         Uintptr abs_amount_to_move = absolute_value(amount_to_move);
         file->size -= abs_amount_to_move;
+        file->e -= abs_amount_to_move;
         for(Uintptr i = offset; (i < file->size); ++i) {
             file->e[i] = file->e[i + abs_amount_to_move];
         }
