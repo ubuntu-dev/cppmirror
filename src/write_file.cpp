@@ -32,12 +32,24 @@ Void write_to_output_buffer_no_var_args(OutputBuffer *ob, Char *format) {
     }
 }
 
-global Char *primitive_types[] = {
+global Char *global_primitive_types[] = {
     "char", "short", "int", "long", "float", "double", "bool",
     "uint64_t", "uint32_t", "uint16_t", "uint8_t",
     "int64_t", "int32_t", "int16_t", "int8_t",
     "uintptr_t", "intptr_t", "size_t"
 };
+
+Bool is_primitive(String str) {
+    Bool res = false;
+    for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
+        if(string_comp(str, global_primitive_types[i])) {
+            res = true;
+            break;
+        }
+    }
+
+    return(res);
+}
 
 StructData *find_struct(String str, Structs structs) {
     StructData *res = 0;
@@ -73,8 +85,8 @@ Int get_actual_type_count(String *types, Structs structs, Enums enums, Typedefs 
     Int res = 0;
 
     // Primitives.
-    for(Int i = 0; (i < array_count(primitive_types)); ++i) {
-        types[res++] = create_string(primitive_types[i]);
+    for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
+        types[res++] = create_string(global_primitive_types[i]);
     }
 
     // Typedefs.
@@ -158,8 +170,8 @@ File write_data(ParseResult pr, Bool is_cpp) {
               "#define PP_FALSE 0\n");
 
 
-        for(Int i = 0; (i < array_count(primitive_types)); ++i) {
-            Char *p = primitive_types[i];
+        for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
+            Char *p = global_primitive_types[i];
 
             if((is_cpp) || (!string_comp(p, "bool"))) {
                 write(&ob,
@@ -335,7 +347,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
             }
         }
 
-        Int max_type_count = array_count(primitive_types) + pr.structs.cnt + pr.enums.cnt + pr.typedefs.cnt;
+        Int max_type_count = array_count(global_primitive_types) + pr.structs.cnt + pr.enums.cnt + pr.typedefs.cnt;
         for(Int i = 0; (i < pr.structs.cnt); ++i) {
             max_type_count += pr.structs.e[i].member_count;
         }
@@ -471,6 +483,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
                             }
                         }
 
+                        // Array.
                         Char *arr = "";
                         Char arr_buffer[256] = {};
                         if(md->array_count > 1) {
@@ -478,13 +491,47 @@ File write_data(ParseResult pr, Bool is_cpp) {
                             arr = arr_buffer;
                         }
 
+                        // Pointer.
                         char ptr_buf[max_ptr_size] = {};
                         for(Int k = 0; (k < md->ptr); ++k) {
                             ptr_buf[k] = '*';
                         }
 
-                        write(&ob, " pp_%.*s %s%.*s%s; ",
+                        // Modifiers
+                        Char modifier_string[1024] = {};
+                        if(md->modifier) {
+                            Uintptr mod_string_index = 0;
+                            // TODO(Jonny): Implement.
+                            if(md->modifier & Modifier_unsigned) {
+                                mod_string_index += string_copy(modifier_string + mod_string_index, " unsigned");
+                            }
+
+                            if(md->modifier & Modifier_const) {
+                                mod_string_index += string_copy(modifier_string + mod_string_index, " const");
+                            }
+
+                            if(md->modifier & Modifier_volatile) {
+                                mod_string_index += string_copy(modifier_string + mod_string_index, " volatile");
+                            }
+
+                            if(md->modifier & Modifier_mutable) {
+                                mod_string_index += string_copy(modifier_string + mod_string_index, " mutable");
+
+                            }
+                            if(md->modifier & Modifier_signed) {
+                                mod_string_index += string_copy(modifier_string + mod_string_index, " signed");
+                            }
+                        }
+
+                        // If the type is not a primitive, prepend "pp_" onto the front of it.
+                        if(!is_primitive(md->type)) {
+                            write(&ob, "pp_");
+                        }
+
+                        // Write out all data.
+                        write(&ob, "%.*s%s %s%.*s%s; ",
                               md->type.len, md->type.e,
+                              modifier_string,
                               ptr_buf,
                               md->name.len, md->name.e,
                               (md->array_count > 1) ? arr_buffer : arr);
@@ -634,8 +681,8 @@ File write_data(ParseResult pr, Bool is_cpp) {
                 // Primitive.
                 {
                     write(&ob, "        ");
-                    for(Int i = 0; (i < array_count(primitive_types)); ++i) {
-                        write(&ob, "case pp_Type_%s: ", primitive_types[i]);
+                    for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
+                        write(&ob, "case pp_Type_%s: ", global_primitive_types[i]);
                     }
                     write(&ob,
                           "{\n"
@@ -686,8 +733,8 @@ File write_data(ParseResult pr, Bool is_cpp) {
                       "PP_STATIC char const * pp_type_to_string(pp_Type type) {\n"
                       "    switch(type) {\n");
 
-                for(Int i = 0; (i < array_count(primitive_types)); ++i) {
-                    Char *prim = primitive_types[i];
+                for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
+                    Char *prim = global_primitive_types[i];
 
                     write(&ob,
                           "        case pp_Type_%s: { return(\"%s\"); } break;\n",
@@ -739,8 +786,8 @@ File write_data(ParseResult pr, Bool is_cpp) {
 
                 // Primitives.
                 write(&ob, "        // Primitives\n");
-                for(Int i = 0; (i < array_count(primitive_types)); ++i) {
-                    Char *prim = primitive_types[i];
+                for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
+                    Char *prim = global_primitive_types[i];
 
                     if((!is_cpp) && (string_comp(prim, "bool"))) {
                         continue;

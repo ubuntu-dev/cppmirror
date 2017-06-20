@@ -26,6 +26,7 @@ enum Modifier {
     Modifier_const    = 0x02,
     Modifier_volatile = 0x04,
     Modifier_mutable  = 0x08,
+    Modifier_signed   = 0x10,
 };
 
 struct StructData {
@@ -36,8 +37,6 @@ struct StructData {
 
     Int inherited_count;
     String *inherited;
-
-    Uint32 mod;
 
     StructType struct_type;
 };
@@ -263,7 +262,8 @@ Modifier is_modifier(Token token) {
         CREATE_MODIFIER(unsigned),
         CREATE_MODIFIER(const),
         CREATE_MODIFIER(volatile),
-        CREATE_MODIFIER(mutable)
+        CREATE_MODIFIER(mutable),
+        CREATE_MODIFIER(signed)
     };
 
     for(Int i = 0; (i < array_count(modifiers)); ++i) {
@@ -323,8 +323,6 @@ Void loop_until_token(Tokenizer *tokenizer, TokenType type) {
 Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
     Variable res = {};
 
-    Uint32 modifier = 0;
-
     Token type = get_token(tokenizer);
     if(token_equals(type, "std")) {
         // TODO(Jonny): Hacky as fuck...
@@ -347,7 +345,7 @@ Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
     {
         Modifier tmp = is_modifier(type);
         while(tmp) {
-            modifier |= tmp;
+            res.modifier |= tmp;
             type = get_token(tokenizer);
             tmp = is_modifier(type);
         }
@@ -373,7 +371,7 @@ Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
         {
             Modifier tmp = is_modifier(token);
             while(tmp) {
-                modifier |= tmp;
+                res.modifier |= tmp;
                 token = get_token(tokenizer);
                 tmp = is_modifier(token);
             }

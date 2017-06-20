@@ -27,17 +27,6 @@ popd
 
 rem Run after building.
 
-rem Test code for C.
-if "%RUN_TEST%"=="true" (
-    pushd "test"
-    "../build/mirror.exe" -c test_code.c
-    popd
-
-    pushd "build"
-    cl -Fetest %DEBUG_COMMON_COMPILER_FLAGS% -Wall "../test/test_code.c" -FmTest.map -link -subsystem:console,5.2 kernel32.lib
-    popd
-)
-
 rem Test code for C++.
 if "%RUN_TEST%"=="true" (
     pushd "test"
@@ -46,5 +35,16 @@ if "%RUN_TEST%"=="true" (
 
     pushd "build"
     cl -Fetest %DEBUG_COMMON_COMPILER_FLAGS% -Wall "../test/test_code.cpp" -FmTest.map -link -subsystem:console,5.2 kernel32.lib
+    popd
+)
+
+rem Test code for C.
+if "%RUN_TEST%"=="true" (
+    pushd "test"
+    "../build/mirror.exe" -c test_code.c
+    popd
+
+    pushd "build"
+    cl -Fetest %DEBUG_COMMON_COMPILER_FLAGS% -Wall "../test/test_code.c" -FmTest.map -link -subsystem:console,5.2 kernel32.lib
     popd
 )

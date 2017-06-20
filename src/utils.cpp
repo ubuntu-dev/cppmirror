@@ -272,12 +272,16 @@ Bool string_comp(Char *a, Char *b) {
     return(true);
 }
 
-Void string_copy(Char *dest, Char *src) {
+Uintptr string_copy(Char *dest, Char *src) {
+    Uintptr res = 0;
     while(*src) {
         *dest = *src;
         ++dest;
         ++src;
+        ++res; // TODO(Jonny): Could work out at end, rather than increment every time through the loop?
     }
+
+    return(res);
 }
 
 Bool string_comp(String a, String b) {
@@ -519,9 +523,14 @@ enum Access {
 struct Variable {
     String type;
     String name;
+
     Access access;
+
     Int ptr;
-    Int array_count; // This is 1 if it's not an array. TODO(Jonny): Is this true anymore?
+    Int array_count;
+
+    Uint32 modifier;
+
     Bool is_inside_anonymous_struct;
 };
 
