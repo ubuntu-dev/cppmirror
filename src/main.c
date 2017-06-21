@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
                     case SwitchType_source_file: {
                         if(number_of_files >= fnames_max_cnt - 1) {
                             fnames_max_cnt *= 2;
-                            Void *p = system_realloc(fnames, fnames_max_cnt * sizeof(Char *));
+                            Void *p = system_realloc(fnames, sizeof(*fnames) * fnames_max_cnt);
                             if(p) {
                                 fnames = cast(Char **)p;
                             }

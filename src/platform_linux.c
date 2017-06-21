@@ -9,8 +9,8 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-Void *system_malloc(Uintptr size, Uintptr cnt/*= 1*/) {
-    Void *res = malloc(size * cnt);
+Void *system_malloc(Uintptr size) {
+    Void *res = malloc(size);
     if(res) {
         zero(res, size * cnt);
     }
@@ -36,7 +36,7 @@ Void *system_realloc(Void *ptr, Uintptr new_size) {
 }
 
 File system_read_entire_file_and_null_terminate(Char *fname) {
-    File res = {};
+    File res = {0};
 
     FILE *file = fopen(fname, "r");
     if(file) {
@@ -70,7 +70,7 @@ Bool system_write_to_file(Char *fname, File file) {
 
 Bool system_create_folder(Char *name) {
     Bool res = false;
-    struct stat st = {};
+    struct stat st = {0};
 
     if(stat(name, &st) == -1) {
         res = (mkdir(name, 0700) == 0);
