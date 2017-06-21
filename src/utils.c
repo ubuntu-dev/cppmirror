@@ -9,7 +9,7 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-const Int max_ptr_size = 4;
+#define MAX_POINTER_SIZE 4
 
 //
 // Memset and Memcpy
@@ -46,7 +46,7 @@ Void set(void *dest, Byte v, Uintptr n) {
     #define MAKE_GUID GUID(__FILE__, __LINE__)
 #endif
 
-enum ErrorType {
+typedef enum {
     ErrorType_ran_out_of_memory,
     ErrorType_assert_failed,
     ErrorType_no_parameters,
@@ -73,12 +73,12 @@ enum ErrorType {
     ErrorType_incorrect_data_structure_type,
 
     ErrorType_count,
-};
+} ErrorType;
 
-struct Error {
+typedef struct {
     ErrorType type;
     Char *guid;
-};
+} Error;
 
 global Error global_errors[32];
 global Int global_error_count;
@@ -143,12 +143,12 @@ Bool print_errors(void) {
     if(global_error_count) {
         res = true;
 
-        Char buffer2[256] = {};
+        Char buffer2[256] = {0};
         stbsp_snprintf(buffer2, array_count(buffer2), " with %d error(s).\n\n", global_error_count);
         system_write_to_console(buffer2);
 
         for(Int i = 0; (i < global_error_count); ++i) {
-            Char buffer[256] = {};
+            Char buffer[256] = {0};
             stbsp_snprintf(buffer, array_count(buffer), "%s %s\n",
                            global_errors[i].guid, ErrorTypeToString(global_errors[i].type));
             system_write_to_console(buffer);
@@ -163,11 +163,11 @@ Bool print_errors(void) {
 //
 Int const default_mem_alignment = 4;
 
-struct TempMemory {
+typedef struct {
     Void *e;
     Uintptr size;
     Uintptr used;
-};
+} TempMemory;
 
 Uintptr get_alignment(void *mem, Uintptr desired_alignment) {
     Uintptr res = 0;
@@ -181,7 +181,7 @@ Uintptr get_alignment(void *mem, Uintptr desired_alignment) {
 }
 
 TempMemory create_temp_buffer(Uintptr size) {
-    TempMemory res = {};
+    TempMemory res = {0};
 
     res.e = system_malloc(size);
     if(res.e) {
@@ -193,7 +193,8 @@ TempMemory create_temp_buffer(Uintptr size) {
 }
 
 #define push_type(tm, Type, ...) (Type *)push_size(tm, sizeof(Type), ##__VA_ARGS__)
-Void *push_size(TempMemory *tm, Uintptr size, Uintptr alignment= default_mem_alignment) {
+#define push_size(tm, size) push_size_with_alignment(tm, size, default_mem_alignment)
+Void *push_size_with_alignment(TempMemory *tm, Uintptr size, Uintptr alignment) {
     Void *res = 0;
 
     Uintptr alignment_offset = get_alignment(cast(Byte *)tm->e + tm->used, alignment);
@@ -216,10 +217,10 @@ Void free_temp_buffer(TempMemory *temp_memory) {
 //
 // Strings.
 //
-struct String {
+typedef struct {
     Char *e;
-    Int len;
-};
+    Uintptr len;
+} String;
 
 Int string_length(Char *str) {
     Int res = 0;
@@ -231,8 +232,10 @@ Int string_length(Char *str) {
     return(res);
 }
 
-String create_string(Char *str, Int len= 0) {
-    String res = {str, (len) ? len : string_length(str)};
+String create_string(Char *str, Int len) {
+    String res;
+    res.e = str;
+    res.len = (len) ? len : string_length(str);
 
     return(res);
 }
@@ -250,7 +253,7 @@ Bool string_concat(Char *dest, Int len, Char *a, Int a_len, Char *b, Int b_len) 
     return(res);
 }
 
-Bool string_comp_len(Char *a, Char *b, Int len) {
+Bool string_comp_len(Char *a, Char *b, Uintptr len) {
     for(Int i = 0; (i < len); ++i, ++a, ++b) {
         if(*a != *b) {
             return(false);
@@ -260,7 +263,7 @@ Bool string_comp_len(Char *a, Char *b, Int len) {
     return(true);
 }
 
-Bool string_comp(Char *a, Char *b) {
+Bool cstring_comp(Char *a, Char *b) {
     while((*a) && (*b)) {
         if(*a != *b) {
             return(false);
@@ -301,7 +304,7 @@ Bool string_comp(String a, String b) {
     return(res);
 }
 
-Bool string_comp(String a, Char *b) {
+Bool string_cstring_comp(String a, Char *b) {
     Bool res = true;
 
     for(Int i = 0; (i < a.len); ++i) {
@@ -314,8 +317,8 @@ Bool string_comp(String a, Char *b) {
     return(res);
 }
 
-Bool string_comp(Char *a, String b) {
-    Bool res = string_comp(b, a);
+Bool cstring_string_comp(Char *a, String b) {
+    Bool res = string_cstring_comp(b, a);
 
     return(res);
 }
@@ -345,7 +348,7 @@ Bool string_contains(String str, Char target) {
     return(res);
 }
 
-Bool string_contains(Char *str, Char target) {
+Bool cstring_contains(Char *str, Char target) {
     Bool res = false;
 
     while(*str) {
@@ -360,7 +363,7 @@ Bool string_contains(Char *str, Char target) {
     return(res);
 }
 
-Bool string_contains(String str, Char *target) {
+Bool string_contains_cstring(String str, Char *target) {
     Int target_len = string_length(target);
 
     for(Int i = 0; (i < str.len); ++i) {
@@ -380,21 +383,23 @@ Bool string_contains(String str, Char *target) {
     return(false);
 }
 
-Bool string_contains(Char *str, Char *target) {
-    String s = {str, string_length(str)};
-    return(string_contains(s, target));
+Bool cstring_contains_cstring(Char *str, Char *target) {
+    String s = create_string(str, string_length(str));
+    Bool res = string_contains_cstring(s, target);
+
+    return(res);
 }
 
 //
 // Stuff
 //
-struct ResultInt {
+typedef struct {
     Int e;
     Bool success;
-};
+} ResultInt;
 
 ResultInt char_to_int(Char c) {
-    ResultInt res = {};
+    ResultInt res = {0};
     switch(c) {
         case '0': { res.e = 0; res.success = true; } break;
         case '1': { res.e = 1; res.success = true; } break;
@@ -412,7 +417,7 @@ ResultInt char_to_int(Char c) {
 }
 
 ResultInt string_to_int(String str) {
-    ResultInt res = {};
+    ResultInt res = {0};
 
     for(Int i = 0; (i < str.len); ++i) {
         ResultInt temp_int = char_to_int(str.e[i]);
@@ -431,7 +436,7 @@ ResultInt string_to_int(String str) {
     return(res);
 }
 
-ResultInt string_to_int(Char *str) {
+ResultInt cstring_to_int(Char *str) {
     String string;
     string.e = str;
     string.len = string_length(str);
@@ -441,13 +446,13 @@ ResultInt string_to_int(Char *str) {
 }
 
 ResultInt calculator_string_to_int(Char *str) {
-    ResultInt res = {};
+    ResultInt res = {0};
 
     /* TODO(Jonny);
         - Make sure each element in the string is either a number or a operator.
         - Do the calculator in order (multiply, divide, add, subtract).
     */
-    String *arr = system_alloc(String, 256); // TODO(Jonny): Random size.
+    String *arr = system_malloc(sizeof(*arr) * 256); // TODO(Jonny): Random size.
     if(arr) {
         Char *at = str;
         arr[0].e = at;
@@ -460,8 +465,8 @@ ResultInt calculator_string_to_int(Char *str) {
         }
         ++cnt;
 
-        Int *nums = system_alloc(Int, cnt);
-        Char *ops = system_alloc(Char, cnt);
+        Int *nums = system_malloc(sizeof(*nums) * cnt);
+        Char *ops = system_malloc(sizeof(*ops) * cnt);
         if((nums) && (ops)) {
             for(Int i = 0, j = 0; (j < cnt); ++i, j += 2) {
                 ResultInt r = string_to_int(arr[j]);
@@ -512,15 +517,16 @@ Uint32 safe_truncate_size_64(Uint64 v) {
 //
 // Variable.
 //
-enum Access {
+typedef enum {
+    Access_unknown,
     Access_public,
     Access_private,
     Access_protected,
 
     Access_count,
-};
+} Access;
 
-struct Variable {
+typedef struct {
     String type;
     String name;
 
@@ -532,44 +538,32 @@ struct Variable {
     Uint32 modifier;
 
     Bool is_inside_anonymous_struct;
-};
+} Variable;
 
-Variable create_variable(Char *type, Char *name, Int ptr = 0, Int array_count = 0) {
+Variable create_variable(Char *type, Char *name, Int ptr, Int array_count ) {
     Variable res;
-    res.type = create_string(type);
-    res.name = create_string(name);
+    res.type = create_string(type, 0);
+    res.name = create_string(name, 0);
     res.ptr = ptr;
     res.array_count = array_count;
 
     return(res);
 }
 
-Bool compare_variable(Variable a, Variable b) {
+Bool variable_comp(Variable a, Variable b) {
     Bool res = true;
 
-    if(!string_comp(a.type, b.type))        res = false;
-    else if(!string_comp(a.name, b.name))   res = false;
-    else if(a.ptr != b.ptr)                 res = false;
-    else if(a.array_count != b.array_count) res = false;
-
-    return(res);
-}
-
-Bool operator==(Variable a, Variable b) {
-    Bool res = compare_variable(a, b);
-
-    return(res);
-}
-
-Bool operator!=(Variable a, Variable b) {
-    Bool res = !compare_variable(a, b);
+    if(!string_comp(a.type, b.type))        { res = false; }
+    else if(!string_comp(a.name, b.name))   { res = false; }
+    else if(a.ptr != b.ptr)                 { res = false; }
+    else if(a.array_count != b.array_count) { res = false; }
 
     return(res);
 }
 
 Bool compare_variable_array(Variable *a, Variable *b, Int count) {
     for(Int i = 0; (i < count); ++i) {
-        if(!compare_variable(a[i], b[i])) {
+        if(!variable_comp(a[i], b[i])) {
             return(false);
         }
     }

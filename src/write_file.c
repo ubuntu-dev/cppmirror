@@ -9,11 +9,11 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-struct OutputBuffer {
+typedef struct {
     Char *buffer;
     Int index;
     Int size;
-};
+} OutputBuffer;
 
 Void write(OutputBuffer *ob, Char *format, ...) {
     va_list args;
@@ -42,7 +42,7 @@ global Char *global_primitive_types[] = {
 Bool is_primitive(String str) {
     Bool res = false;
     for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
-        if(string_comp(str, global_primitive_types[i])) {
+        if(string_cstring_comp(str, global_primitive_types[i])) {
             res = true;
             break;
         }
@@ -86,7 +86,7 @@ Int get_actual_type_count(String *types, Structs structs, Enums enums, Typedefs 
 
     // Primitives.
     for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
-        types[res++] = create_string(global_primitive_types[i]);
+        types[res++] = create_string(global_primitive_types[i], 0);
     }
 
     // Typedefs.
@@ -128,10 +128,10 @@ Int get_actual_type_count(String *types, Structs structs, Enums enums, Typedefs 
 }
 
 File write_data(ParseResult pr, Bool is_cpp) {
-    File res = {};
-    OutputBuffer ob = {};
+    File res = {0};
+    OutputBuffer ob = {0};
     ob.size = 1024 * 1024;
-    ob.buffer = system_alloc(Char, ob.size);
+    ob.buffer = system_malloc(sizeof(*ob.buffer) * ob.size);
     if(ob.buffer) {
         write(&ob,
               "#if !defined(PP_GENERATED_H)\n"
@@ -173,7 +173,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
         for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
             Char *p = global_primitive_types[i];
 
-            if((is_cpp) || (!string_comp(p, "bool"))) {
+            if((is_cpp) || (!cstring_comp(p, "bool"))) {
                 write(&ob,
                       "typedef %s pp_%s;\n",
                       p, p);
@@ -312,7 +312,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
             for(Int i = 0; (i < pr.funcs.cnt); ++i) {
                 FunctionData *fd = pr.funcs.e + i;
 
-                Char ptr_buf[max_ptr_size] = {};
+                Char ptr_buf[MAX_POINTER_SIZE] = {0};
                 for(Int j = 0; (j < fd->return_type_ptr); ++j) {
                     ptr_buf[j] = '*';
                 }
@@ -327,7 +327,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
                 for(Int j = 0; (j < fd->param_cnt); ++j) {
                     Variable *param = fd->params + j;
 
-                    Char param_ptr_buf[max_ptr_size] = {};
+                    Char param_ptr_buf[MAX_POINTER_SIZE] = {0};
                     for(Int k = 0; (k < param->ptr); ++k) {
                         param_ptr_buf[k] = '*';
                     }
@@ -353,7 +353,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
         }
 
         Int type_count = 0;
-        String *types = system_alloc(String, max_type_count);
+        String *types = system_malloc(sizeof(*types) * max_type_count);
         if(types) {
             // Meta types enum.
             {
@@ -485,20 +485,20 @@ File write_data(ParseResult pr, Bool is_cpp) {
 
                         // Array.
                         Char *arr = "";
-                        Char arr_buffer[256] = {};
+                        Char arr_buffer[256] = {0};
                         if(md->array_count > 1) {
                             stbsp_snprintf(arr_buffer, 256, "[%u]", md->array_count);
                             arr = arr_buffer;
                         }
 
                         // Pointer.
-                        char ptr_buf[max_ptr_size] = {};
+                        char ptr_buf[MAX_POINTER_SIZE] = {0};
                         for(Int k = 0; (k < md->ptr); ++k) {
                             ptr_buf[k] = '*';
                         }
 
                         // Modifiers
-                        Char modifier_string[1024] = {};
+                        Char modifier_string[1024] = {0};
                         if(md->modifier) {
                             Uintptr mod_string_index = 0;
                             // TODO(Jonny): Implement.
@@ -789,7 +789,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
                 for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
                     Char *prim = global_primitive_types[i];
 
-                    if((!is_cpp) && (string_comp(prim, "bool"))) {
+                    if((!is_cpp) && (cstring_comp(prim, "bool"))) {
                         continue;
                     }
                     write(&ob,

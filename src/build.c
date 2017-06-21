@@ -1,5 +1,5 @@
 /*===================================================================================================
-  File:                    build.cpp
+  File:                    build.c
   Author:                  Jonathan Livingstone
   Email:                   seagull127@ymail.com
   Licence:                 Public Domain
@@ -19,19 +19,16 @@
 #define STB_SPRINTF_NOFLOAT
 #include "stb_sprintf.h"
 
-// Anoymous namespaces make every function inside them "static", which help with optimizations, even in a unity build.
-//namespace {
-
 // Headers
 #include "types.h"
 #include "platform.h"
 
 // C++ Files.
-#include "utils.cpp"
-#include "lexer.cpp"
-#include "write_file.cpp"
+#include "utils.c"
+#include "lexer.c"
+#include "write_file.c"
 #if INTERNAL
-    #include "test.cpp"
+    #include "test.c"
 #endif
 
 // Platform-specific implementations.
@@ -39,15 +36,13 @@
     #include <stdio.h>    // File IO.
     #include <sys/stat.h> // mkdir
 
-    #include "platform_linux.cpp"
+    #include "platform_linux.c"
 
 #elif OS_WIN32
     #include <windows.h>
 
-    #include "platform_win32.cpp"
+    #include "platform_win32.c"
 #endif
 
-//} // namespace
-
 // main.
-#include "main.cpp"
+#include "main.c"

@@ -9,30 +9,28 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-extern "C" { int _fltused; }
+int _fltused;
 
-extern "C"
-{
 #pragma function(memset)
-    void *memset(void *dest, int c, size_t count) {
-        Byte *dest8 = (Byte *)dest;
-        while(count--) {
-            *dest8++ = (Byte)c;
-        }
-
-        return(dest);
+void *memset(void *dest, int c, size_t count) {
+    assert(c < 0xFF);
+    Byte *dest8 = (Byte *)dest;
+    while(count--) {
+        *dest8++ = (Byte)c;
     }
+
+    return(dest);
+}
 
 #pragma function(memcpy)
-    void *memcpy(void *dest, const void *src, size_t count) {
-        Byte *dst8 = (Byte *)dest;
-        Byte *src8 = (Byte *)src;
-        while (count--) {
-            *dst8++ = *src8++;
-        }
-
-        return(dest);
+void *memcpy(void *dest, const void *src, size_t count) {
+    Byte *dst8 = (Byte *)dest;
+    Byte *src8 = (Byte *)src;
+    while (count--) {
+        *dst8++ = *src8++;
     }
+
+    return(dest);
 }
 
 Uint64 system_get_performance_counter() {
@@ -48,8 +46,8 @@ Uint64 system_get_performance_counter() {
 
 // TODO(Jonny): Replace these with VirtualAlloc? Then I could make sure they all end of a page boundary,
 //              and I'd know I wasn't overwritting them. Realloc could be implemented as a VirtualAlloc/copy.
-Void *system_malloc(Uintptr size, Uintptr cnt/*= 1*/) {
-    Void *res = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size * cnt);
+Void *system_malloc(Uintptr size) {
+    Void *res = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size);
 
     return(res);
 }
@@ -75,7 +73,7 @@ Void *system_realloc(Void *ptr, Uintptr size) {
 }
 
 File system_read_entire_file_and_null_terminate(Char *fname) {
-    File res = {};
+    File res = {0};
 
     HANDLE fhandle = CreateFileA(fname, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
     if(fhandle != INVALID_HANDLE_VALUE) {
@@ -170,11 +168,11 @@ Bool system_create_folder(Char *name) {
 
 Void system_write_to_console(Char *format, ...) {
     Uintptr alloc_size = 1024;
-    Char *buf = system_alloc(Char, alloc_size);
+    Char *buf = system_malloc(sizeof(*buf) * alloc_size);
     if(buf) {
         va_list args;
         va_start(args, format);
-        Int sprintf_written = stbsp_vsnprintf(buf, alloc_size, format, args);
+        Int sprintf_written = stbsp_vsnprintf(buf, (Int)alloc_size, format, args);
         assert(sprintf_written < alloc_size);
         va_end(args);
 
@@ -209,7 +207,7 @@ void mainCRTStartup() {
     }
 
     // Create copy of args.
-    Char *arg_cpy = system_alloc(Char, args_len + 1);
+    Char *arg_cpy = system_malloc(sizeof(*arg_cpy) * (args_len + 1));
     string_copy(arg_cpy, cmdline);
 
     for(Int i = 0; (i < args_len); ++i) {
@@ -226,14 +224,14 @@ void mainCRTStartup() {
     in_quotes = false;
     Int mem_size = original_cnt * 2;
     Int argc = 1;
-    Char **argv = system_alloc(Char *, mem_size);
+    Char **argv = system_malloc(sizeof(*argv) * mem_size);
     Char **cur = argv;
     *cur = arg_cpy;
     ++cur;
     for(Int i = 0; (i < args_len); ++i) {
         if(!arg_cpy[i]) {
             Char *str = arg_cpy + i + 1;
-            if(!string_contains(str, '*')) {
+            if(!cstring_contains(str, '*')) {
                 *cur = str;
                 ++cur;
                 ++argc;

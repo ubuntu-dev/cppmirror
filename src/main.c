@@ -16,7 +16,7 @@
     - Support modifiers (unnsigned, volatile, const).
 */
 
-enum SwitchType {
+typedef enum {
     SwitchType_unknown,
 
     SwitchType_silent,
@@ -27,11 +27,10 @@ enum SwitchType {
     SwitchType_source_file,
 
     SwitchType_count,
-};
-
+} SwitchType;
 
 SwitchType get_switch_type(Char *str) {
-    SwitchType res = {};
+    SwitchType res = {0};
 
     Int len = string_length(str);
     if(len >= 2) {
@@ -70,7 +69,7 @@ Void print_help(void) {
     system_write_to_console(help);
 }
 
-Int run_tests() {
+Int run_tests(void) {
     Int res = 0;
 #if INTERNAL
     res += struct_tests();
@@ -94,7 +93,7 @@ int main(int argc, char **argv) {
         should_write_to_file = true;
 
         Int fnames_max_cnt = 16;
-        Char **fnames = system_alloc(Char *, fnames_max_cnt);
+        Char **fnames = system_malloc(sizeof(*fnames) * fnames_max_cnt);
         if(fnames) {
             Uintptr total_file_size = 0;
             Int number_of_files = 0;

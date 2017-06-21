@@ -9,7 +9,7 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-StructData parse_struct_test(Char *str, StructType type = StructType_struct) {
+StructData parse_struct_test(Char *str, StructType type) {
     Tokenizer tokenizer = {str};
 
     eat_token(&tokenizer);
@@ -18,44 +18,44 @@ StructData parse_struct_test(Char *str, StructType type = StructType_struct) {
     return(res.sd);
 }
 
-Int struct_test_name() {
+Int struct_test_name(void) {
     Int res = 0;
 
     {
-        StructData sd = parse_struct_test("struct Foo {};");
-        if(!string_comp("Foo", sd.name)) {
+        StructData sd = parse_struct_test("struct Foo {};", StructType_struct);
+        if(!cstring_string_comp("Foo", sd.name)) {
             push_error(ErrorType_incorrect_struct_name);
             ++res;
         }
     }
 
     {
-        StructData sd = parse_struct_test("struct Foo { int a, b, c; };");
-        if(!string_comp("Foo", sd.name)) {
+        StructData sd = parse_struct_test("struct Foo { int a, b, c; };", StructType_struct);
+        if(!cstring_string_comp("Foo", sd.name)) {
             push_error(ErrorType_incorrect_struct_name);
             ++res;
         }
     }
 
     {
-        StructData sd = parse_struct_test("struct Bar { int a; int b; int c; };");
-        if(!string_comp("Bar", sd.name)) {
+        StructData sd = parse_struct_test("struct Bar { int a; int b; int c; };", StructType_struct);
+        if(!cstring_string_comp("Bar", sd.name)) {
             push_error(ErrorType_incorrect_struct_name);
             ++res;
         }
     }
 
     {
-        StructData sd = parse_struct_test("class Foo {};");
-        if(!string_comp("Foo", sd.name)) {
+        StructData sd = parse_struct_test("class Foo {};", StructType_struct);
+        if(!cstring_string_comp("Foo", sd.name)) {
             push_error(ErrorType_incorrect_struct_name);
             ++res;
         }
     }
 
     {
-        StructData sd = parse_struct_test("class FooBar : public Foo, public Bar {};");
-        if(!string_comp("FooBar", sd.name)) {
+        StructData sd = parse_struct_test("class FooBar : public Foo, public Bar {};", StructType_struct);
+        if(!cstring_string_comp("FooBar", sd.name)) {
             push_error(ErrorType_incorrect_struct_name);
             ++res;
         }
@@ -64,11 +64,11 @@ Int struct_test_name() {
     return(res);
 }
 
-Int struct_test_member_count() {
+Int struct_test_member_count(void) {
     Int res = 0;
 
     {
-        StructData sd =  parse_struct_test("struct Foo { int a; int b; int c;};");
+        StructData sd =  parse_struct_test("struct Foo { int a; int b; int c;};", StructType_struct);
 
         if(sd.member_count != 3) {
             push_error(ErrorType_incorrect_number_of_members_for_struct);
@@ -77,7 +77,7 @@ Int struct_test_member_count() {
     }
 
     {
-        StructData sd =  parse_struct_test("struct Foo { int a, b, c;};");
+        StructData sd =  parse_struct_test("struct Foo { int a, b, c;};", StructType_struct);
 
         if(sd.member_count != 3) {
             push_error(ErrorType_incorrect_number_of_members_for_struct);
@@ -86,7 +86,7 @@ Int struct_test_member_count() {
     }
 
     {
-        StructData sd =  parse_struct_test("struct Foo { int a; float *b; char **c; double d[10]; short *e[10]; };");
+        StructData sd =  parse_struct_test("struct Foo { int a; float *b; char **c; double d[10]; short *e[10]; };", StructType_struct);
 
         if(sd.member_count != 5) {
             push_error(ErrorType_incorrect_number_of_members_for_struct);
@@ -102,7 +102,7 @@ Int struct_test_member_count() {
                   "    unsigned int len2;"
                   "    int **ptr;"
                   "};";
-        StructData sd =  parse_struct_test(s);
+        StructData sd =  parse_struct_test(s, StructType_struct);
 
         if(sd.member_count != 5) {
             push_error(ErrorType_incorrect_number_of_members_for_struct);
@@ -113,11 +113,11 @@ Int struct_test_member_count() {
     return(res);
 }
 
-Int struct_test_inheritance_count() {
+Int struct_test_inheritance_count(void) {
     Int res = 0;
 
     {
-        StructData sd = parse_struct_test("struct FooBar : public Foo, public Bar {};");
+        StructData sd = parse_struct_test("struct FooBar : public Foo, public Bar {};", StructType_struct);
         if(sd.inherited_count != 2) {
             push_error(ErrorType_incorrect_number_of_base_structs);
             ++res;
@@ -125,7 +125,7 @@ Int struct_test_inheritance_count() {
     }
 
     {
-        StructData sd = parse_struct_test("struct FooBar : public Foo {};");
+        StructData sd = parse_struct_test("struct FooBar : public Foo {};", StructType_struct);
         if(sd.inherited_count != 1) {
             push_error(ErrorType_incorrect_number_of_base_structs);
             ++res;
@@ -133,7 +133,7 @@ Int struct_test_inheritance_count() {
     }
 
     {
-        StructData sd = parse_struct_test("struct FooBar : public F, public O, public O, public B, public A, public R {};");
+        StructData sd = parse_struct_test("struct FooBar : public F, public O, public O, public B, public A, public R {};", StructType_struct);
         if(sd.inherited_count != 6) {
             push_error(ErrorType_incorrect_number_of_base_structs);
             ++res;
@@ -143,31 +143,31 @@ Int struct_test_inheritance_count() {
     return(res);
 }
 
-Int struct_test_members() {
+Int struct_test_members(void) {
     Int res = 0;
 
-    StructData sd = parse_struct_test("struct Foo { int a; float b; char *c; short *d[10]; };");
-    Variable a = create_variable("int",    "a");
-    Variable b = create_variable("float",  "b");
-    Variable c = create_variable("char",   "c", 1);
+    StructData sd = parse_struct_test("struct Foo { int a; float b; char *c; short *d[10]; };", StructType_struct);
+    Variable a = create_variable("int",    "a", 0, 0);
+    Variable b = create_variable("float",  "b", 0, 0);
+    Variable c = create_variable("char",   "c", 1, 0);
     Variable d = create_variable("short",  "d", 1, 10);
 
-    if(a != sd.members[0]) {
+    if(!variable_comp(a, sd.members[0])) {
         push_error(ErrorType_incorrect_members_in_struct);
         ++res;
     }
 
-    if(b != sd.members[1]) {
+    if(!variable_comp(b, sd.members[1])) {
         push_error(ErrorType_incorrect_members_in_struct);
         ++res;
     }
 
-    if(c != sd.members[2]) {
+    if(!variable_comp(c, sd.members[2])) {
         push_error(ErrorType_incorrect_members_in_struct);
         ++res;
     }
 
-    if(d != sd.members[3]) {
+    if(!variable_comp(d, sd.members[3])) {
         push_error(ErrorType_incorrect_members_in_struct);
         ++res;
     }
@@ -175,7 +175,7 @@ Int struct_test_members() {
     return(res);
 }
 
-Int struct_test_type() {
+Int struct_test_type(void) {
     Int res = 0;
 
     {
@@ -205,7 +205,7 @@ Int struct_test_type() {
     return(res);
 }
 
-Int struct_tests() {
+Int struct_tests(void) {
     Int res = 0;
 
     res += struct_test_member_count();
