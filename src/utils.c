@@ -161,7 +161,6 @@ Bool print_errors(void) {
 //
 // Temp Memory.
 //
-Int const default_mem_alignment = 4;
 
 typedef struct {
     Void *e;
@@ -193,9 +192,19 @@ TempMemory create_temp_buffer(Uintptr size) {
 }
 
 #define push_type(tm, Type, ...) (Type *)push_size(tm, sizeof(Type), ##__VA_ARGS__)
-#define push_size(tm, size) push_size_with_alignment(tm, size, default_mem_alignment)
-Void *push_size_with_alignment(TempMemory *tm, Uintptr size, Uintptr alignment) {
+#define push_size(tm, size) push_size_with_alignment(tm, size, -1)
+Void *push_size_with_alignment(TempMemory *tm, Uintptr size, Int alignment) {
     Void *res = 0;
+
+    if(alignment == -1) {
+        if(size <= 4) {
+            alignment = 4;
+        } else if(size <= 8) {
+            alignment = 8;
+        } else {
+            alignment = 16;
+        }
+    }
 
     Uintptr alignment_offset = get_alignment(cast(Byte *)tm->e + tm->used, alignment);
 
