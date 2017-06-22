@@ -15,8 +15,8 @@
 // Memset and Memcpy
 //
 Void copy(Void *dest, Void *src, Uintptr size) {
-    Byte *dest8 = cast(Byte *)dest;
-    Byte *src8 = cast(Byte *)src;
+    Byte *dest8 = dest;
+    Byte *src8 = src;
 
     for(Uintptr i = 0; (i < size); ++i) {
         dest8[i] = src8[i];
@@ -24,8 +24,8 @@ Void copy(Void *dest, Void *src, Uintptr size) {
 }
 
 #define zero(dst, size) set(dst, 0, size)
-Void set(void *dest, Byte v, Uintptr n) {
-    Byte *dest8 = cast(Byte *)dest;
+Void set(Void *dest, Byte v, Uintptr n) {
+    Byte *dest8 = dest;
     for(Uintptr i = 0; (i < n); ++i, ++dest8) {
         *dest8 = cast(Byte)v;
     }

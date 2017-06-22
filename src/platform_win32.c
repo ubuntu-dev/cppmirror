@@ -14,7 +14,7 @@ int _fltused;
 #pragma function(memset)
 void *memset(void *dest, int c, size_t count) {
     assert(c < 0xFF);
-    Byte *dest8 = (Byte *)dest;
+    Byte *dest8 = dest;
     while(count--) {
         *dest8++ = (Byte)c;
     }
@@ -24,7 +24,7 @@ void *memset(void *dest, int c, size_t count) {
 
 #pragma function(memcpy)
 void *memcpy(void *dest, const void *src, size_t count) {
-    Byte *dst8 = (Byte *)dest;
+    Byte *dst8 = dest;
     Byte *src8 = (Byte *)src;
     while (count--) {
         *dst8++ = *src8++;

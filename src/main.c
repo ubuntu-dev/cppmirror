@@ -36,12 +36,12 @@ SwitchType get_switch_type(Char *str) {
     if(len >= 2) {
         if(str[0] == '-') {
             switch(str[1]) {
-                case 'e': res = SwitchType_log_errors;      break;
-                case 'h': res = SwitchType_print_help;      break;
+                case 'e': { res = SwitchType_log_errors;      } break;
+                case 'h': { res = SwitchType_print_help;      } break;
 #if INTERNAL
-                case 's': res = SwitchType_silent;          break;
-                case 't': res = SwitchType_run_tests;       break;
-                case 'c': res = SwitchType_log_errors_as_c; break;
+                case 's': { res = SwitchType_silent;          } break;
+                case 't': { res = SwitchType_run_tests;       } break;
+                case 'c': { res = SwitchType_log_errors_as_c; } break;
 #endif
                 default: assert(0); break;
             }
@@ -52,8 +52,6 @@ SwitchType get_switch_type(Char *str) {
 
     return(res);
 }
-
-global Bool should_write_to_file = false;
 
 Void print_help(void) {
     Char *help = "    List of Commands.\n"
@@ -90,7 +88,7 @@ int main(int argc, char **argv) {
         print_help();
     } else {
         Bool should_run_tests = false;
-        should_write_to_file = true;
+        Bool should_write_to_file = true;
 
         Int fnames_max_cnt = 16;
         Char **fnames = system_malloc(sizeof(*fnames) * fnames_max_cnt);

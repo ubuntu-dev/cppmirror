@@ -18,7 +18,6 @@ typedef enum {
     StructType_count
 } StructType;
 
-// TODO(Jonny): Check if this is right. Then google how to actually read the values.
 typedef enum {
     Modifier_unknown = 0x00,
 
@@ -102,7 +101,6 @@ typedef struct {
     Int typedef_max;
 } ParseResult;
 
-// TODO(Jonny): Rename some of these so they're more clear.
 typedef enum {
     Token_Type_unknown,
 
@@ -285,9 +283,6 @@ ResultInt token_to_int(Token t) {
     return(res);
 }
 
-// TODO(Jonny): Create a token_equals_keyword function. This could also test macro'd aliases for keywords,
-//              as well as the actual keyword.
-
 Bool token_equals(Token token, Char *str) {
     Bool res = false;
 
@@ -404,7 +399,7 @@ Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
                         push_error(ErrorType_failed_to_find_size_of_array);
                     }
                 } else {
-                    // TODO(Jonny): Something _bad_ happened...
+                    assert(0);
                 }
             } break;
         }
@@ -975,7 +970,6 @@ ParseEnumResult parse_enum(Tokenizer *tokenizer) {
             }
 
             if(next.type == Token_Type_open_brace) {
-                //res = add_token_to_enum(name, underlying_type, is_enum_struct, &tokenizer);
                 assert(name.type == Token_Type_identifier);
                 assert((underlying_type.type == Token_Type_identifier) || (underlying_type.type == Token_Type_unknown));
 
@@ -995,8 +989,6 @@ ParseEnumResult parse_enum(Tokenizer *tokenizer) {
                 res.ed.no_of_values = 1;
                 token = get_token(&copy);
                 while(token.type != Token_Type_close_brace) {
-                    // TODO(Jonny): It was stupid to count the number of commas. Instead, actually count
-                    //              the number of enums.
                     if(token.type == Token_Type_comma) {
                         Token tmp = get_token(&copy);
 
@@ -1368,7 +1360,6 @@ Void parse_stream(Char *stream, ParseResult *res) {
             } break;
 
             case Token_Type_identifier: {
-                // TODO(Jonny): I may need to keep the template header, so that the generated structs still work.
                 if((token_equals(token, "struct")) || (token_equals(token, "class")) || (token_equals(token, "union"))) {
                     StructType struct_type = {0};
 
@@ -1386,7 +1377,6 @@ Void parse_stream(Char *stream, ParseResult *res) {
 
                     ParseStructResult r = parse_struct(&tokenizer, struct_type);
 
-                    // TODO(Jonny): This fails at a struct declared within a struct/union.
                     if(r.success) {
                         Bool already_added = false;
                         for(Int i = 0; (i < res->structs.cnt); ++i) {
@@ -1463,7 +1453,6 @@ typedef struct {
     Int param_cnt;
 } MacroData;
 
-// TODO(Jonny): Replace these both with move stream.
 void move_bytes_forward(Void *ptr, Uintptr num_bytes_to_move, Uintptr move_pos) {
     Byte *ptr8 = cast(Byte *)ptr;
     for(Intptr i = num_bytes_to_move - 1; (i >= 0); --i) {

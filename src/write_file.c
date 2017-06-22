@@ -388,8 +388,6 @@ File write_data(ParseResult pr, Bool is_cpp) {
                   "// Forward declared recreated stuff.\n"
                   "//\n");
 
-            // TODO(Jonny): Actually use the modifiers in the recreated stuff.
-
             // Forward declared recreated structs.
             write(&ob, "\n// Forward declared structs.\n");
             for(Int i = 0; (i < pr.structs.cnt); ++i) {
@@ -501,7 +499,6 @@ File write_data(ParseResult pr, Bool is_cpp) {
                         Char modifier_string[1024] = {0};
                         if(md->modifier) {
                             Uintptr mod_string_index = 0;
-                            // TODO(Jonny): Implement.
                             if(md->modifier & Modifier_unsigned) {
                                 mod_string_index += string_copy(modifier_string + mod_string_index, " unsigned");
                             }
