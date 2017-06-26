@@ -163,7 +163,7 @@ Bool print_errors(void) {
 //
 
 typedef struct {
-    Void *e;
+    Byte *e;
     Uintptr size;
     Uintptr used;
 } TempMemory;
@@ -191,7 +191,6 @@ TempMemory create_temp_buffer(Uintptr size) {
     return(res);
 }
 
-#define push_type(tm, Type, ...) (Type *)push_size(tm, sizeof(Type), ##__VA_ARGS__)
 #define push_size(tm, size) push_size_with_alignment(tm, size, -1)
 Void *push_size_with_alignment(TempMemory *tm, Uintptr size, Int alignment) {
     Void *res = 0;
@@ -210,7 +209,7 @@ Void *push_size_with_alignment(TempMemory *tm, Uintptr size, Int alignment) {
     Uintptr alignment_offset = get_alignment(cast(Byte *)tm->e + tm->used, alignment);
 
     if(tm->used + alignment_offset < tm->size) {
-        res = cast(Byte *)tm->e + tm->used + alignment_offset;
+        res = tm->e + tm->used + alignment_offset;
         tm->used += size + alignment_offset;
     } else {
         assert(0);
@@ -492,7 +491,7 @@ ResultInt calculator_string_to_int(Char *str) {
                 ops[i] = *arr[j].e;
             }
 
-            // TODO(Jonny): At this point, I have all the numbers and ops in seperate arrays.
+            // At this point, I have all the numbers and ops in seperate arrays.
 
 clean_up:;
             system_free(ops);
@@ -592,6 +591,15 @@ Char to_caps(Char c) {
     Char res = c;
     if((c >= 'a') && (c <= 'z')) {
         res -= 32;
+    }
+
+    return(res);
+}
+
+Char to_lower(Char c) {
+    Char res = c;
+    if((c >= 'A') && (c <= 'Z')) {
+        res += 32;
     }
 
     return(res);
