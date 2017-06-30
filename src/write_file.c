@@ -36,7 +36,7 @@ global Char *global_primitive_types[] = {
     "char", "short", "int", "long", "float", "double", "bool",
     "uint64_t", "uint32_t", "uint16_t", "uint8_t",
     "int64_t", "int32_t", "int16_t", "int8_t",
-    "uintptr_t", "intptr_t", "size_t"
+    "uintptr_t", "intptr_t", "size_t", "__m128", "__m128i"
 };
 
 Bool is_primitive(String str) {
@@ -161,6 +161,13 @@ File write_data(ParseResult pr, Bool is_cpp) {
               "    #define PP_STATIC static\n"
               "#else\n"
               "    #define PP_STATIC\n"
+              "#endif\n"
+              "\n"
+              "#if defined(_WIN32)\n"
+              "    // TODO(Jonny): Is this specific to MSVC or to Windows?\n"
+              "    #include <intrin.h>\n"
+              "#elif defined(__linux__)\n"
+              "    #include <x86intrin.h>\n"
               "#endif\n");
 
         write(&ob,
@@ -536,7 +543,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
                     }
 
                     if(is_inside_anonymous_struct) {
-                        write(&ob, " }");
+                        write(&ob, " };");
                     }
 
                     write(&ob, " };\n");
