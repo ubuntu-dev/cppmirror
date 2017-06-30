@@ -230,7 +230,7 @@ Bool token_compare_string(Token a, String b) {
     return(res);
 }
 
-Bool token_compare_cstring(Token a, Char *b, Uintptr string_len/*= 0*/) {
+Bool token_compare_cstring_len(Token a, Char *b, Uintptr string_len) {
     Bool res = true;
 
     if(!string_len) {
@@ -243,6 +243,13 @@ Bool token_compare_cstring(Token a, Char *b, Uintptr string_len/*= 0*/) {
             break;
         }
     }
+
+    return(res);
+}
+
+Bool token_compare_cstring(Token a, Char *b) {
+    Uintptr len = a.len;
+    Bool res = token_compare_cstring_len(a, b, len);
 
     return(res);
 }
@@ -1343,6 +1350,22 @@ AttemptFunctionResult attempt_to_parse_function(Token token, Tokenizer *tokenize
     return(res);
 }
 
+Bool is_token_storage_keyword(Token token) {
+    Bool res = false;
+
+    if(token_compare_cstring(token, "struct")) {
+        res = true;
+    } else if(token_compare_cstring(token, "enum")) {
+        res = true;
+    } else if(token_compare_cstring(token, "union")) {
+        res = true;
+    } else if(token_compare_cstring(token, "class")) {
+        res = true;
+    }
+
+    return(res);
+}
+
 Void parse_stream(Char *stream, ParseResult *res) {
     Tokenizer tokenizer = { stream };
 
@@ -1406,19 +1429,54 @@ Void parse_stream(Char *stream, ParseResult *res) {
                         res->enums.e[res->enums.cnt++] = r.ed;
                     }
                 } else if(token_equals(token, "typedef")) {
-                    Token original = peak_token(&tokenizer);
-                    if(original.type == Token_Type_identifier) {
-                        eat_token(&tokenizer);
+                    Bool is_type = false, is_function = false;
+                    // Check to see if this is a functon, type (struct) or not.
+                    {
+                        Tokenizer cpy = tokenizer;
+                        Token t = {0};
+                        do {
+                            t = get_token(&cpy);
+                            if(t.type == Token_Type_open_paren) {
+                                is_function = true;
+                                break;
+                            } else if(is_token_storage_keyword(t)) {
+                                is_type = true;
+                                break;
+                            }
 
-                        Token fresh = peak_token(&tokenizer);
+                        } while(t.type != Token_Type_semi_colon);
+                    }
+
+                    if((!is_type) && (!is_function)) {
+                        Token original = peak_token(&tokenizer);
                         if(original.type == Token_Type_identifier) {
                             eat_token(&tokenizer);
 
-                            res->typedefs.e[res->typedefs.cnt].original = token_to_string(original);
-                            res->typedefs.e[res->typedefs.cnt].fresh = token_to_string(fresh);
+                            Token fresh = peak_token(&tokenizer);
+                            if(original.type == Token_Type_identifier) {
+                                eat_token(&tokenizer);
 
-                            res->typedefs.cnt++;
+                                res->typedefs.e[res->typedefs.cnt].original = token_to_string(original);
+                                res->typedefs.e[res->typedefs.cnt].fresh = token_to_string(fresh);
+
+                                res->typedefs.cnt++;
+                            }
                         }
+                    } else if(is_function) {
+                        Token name_before_paren = {0};
+                        for(;;) {
+                            Token tmp = get_token(&tokenizer);
+                            if(tmp.type == Token_Type_open_paren) {
+                                break;
+                            }
+
+                            name_before_paren = tmp;
+                        }
+
+                        TypedefData *td = res->typedefs.e + res->typedefs.cnt++;
+
+                        td->original = create_string("uintptr_t", 0);
+                        td->fresh = token_to_string(name_before_paren);
                     }
                 } else {
 #if 0
@@ -1697,9 +1755,9 @@ Void preprocess_macros(File *file) {
                 Token preprocessor_dir = get_token(&tokenizer);
 
                 // #include files.
-                if(token_compare_cstring(preprocessor_dir, "include", 0)) {
+                if(token_compare_cstring(preprocessor_dir, "include")) {
                     add_include_file(&tokenizer, file);
-                } else if(token_compare_cstring(preprocessor_dir, "define", 0)) {
+                } else if(token_compare_cstring(preprocessor_dir, "define")) {
                     ParseMacroResult pmr = parse_macro(&tokenizer, &param_memory);
                     if(pmr.success) {
                         macro_data[macro_cnt++] = pmr.md;
