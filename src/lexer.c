@@ -1532,7 +1532,7 @@ Void move_stream(File *file, Char *offset_ptr, Intptr amount_to_move) {
     if(amount_to_move < 0) {
         Uintptr abs_amount_to_move = absolute_value((Int)amount_to_move);
         file->size -= abs_amount_to_move;
-        file->e -= abs_amount_to_move;
+        //file->e -= abs_amount_to_move;
         for(Uintptr i = offset; (i < file->size); ++i) {
             file->e[i] = file->e[i + abs_amount_to_move];
         }
@@ -1676,16 +1676,21 @@ Int macro_replace(Char *token_start, File *file, MacroData md) {
         res += amount_to_change;
     }
 
+    assert(file->e[0]);
+
     // Replace macro parameters.
     if(md.param_cnt) {
         Token token = get_token(&tokenizer);
 
         do {
             for(Int i = 0; (i < md.param_cnt); ++i) {
+                assert(file->e[0]);
                 if(token_compare_string(token, md.params[i])) {
                     // Tokenizer may be invalidated after the move_stream call.
                     Uintptr offset = tokenizer.at - file->e;
+                    assert(file->e[0]);
                     move_stream(file, tokenizer.at - 1, params[i].len - token.len);
+                    assert(file->e[0]);
                     tokenizer.at = file->e + offset;
 
                     res += (Int)(params[i].len - token.len);
