@@ -1636,6 +1636,7 @@ Int macro_replace(Char *token_start, File *file, MacroData md) {
         String *p = params;
         p->e = cast(Char *)push_size(&tm, sizeof(Char) * 128);
         do {
+top:;
             if(*cpy.at == '(') {
                 ++brace_cnt;
             }
@@ -1650,7 +1651,7 @@ Int macro_replace(Char *token_start, File *file, MacroData md) {
 
                 if((brace_cnt) && (*cpy.at == ')')) {
                     --brace_cnt;
-                    continue;
+                    goto top;
                 }
             }
 
