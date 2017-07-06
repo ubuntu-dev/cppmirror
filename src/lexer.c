@@ -1628,23 +1628,34 @@ Int macro_replace(Char *token_start, File *file, MacroData md) {
     if(md.param_cnt) {
         params = cast(String *)push_size(&tm, sizeof(String) * md.param_cnt);
 
+        Int brace_cnt = 0; // Is used for when we pass a function into a macro, so the commas don't confuse things.
+
         Tokenizer cpy = tokenizer;
         cpy.at += md.iden.len + 1; // Skip identifier and open parenthesis.
 
         String *p = params;
         p->e = cast(Char *)push_size(&tm, sizeof(Char) * 128);
         do {
+            if(*cpy.at == '(') {
+                ++brace_cnt;
+            }
+
             ++iden_len;
-            if(*cpy.at == ',') {
+            if((*cpy.at == ',') && (!brace_cnt)) {
                 ++p;
                 p->e = cast(Char *)push_size(&tm, sizeof(Char) * 128);
             } else {
                 p->e[p->len++] = *cpy.at;
                 assert(p->len < 128);
+
+                if((brace_cnt) && (*cpy.at == ')')) {
+                    --brace_cnt;
+                    continue;
+                }
             }
 
             ++cpy.at;
-        } while(*cpy.at != ')');
+        } while((*cpy.at != ')') || (brace_cnt));
 
         iden_len += 2;
     }
