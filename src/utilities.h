@@ -20,6 +20,8 @@
 #endif
 
 typedef enum {
+    ErrorType_unknown,
+
     ErrorType_ran_out_of_memory,
     ErrorType_assert_failed,
     ErrorType_no_parameters,
@@ -64,13 +66,16 @@ typedef struct {
 String create_string(Char *str, Int len);
 Int string_length(Char *str);
 Bool string_concat(Char *dest, Int len, Char *a, Int a_len, Char *b, Int b_len);
-Bool string_comp_len(Char *a, Char *b, Uintptr len);
-Bool cstring_comp(Char *a, Char *b);
+
 Uintptr string_copy(Char *dest, Char *src);
+
+Bool cstring_comp(Char *a, Char *b);
+Bool string_comp_len(Char *a, Char *b, Uintptr len);
 Bool string_comp(String a, String b);
 Bool string_cstring_comp(String a, Char *b);
 Bool cstring_string_comp(Char *a, String b);
 Bool string_comp_array(String *a, String *b, Int cnt);
+
 Bool string_contains(String str, Char target);
 Bool cstring_contains(Char *str, Char target);
 Bool string_contains_cstring(String str, Char *target);
@@ -111,7 +116,7 @@ typedef enum {
     Access_count
 } Access;
 
-typedef struct Variable {
+typedef struct {
     String type;
     String name;
 

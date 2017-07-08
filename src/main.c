@@ -50,7 +50,7 @@ SwitchType get_switch_type(Char *str) {
                 case 't': { res = SwitchType_run_tests;       } break;
                 case 'c': { res = SwitchType_log_errors_as_c; } break;
 #endif
-                default: assert(0); break;
+                default: { assert(0); } break;
             }
         } else {
             res = SwitchType_source_file;
@@ -121,8 +121,11 @@ int main(int argc, char **argv) {
             if(should_run_tests) {
                 Int tests_failed = run_tests();
 
-                if(!tests_failed) { system_write_to_console("all tests passed...");             }
-                else              { system_write_to_console("%d tests failed\n", tests_failed); }
+                if(!tests_failed) {
+                    system_write_to_console("all tests passed...");
+                } else {
+                    system_write_to_console("%d tests failed\n", tests_failed);
+                }
             } else {
                 if(!number_of_files) {
                     push_error(ErrorType_no_files_pass_in);
