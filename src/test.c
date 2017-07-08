@@ -9,6 +9,11 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
+#include "types.h"
+#include "test.h"
+#include "utilities.h"
+#include "lexer.h"
+
 StructData parse_struct_test(Char *str, StructType type) {
     Tokenizer tokenizer = {str};
 
@@ -213,6 +218,14 @@ Int struct_tests(void) {
     res += struct_test_inheritance_count();
     res += struct_test_members();
     res += struct_test_type();
+
+    return(res);
+}
+
+Int run_tests(void) {
+    Int res = 0;
+
+    res += struct_tests();
 
     return(res);
 }

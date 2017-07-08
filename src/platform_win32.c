@@ -9,6 +9,13 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
+#include "types.h"
+#include "utilities.h"
+#include "platform.h"
+#include "stb_sprintf.h"
+
+#include "windows.h"
+
 int _fltused;
 
 #pragma function(memset)
@@ -23,7 +30,7 @@ void *memset(void *dest, int c, size_t count) {
 }
 
 #pragma function(memcpy)
-void *memcpy(void *dest, const void *src, size_t count) {
+void *memcpy(void *dest, void const *src, size_t count) {
     Byte *dst8 = dest;
     Byte *src8 = (Byte *)src;
     while (count--) {
@@ -33,7 +40,7 @@ void *memcpy(void *dest, const void *src, size_t count) {
     return(dest);
 }
 
-Uint64 system_get_performance_counter() {
+Uint64 system_get_performance_counter(void) {
     Uint64 res = 0;
 
     LARGE_INTEGER large_int;
@@ -55,7 +62,7 @@ Void *system_malloc(Uintptr size) {
 Bool system_free(Void *ptr) {
     Bool res = false;
     if(ptr) {
-        res = HeapFree(GetProcessHeap(), 0, ptr) != 0;
+        res = HeapFree(GetProcessHeap(), 0, ptr);
     }
 
     return(res);
@@ -80,7 +87,7 @@ File system_read_entire_file_and_null_terminate(Char *fname) {
         LARGE_INTEGER fsize;
         if(GetFileSizeEx(fhandle, &fsize)) {
             DWORD fsize32 = safe_truncate_size_64(fsize.QuadPart);
-            void *memory = system_malloc(fsize32 + 1);
+            Void *memory = system_malloc(fsize32 + 1);
 
             DWORD bytes_read;
             if(ReadFile(fhandle, memory, fsize32, &bytes_read, 0)) {
@@ -113,8 +120,11 @@ Bool system_write_to_file(Char *fname, File file) {
 #endif
         DWORD bytes_written;
         if(WriteFile(fhandle, file.e, fsize32, &bytes_written, 0)) {
-            if(bytes_written != fsize32) push_error(ErrorType_did_not_write_entire_file);
-            else                         res = true;
+            if(bytes_written != fsize32) {
+                push_error(ErrorType_did_not_write_entire_file);
+            } else {
+                res = true;
+            }
         }
 
         CloseHandle(fhandle);
@@ -178,7 +188,7 @@ Void system_write_to_console(Char *format, ...) {
 
         Int len = string_length(buf);
         DWORD chars_written = 0;
-        Bool res = WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), buf, len, &chars_written, 0) != 0;
+        Bool res = WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), buf, len, &chars_written, 0);
 
         assert(res);
         assert(chars_written == len);
@@ -226,8 +236,7 @@ void mainCRTStartup() {
     Int argc = 1;
     Char **argv = system_malloc(sizeof(*argv) * mem_size);
     Char **cur = argv;
-    *cur = arg_cpy;
-    ++cur;
+    *cur++ = arg_cpy;
     for(Int i = 0; (i < args_len); ++i) {
         if(!arg_cpy[i]) {
             Char *str = arg_cpy + i + 1;
@@ -243,7 +252,7 @@ void mainCRTStartup() {
                     do {
                         if(argc + 1 >= mem_size) {
                             mem_size *= 2;
-                            Void *p = system_realloc(argv, sizeof(Char *) * mem_size);
+                            Void *p = system_realloc(argv, sizeof(*argv) * mem_size);
                             if(p) {
                                 argv = cast(Char **)p;
                             }

@@ -9,6 +9,14 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
+#include "types.h"
+#include "utilities.h"
+#include "lexer.h"
+#include "platform.h"
+
+#include <stdarg.h>
+#include "stb_sprintf.h"
+
 typedef struct {
     Char *buffer;
     Int index;

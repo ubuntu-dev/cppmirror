@@ -9,97 +9,10 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-typedef enum {
-    StructType_unknown,
-    StructType_struct,
-    StructType_class,
-    StructType_union,
-
-    StructType_count
-} StructType;
-
-typedef enum {
-    Modifier_unknown = 0x00,
-
-    Modifier_unsigned = 0x01,
-    Modifier_const    = 0x02,
-    Modifier_volatile = 0x04,
-    Modifier_mutable  = 0x08,
-    Modifier_signed   = 0x10,
-} Modifier;
-
-typedef struct {
-    String template_header;
-    String name;
-    Int member_count;
-    Variable *members;
-
-    Int inherited_count;
-    String *inherited;
-
-    StructType struct_type;
-} StructData;
-
-typedef struct {
-    String name;
-    Int value;
-} EnumValue;
-
-typedef struct {
-    String name;
-    String type;
-    Bool is_struct;
-
-    EnumValue *values;
-    Int no_of_values;
-} EnumData;
-
-typedef struct {
-    String linkage;
-    String return_type;
-    Int return_type_ptr;
-    String name;
-
-    Variable *params;
-    Int param_cnt;
-} FunctionData;
-
-typedef struct {
-    String original;
-    String fresh;
-} TypedefData;
-
-typedef struct {
-    StructData *e;
-    Int cnt;
-} Structs;
-
-typedef struct {
-    EnumData *e;
-    Int cnt;
-} Enums;
-
-typedef struct {
-    FunctionData *e;
-    Int cnt;
-} Functions;
-
-typedef struct {
-    TypedefData *e;
-    Int cnt;
-} Typedefs;
-
-typedef struct {
-    Structs structs;
-    Enums enums;
-    Functions funcs;
-    Typedefs typedefs;
-
-    Int struct_max;
-    Int enum_max;
-    Int func_max;
-    Int typedef_max;
-} ParseResult;
+#include "types.h"
+#include "utilities.h"
+#include "platform.h"
+#include "lexer.h"
 
 typedef enum {
     Token_Type_unknown,
@@ -151,10 +64,6 @@ typedef struct {
 
     Token_Type type;
 } Token;
-
-typedef struct {
-    Char *at;
-} Tokenizer;
 
 Bool is_end_of_line(Char c) {
     Bool res = ((c == '\n') || (c == '\r'));
@@ -309,7 +218,6 @@ Token peak_token(Tokenizer *tokenizer) {
     return(res);
 }
 
-#define eat_token(tokenizer) eat_tokens(tokenizer, 1)
 Void eat_tokens(Tokenizer *tokenizer, Int num_tokens_to_eat) {
     for(Int i = 0; (i < num_tokens_to_eat); ++i) {
         get_token(tokenizer);
@@ -729,10 +637,6 @@ Bool is_forward_declared(Tokenizer *tokenizer) {
     return(res);
 }
 
-typedef struct {
-    StructData sd;
-    Bool success;
-} ParseStructResult;
 ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_type) {
     ParseStructResult res = {0};
 
@@ -1636,7 +1540,7 @@ Int macro_replace(Char *token_start, File *file, MacroData md) {
         String *p = params;
         p->e = cast(Char *)push_size(&tm, sizeof(Char) * 128);
         do {
-top:;
+            top:;
             if(*cpy.at == '(') {
                 ++brace_cnt;
             }
@@ -1838,6 +1742,7 @@ ParseResult parse_streams(Int cnt, Char **fnames) {
         parse_stream(file.e, &res);
     }
 
+
+
     return(res);
 }
-

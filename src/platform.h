@@ -9,6 +9,8 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
+#if !defined(_PLATFORM_H)
+
 // Memory.
 Void *system_malloc(Uintptr size);
 Bool system_free(Void *ptr);
@@ -25,3 +27,6 @@ File system_read_entire_file_and_null_terminate(Char *fname);
 
 // Utility stuff.
 Void system_write_to_console(Char *str, ...);
+
+#define _PLATFORM_H
+#endif

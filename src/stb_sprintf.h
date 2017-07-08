@@ -144,7 +144,7 @@
         #endif
     #endif
 
-    //#include <stdarg.h>  // for va_list()
+    #include <stdarg.h>  // for va_list()
 
     #ifndef STB_SPRINTF_MIN
         #define STB_SPRINTF_MIN 512 // how many characters per callback
