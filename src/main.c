@@ -31,6 +31,8 @@ typedef enum {
     SwitchType_is_c_file,
     SwitchType_run_tests,
     SwitchType_print_help,
+    SwitchType_output_preprocessed_file,
+    
     SwitchType_source_file,
 
     SwitchType_count
@@ -43,14 +45,15 @@ SwitchType get_switch_type(Char *str) {
     if(len >= 2) {
         if(str[0] == '-') {
             switch(str[1]) {
-                case 'e': { res = SwitchType_log_errors; } break;
-                case 'h': { res = SwitchType_print_help; } break;
+                case 'e': res = SwitchType_log_errors;               break;
+                case 'h': res = SwitchType_print_help;               break;
 #if INTERNAL
-                case 's': { res = SwitchType_silent;     } break;
-                case 't': { res = SwitchType_run_tests;  } break;
-                case 'c': { res = SwitchType_is_c_file;  } break;
+                case 's': res = SwitchType_silent;                   break;
+                case 't': res = SwitchType_run_tests;                break;
+                case 'c': res = SwitchType_is_c_file;                break;
+                case 'p': res = SwitchType_output_preprocessed_file; break;
 #endif
-                default: { assert(0); } break;
+                default: assert(0); break;
             }
         } else {
             res = SwitchType_source_file;
@@ -87,6 +90,7 @@ int main(int argc, char **argv) {
     } else {
         Bool should_run_tests = false;
         Bool should_write_to_file = true;
+        Bool only_output_preprocessed_file = false;
 
         Int fnames_max_cnt = 16;
         Char **fnames = system_malloc(sizeof(*fnames) * fnames_max_cnt);
@@ -98,11 +102,12 @@ int main(int argc, char **argv) {
 
                 SwitchType type = get_switch_type(switch_name);
                 switch(type) {
-                    case SwitchType_silent:          { should_write_to_file = false; } break;
-                    case SwitchType_log_errors:      { should_log_errors = true;     } break;
-                    case SwitchType_run_tests:       { should_run_tests = true;      } break;
-                    case SwitchType_print_help:      { print_help();                 } break;
-                    case SwitchType_is_c_file: { is_c = true;                  } break;
+                    case SwitchType_silent:                   should_write_to_file = false;         break;
+                    case SwitchType_log_errors:               should_log_errors = true;             break;
+                    case SwitchType_run_tests:                should_run_tests = true;              break;
+                    case SwitchType_print_help:               print_help();                         break;
+                    case SwitchType_is_c_file:                is_c = true;                          break;
+                    case SwitchType_output_preprocessed_file: only_output_preprocessed_file = true; break;
 
                     case SwitchType_source_file: {
                         if(number_of_files >= fnames_max_cnt - 1) {
@@ -130,11 +135,32 @@ int main(int argc, char **argv) {
                 if(!number_of_files) {
                     push_error(ErrorType_no_files_pass_in);
                 } else {
-                    // TODO(Jonny): Remove this!
+                    File file_to_write = {0};
+                    Char *output_string = 0;
+                    ParseResult parse_res = {0};
+                    if(only_output_preprocessed_file) {
+                        if(number_of_files == 1) {
+                            output_string = "something.c";  // TODO(Jonny): Come up with a better name than "something.c"...
+                            file_to_write = system_read_entire_file_and_null_terminate(fnames[0]); // TODO(Jonny): Leak.
+                            file_to_write.e = cast(Char *)system_realloc(file_to_write.e, file_to_write.size * 2);
 
-                    ParseResult parse_res = parse_streams(number_of_files, fnames);
-                    File file_to_write = write_data(parse_res, !is_c);
-                    Bool write_success = system_write_to_file("pp_generated.h", file_to_write);
+                            preprocess_macros(&file_to_write);
+                        } else {
+                            system_write_to_console("Can only write one preprocessed file at a time. You input %d file(s)",
+                                                    number_of_files);
+                        }
+                    } else {
+                        output_string = "pp_generated.h";
+
+                        parse_res = parse_streams(number_of_files, fnames);
+
+                        file_to_write = write_data(parse_res, !is_c);
+                    }
+
+                    if(output_string) {
+                        Bool write_success = system_write_to_file(output_string, file_to_write);
+                        assert(write_success);
+                    }
 
 #if INTERNAL
                     system_free(parse_res.enums.e);

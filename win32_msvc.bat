@@ -53,7 +53,7 @@ rem )
 rem Math test
 if "%RUN_TEST%"=="true" (
     pushd "test"
-    "../build/mirror.exe" -c sgl_math.c
+    "../build/mirror.exe" -p sgl_math.c
     popd
 
     pushd "build"

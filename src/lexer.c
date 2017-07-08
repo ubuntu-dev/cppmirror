@@ -1736,13 +1736,11 @@ ParseResult parse_streams(Int cnt, Char **fnames) {
     for(Int i = 0; (i < cnt); ++i) {
         File file = system_read_entire_file_and_null_terminate(fnames[i]); // TODO(Jonny): Leak.
 
-        file.e = cast(Char *)system_realloc(file.e, file.size * 2);
+        file.e = cast(Char *)system_realloc(file.e, file.size * 2); // TODO(Jonny): I feel like this is masking bugs...
 
         preprocess_macros(&file);
         parse_stream(file.e, &res);
     }
-
-
 
     return(res);
 }
