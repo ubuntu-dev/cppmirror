@@ -28,7 +28,7 @@ typedef enum {
 
     SwitchType_silent,
     SwitchType_log_errors,
-    SwitchType_log_errors_as_c,
+    SwitchType_is_c_file,
     SwitchType_run_tests,
     SwitchType_print_help,
     SwitchType_source_file,
@@ -43,12 +43,12 @@ SwitchType get_switch_type(Char *str) {
     if(len >= 2) {
         if(str[0] == '-') {
             switch(str[1]) {
-                case 'e': { res = SwitchType_log_errors;      } break;
-                case 'h': { res = SwitchType_print_help;      } break;
+                case 'e': { res = SwitchType_log_errors; } break;
+                case 'h': { res = SwitchType_print_help; } break;
 #if INTERNAL
-                case 's': { res = SwitchType_silent;          } break;
-                case 't': { res = SwitchType_run_tests;       } break;
-                case 'c': { res = SwitchType_log_errors_as_c; } break;
+                case 's': { res = SwitchType_silent;     } break;
+                case 't': { res = SwitchType_run_tests;  } break;
+                case 'c': { res = SwitchType_is_c_file;  } break;
 #endif
                 default: { assert(0); } break;
             }
@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
                     case SwitchType_log_errors:      { should_log_errors = true;     } break;
                     case SwitchType_run_tests:       { should_run_tests = true;      } break;
                     case SwitchType_print_help:      { print_help();                 } break;
-                    case SwitchType_log_errors_as_c: { is_c = true;                  } break;
+                    case SwitchType_is_c_file: { is_c = true;                  } break;
 
                     case SwitchType_source_file: {
                         if(number_of_files >= fnames_max_cnt - 1) {
