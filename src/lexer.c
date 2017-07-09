@@ -1540,7 +1540,7 @@ Int macro_replace(Char *token_start, File *file, MacroData md) {
         String *p = params;
         p->e = cast(Char *)push_size(&tm, sizeof(Char) * 128);
         do {
-            top:;
+top:;
             if(*cpy.at == '(') {
                 ++brace_cnt;
             }
@@ -1574,9 +1574,19 @@ Int macro_replace(Char *token_start, File *file, MacroData md) {
         Uintptr offset = 0;
         if(md.res.len > iden_len) {
             file->size += md.res.len - iden_len;
+
+            Uintptr end_offset = (Uintptr)end - (Uintptr)file->e;
+            Uintptr tokenizer_offset = (Uintptr)tokenizer.at - (Uintptr)file->e;
+            Uintptr token_start_offset = (Uintptr)token_start - (Uintptr)file->e;
+
             Void *p = system_realloc(file->e, file->size);
             if(p) {
                 file->e = cast(Char *)p;
+
+                end = file->e + end_offset;
+                tokenizer.at = file->e + tokenizer_offset;
+                token_start = file->e + token_start_offset;
+
                 offset = old_size - cast(Uintptr)(end - file->e);
                 move_bytes_forward(end, offset, amount_to_change);
             }
@@ -1696,6 +1706,8 @@ Void preprocess_macros(File *file) {
                 for(Int i = 0; (i < macro_cnt); ++i) {
                     if(token_compare_string(token, macro_data[i].iden)) {
                         if(macro_data[i].res.len) {
+                            // TODO(Jonny): I'm not 100% convinced what this returns is always correct... tbh, the entire
+                            //              "macro_replace" function is a mess.
                             Int tokenizer_offset = macro_replace(token.e, file, macro_data[i]);
                             tokenizer.at = token.e;
                         }
