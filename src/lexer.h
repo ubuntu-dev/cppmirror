@@ -114,7 +114,7 @@ ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_type);
 #define eat_token(tokenizer) eat_tokens(tokenizer, 1)
 Void eat_tokens(Tokenizer *tokenizer, Int num_tokens_to_eat);
 
-Void preprocess_macros(File *file);
+File preprocess_macros(File file);
 
 #define _LEXER_H
 #endif

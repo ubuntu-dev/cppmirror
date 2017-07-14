@@ -32,7 +32,7 @@ typedef enum {
     SwitchType_run_tests,
     SwitchType_print_help,
     SwitchType_output_preprocessed_file,
-    
+
     SwitchType_source_file,
 
     SwitchType_count
@@ -142,11 +142,11 @@ int main(int argc, char **argv) {
                         if(number_of_files == 1) {
                             output_string = "something.c";  // TODO(Jonny): Come up with a better name than "something.c"...
                             file_to_write = system_read_entire_file_and_null_terminate(fnames[0]); // TODO(Jonny): Leak.
-                            file_to_write.e = cast(Char *)system_realloc(file_to_write.e, file_to_write.size * 2);
+                            //file_to_write.e = cast(Char *)system_realloc(file_to_write.e, file_to_write.size * 2);
 
-                            preprocess_macros(&file_to_write);
+                            file_to_write = preprocess_macros(file_to_write);
                         } else {
-                            system_write_to_console("Can only write one preprocessed file at a time. You input %d file(s)",
+                            system_write_to_console("Can only write one preprocessed file at a time (soz). You input %d file(s).",
                                                     number_of_files);
                         }
                     } else {
@@ -182,7 +182,7 @@ int main(int argc, char **argv) {
             res = 255;
         }
     }
-    
+
     system_write_to_console("\n");
 
     return(res);

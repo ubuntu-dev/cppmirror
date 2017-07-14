@@ -51,8 +51,134 @@ Uint64 system_get_performance_counter(void) {
     return(res);
 }
 
-// TODO(Jonny): Replace these with VirtualAlloc? Then I could make sure they all end of a page boundary,
-//              and I'd know I wasn't overwritting them. Realloc could be implemented as a VirtualAlloc/copy.
+#define PAGE_ALIGNED_MALLOC
+#if defined(PAGE_ALIGNED_MALLOC)
+typedef struct Allocation_Node {
+    Void *block;
+    Void *ptr;
+    Uintptr size;
+
+    struct Allocation_Node *next;
+} Allocation_Node;
+static Allocation_Node *global_debug_alloc_storage;
+
+Void add_to_global_alloc(Void *block, Void *ptr, Uintptr size) {
+    if(!global_debug_alloc_storage) {
+        global_debug_alloc_storage = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*global_debug_alloc_storage));
+
+        global_debug_alloc_storage->block = block;
+        global_debug_alloc_storage->ptr = ptr;
+        global_debug_alloc_storage->size = size;
+    } else {
+        Allocation_Node *next = global_debug_alloc_storage;
+        while(next->next) {
+            next = next->next;
+        }
+
+        next->next = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*next->next));
+        next = next->next;
+
+        next->block = block;
+        next->ptr = ptr;
+        next->size = size;
+    }
+}
+
+
+Allocation_Node *get_node(Void *ptr) {
+    Allocation_Node *res = 0, *next = global_debug_alloc_storage;
+    if(next) {
+        while(next) {
+            if(next->ptr == ptr) {
+                res = next;
+                break;
+            }
+
+            next = next->next;
+        }
+    }
+
+    return(res);
+}
+
+Uintptr get_next_page_boundary(Uintptr size) {
+    SYSTEM_INFO si = {0};
+    GetSystemInfo(&si);
+
+    Uintptr res = (size / si.dwPageSize) + 1;
+    res *= si.dwPageSize;
+
+    assert(res);
+
+    return(res);
+}
+
+Void *system_malloc(Uintptr size) {
+    Void *res = 0;
+    Uintptr alloc_size = get_next_page_boundary(size);
+
+    Void *block = VirtualAlloc(0, alloc_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    assert(block);
+    if(block) {
+        res = (Byte *)block + (alloc_size - size);
+        add_to_global_alloc(block, res, size);
+    } else {
+        Uint err = GetLastError();
+        LPSTR msg_buf = 0;
+        Uintptr msg_size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                          0, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&msg_buf, 0, 0);
+
+        int i = 0;
+    }
+
+    return(res);
+}
+
+Bool system_free(Void *ptr) {
+    Bool res = false;
+    if(ptr) {
+        Allocation_Node *node = get_node(ptr);
+        assert(node);
+
+        node->ptr = 0;
+        node->block = 0;
+        node->size = 0;
+        //res = VirtualFree(ptr, 0, MEM_RELEASE);
+        // TODO(Jonny): Could find block in LL then unlink it?
+    }
+
+    return(res);
+}
+
+Void *system_realloc(Void *ptr, Uintptr size) {
+    Void *res = 0;
+    if(ptr) {
+        Allocation_Node *node = get_node(ptr);
+        assert(node);
+        if(size > node->size) {
+            res = system_malloc(size);
+            assert(res);
+            if(res) {
+                copy(res, node->ptr, node->size);
+                system_free(node->ptr);
+
+                // TODO(Jonny): Remove not from the chain.
+                node->ptr = 0;
+                node->block = 0;
+                node->size = 0;
+            }
+        } else {
+            assert(0);
+            res = ptr;
+            node->size = size;
+        }
+    } else {
+        res = system_malloc(size);
+    }
+
+    return(res);
+}
+#else
 Void *system_malloc(Uintptr size) {
     Void *res = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size);
 
@@ -78,6 +204,8 @@ Void *system_realloc(Void *ptr, Uintptr size) {
 
     return(res);
 }
+
+#endif
 
 File system_read_entire_file_and_null_terminate(Char *fname) {
     File res = {0};
