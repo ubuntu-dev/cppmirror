@@ -1,5 +1,5 @@
 /*===================================================================================================
-  File:                    main.cpp
+  File:                    main.c
   Author:                  Jonathan Livingstone
   Email:                   seagull127@ymail.com
   Licence:                 Public Domain
@@ -14,6 +14,8 @@
     - Allow mathematical macros (1 + 1) to be the index for an array.
     - Global consts for arrays.
     - Support modifiers (unnsigned, volatile, const).
+    - Some of the printf formatters in pp_generated (%llu, %lld, %Id, %zu) probably aren't very cross-compiler friendly. I believe
+      Visual Studio 2017 is the first one to support long long types correctly, and I don't think GCC supports llu.
 */
 
 #include "types.h"
@@ -137,12 +139,11 @@ int main(int argc, char **argv) {
                 } else {
                     File file_to_write = {0};
                     Char *output_string = 0;
-                    ParseResult parse_res = {0};
+                    Parse_Result parse_res = {0};
                     if(only_output_preprocessed_file) {
                         if(number_of_files == 1) {
                             output_string = "something.c";  // TODO(Jonny): Come up with a better name than "something.c"...
                             file_to_write = system_read_entire_file_and_null_terminate(fnames[0]); // TODO(Jonny): Leak.
-                            //file_to_write.e = cast(Char *)system_realloc(file_to_write.e, file_to_write.size * 2);
 
                             file_to_write = preprocess_macros(file_to_write);
                         } else {
@@ -162,7 +163,10 @@ int main(int argc, char **argv) {
                         assert(write_success);
                     }
 
+                    // These are freed so that they don't show up as false positives when I'm checking for memory leaks. I don't
+                    // _really_ care about memory leaks though, so they're only freed in an INTERNAL build.
 #if INTERNAL
+                    system_free(file_to_write.e);
                     system_free(parse_res.enums.e);
                     system_free(parse_res.structs.e);
                     system_free(parse_res.funcs.e);

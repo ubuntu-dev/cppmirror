@@ -550,14 +550,14 @@ String parse_template(Tokenizer *tokenizer) {
 typedef struct {
     Variable var;
     Bool success;
-} ParseVariableRes;
-ParseVariableRes parse_variable(Tokenizer *tokenizer, Token_Type end_token_type_1,
-                                Token_Type end_token_type_2/*= Token_Type_unknown*/) {
+} Parse_Variable_Result;
+Parse_Variable_Result parse_variable(Tokenizer *tokenizer, Token_Type end_token_type_1,
+                                     Token_Type end_token_type_2/*= Token_Type_unknown*/) {
 #if INTERNAL
     Tokenizer debug_copy_tokenizer = *tokenizer;
 #endif
 
-    ParseVariableRes res = {0};
+    Parse_Variable_Result res = {0};
 
     Uint32 mod = {0};
 
@@ -637,8 +637,8 @@ Bool is_forward_declared(Tokenizer *tokenizer) {
     return(res);
 }
 
-ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_type) {
-    ParseStructResult res = {0};
+Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) {
+    Parse_Struct_Result res = {0};
 
     if(!is_forward_declared(tokenizer)) {
         Tokenizer start = *tokenizer;
@@ -857,7 +857,7 @@ ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_type) {
 }
 
 typedef struct {
-    EnumData ed;
+    Enum_Data ed;
     Bool success;
 } ParseEnumResult;
 ParseEnumResult parse_enum(Tokenizer *tokenizer) {
@@ -916,7 +916,7 @@ ParseEnumResult parse_enum(Tokenizer *tokenizer) {
                 res.ed.values = system_malloc(sizeof(*res.ed.values) * res.ed.no_of_values);
                 if(res.ed.values) {
                     for(Int i = 0, count = 0; (i < res.ed.no_of_values); ++i, ++count) {
-                        EnumValue *ev = res.ed.values + i;
+                        Enum_Value *ev = res.ed.values + i;
 
                         Token temp_token = {0};
                         while(temp_token.type != Token_Type_identifier) { temp_token = get_token(tokenizer); }
@@ -1160,7 +1160,7 @@ Bool is_control_keyword(Token token) {
 
 typedef struct {
     Bool success;
-    FunctionData fd;
+    Function_Data fd;
 } AttemptFunctionResult;
 AttemptFunctionResult attempt_to_parse_function(Token token, Tokenizer *tokenizer) {
 #if INTERNAL
@@ -1223,7 +1223,7 @@ AttemptFunctionResult attempt_to_parse_function(Token token, Tokenizer *tokenize
                         if(t.type == Token_Type_var_args) {
                             // TODO(Jonny): Handle.
                         } else {
-                            ParseVariableRes v = parse_variable(tokenizer, Token_Type_comma, Token_Type_close_paren);
+                            Parse_Variable_Result v = parse_variable(tokenizer, Token_Type_comma, Token_Type_close_paren);
                             if(v.success) {
                                 params[param_cnt++] = v.var;
                             } else {
@@ -1270,7 +1270,7 @@ Bool is_token_storage_keyword(Token token) {
     return(res);
 }
 
-Void parse_stream(Char *stream, ParseResult *res) {
+Void parse_stream(Char *stream, Parse_Result *res) {
     Tokenizer tokenizer = { stream };
 
     Bool parsing = true;
@@ -1288,7 +1288,7 @@ Void parse_stream(Char *stream, ParseResult *res) {
 
             case Token_Type_identifier: {
                 if((token_equals(token, "struct")) || (token_equals(token, "class")) || (token_equals(token, "union"))) {
-                    StructType struct_type = {0};
+                    Struct_Type struct_type = {0};
 
                     if(token_equals(token, "struct"))     { struct_type = StructType_struct; }
                     else if(token_equals(token, "class")) { struct_type = StructType_class;  }
@@ -1298,16 +1298,16 @@ Void parse_stream(Char *stream, ParseResult *res) {
                         res->struct_max *= 2;
                         Void *p = system_realloc(res->structs.e, res->struct_max);
                         if(p) {
-                            res->structs.e = cast(StructData *)p;
+                            res->structs.e = p;
                         }
                     }
 
-                    ParseStructResult r = parse_struct(&tokenizer, struct_type);
+                    Parse_Struct_Result r = parse_struct(&tokenizer, struct_type);
 
                     if(r.success) {
                         Bool already_added = false;
                         for(Int i = 0; (i < res->structs.cnt); ++i) {
-                            StructData *sd = res->structs.e + i;
+                            Struct_Data *sd = res->structs.e + i;
 
                             if(string_comp(sd->name, r.sd.name)) {
                                 already_added = true;
@@ -1324,7 +1324,7 @@ Void parse_stream(Char *stream, ParseResult *res) {
                         res->enum_max *= 2;
                         Void *p = system_realloc(res->enums.e, res->enum_max);
                         if(p) {
-                            res->enums.e = cast(EnumData *)p;
+                            res->enums.e = p;
                         }
                     }
 
@@ -1377,7 +1377,7 @@ Void parse_stream(Char *stream, ParseResult *res) {
                             name_before_paren = tmp;
                         }
 
-                        TypedefData *td = res->typedefs.e + res->typedefs.cnt++;
+                        Typedef_Data *td = res->typedefs.e + res->typedefs.cnt++;
 
                         td->original = create_string("uintptr_t", 0);
                         td->fresh = token_to_string(name_before_paren);
@@ -1390,7 +1390,7 @@ Void parse_stream(Char *stream, ParseResult *res) {
                             res->func_max *= 2;
                             Void *p = system_realloc(res->funcs.e, res->func_max);
                             if(p) {
-                                res->funcs.e = cast(FunctionData *)p;
+                                res->funcs.e = cast(Function_Data *)p;
                             }
                         }
 
@@ -1675,8 +1675,6 @@ File preprocess_macros(File original_file) {
                     for(Int i = 0; (i < macro_cnt); ++i) {
                         if(token_compare_string(token, macro_data[i].iden)) {
                             if(macro_data[i].res.len) {
-                                // TODO(Jonny): I'm not 100% convinced what this returns is always correct... tbh, the entire
-                                //              "macro_replace" function is a mess.
                                 Char *start = token.e;
                                 macro_replace(token.e, &file, macro_data[i]);
                                 tokenizer.at = start;
@@ -1708,8 +1706,8 @@ File preprocess_macros(File original_file) {
 //
 // Start point.
 //
-ParseResult parse_streams(Int cnt, Char **fnames) {
-    ParseResult res = {0};
+Parse_Result parse_streams(Int cnt, Char **fnames) {
+    Parse_Result res = {0};
 
     res.enum_max = 8;
     res.enums.e = system_malloc(sizeof(*res.enums.e) * res.enum_max);

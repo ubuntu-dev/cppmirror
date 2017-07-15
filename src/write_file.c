@@ -59,12 +59,12 @@ Bool is_primitive(String str) {
     return(res);
 }
 
-StructData *find_struct(String str, Structs structs) {
-    StructData *res = 0;
+Struct_Data *find_struct(String str, Structs structs) {
+    Struct_Data *res = 0;
 
     if(str.len) {
         for(Int i = 0; (i < structs.cnt); ++i) {
-            StructData *sd = structs.e + i;
+            Struct_Data *sd = structs.e + i;
 
             if(string_comp(str, sd->name)) {
                 res = sd;
@@ -99,7 +99,7 @@ Int get_actual_type_count(String *types, Structs structs, Enums enums, Typedefs 
 
     // Typedefs.
     for(Int i = 0; (i < typedefs.cnt); ++i) {
-        TypedefData *td = typedefs.e + i;
+        Typedef_Data *td = typedefs.e + i;
 
         if(!is_meta_type_already_in_array(types, res, td->fresh)) {
             types[res++] = td->fresh;
@@ -108,7 +108,7 @@ Int get_actual_type_count(String *types, Structs structs, Enums enums, Typedefs 
 
     // Enums
     for(Int i = 0; (i < enums.cnt); ++i) {
-        EnumData *ed = enums.e + i;
+        Enum_Data *ed = enums.e + i;
 
         if(!is_meta_type_already_in_array(types, res, ed->name)) {
             types[res++] = ed->name;
@@ -117,7 +117,7 @@ Int get_actual_type_count(String *types, Structs structs, Enums enums, Typedefs 
 
     // Fill out the enum meta type enum.
     for(Int i = 0; (i < structs.cnt); ++i) {
-        StructData *sd = structs.e + i;
+        Struct_Data *sd = structs.e + i;
 
         if(!is_meta_type_already_in_array(types, res, sd->name)) {
             types[res++] = sd->name;
@@ -135,7 +135,7 @@ Int get_actual_type_count(String *types, Structs structs, Enums enums, Typedefs 
     return(res);
 }
 
-File write_data(ParseResult pr, Bool is_cpp) {
+File write_data(Parse_Result pr, Bool is_cpp) {
     File res = {0};
     OutputBuffer ob = {0};
     ob.size = 1024 * 1024;
@@ -280,7 +280,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
 
             if(!is_cpp) {
                 for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                    EnumData *ed = pr.enums.e + i;
+                    Enum_Data *ed = pr.enums.e + i;
 
                     write(&ob,
                           "typedef enum %.*s %.*s;\n",
@@ -289,7 +289,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
                 }
             } else {
                 for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                    EnumData *ed = pr.enums.e + i;
+                    Enum_Data *ed = pr.enums.e + i;
 
                     if(ed->type.len) {
                         write(&ob,
@@ -302,7 +302,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
 
             // Forward declare structs.
             for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                StructData *sd = pr.structs.e + i;
+                Struct_Data *sd = pr.structs.e + i;
 
                 switch(sd->struct_type) {
                     case StructType_struct: {
@@ -325,7 +325,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
 
             // Forward declared functions.
             for(Int i = 0; (i < pr.funcs.cnt); ++i) {
-                FunctionData *fd = pr.funcs.e + i;
+                Function_Data *fd = pr.funcs.e + i;
 
                 Char ptr_buf[MAX_POINTER_SIZE] = {0};
                 for(Int j = 0; (j < fd->return_type_ptr); ++j) {
@@ -406,7 +406,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
             // Forward declared recreated structs.
             write(&ob, "\n// Forward declared structs.\n");
             for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                StructData *sd = pr.structs.e + i;
+                Struct_Data *sd = pr.structs.e + i;
 
                 Char *type = 0;
                 switch(sd->struct_type) {
@@ -431,7 +431,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
             // Forward declared recreated enums.
             write(&ob, "\n// Forward declared enums\n");
             for(Int i = 0; (i < pr.enums.cnt); ++i)  {
-                EnumData *ed = pr.enums.e + i;
+                Enum_Data *ed = pr.enums.e + i;
 
                 if (!is_cpp) {
                     write(&ob,
@@ -455,7 +455,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
                       "//\n");
 
                 for(Int i = 0; (i < pr.typedefs.cnt); ++i) {
-                    TypedefData *td = pr.typedefs.e + i;
+                    Typedef_Data *td = pr.typedefs.e + i;
 
                     write(&ob,
                           "typedef pp_%.*s pp_%.*s;\n",
@@ -475,7 +475,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
                       "// Recreated structs.\n"
                       "//\n");
                 for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                    StructData *sd = pr.structs.e + i;
+                    Struct_Data *sd = pr.structs.e + i;
 
                     write(&ob, "%s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
                           sd->name.len, sd->name.e);
@@ -569,7 +569,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
                     write(&ob, "    switch(type) {\n");
 
                     for(Int i = 0; (i < pr.typedefs.cnt); ++i) {
-                        TypedefData *td = pr.typedefs.e + i;
+                        Typedef_Data *td = pr.typedefs.e + i;
 
                         write(&ob,
                               "        case pp_Type_%.*s: { return(pp_Type_%.*s); } break;\n",
@@ -601,7 +601,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
                       "PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t index) {\n"
                       "    pp_Type real_type = pp_typedef_to_original(type);\n");
                 for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                    StructData *sd = pr.structs.e + i;
+                    Struct_Data *sd = pr.structs.e + i;
 
                     if(!i) { write(&ob, "    ");      }
                     else   { write(&ob, "    else "); }
@@ -654,7 +654,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
                           "    switch(pp_typedef_to_original(type)) {\n");
 
                     for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                        StructData *sd = pr.structs.e + i;
+                        Struct_Data *sd = pr.structs.e + i;
 
                         write(&ob,
                               "        case pp_Type_%.*s: { return(%d); } break;\n",
@@ -706,7 +706,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
                 if(pr.enums.cnt) {
                     write(&ob, "\n        ");
                     for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                        EnumData *ed = pr.enums.e + i;
+                        Enum_Data *ed = pr.enums.e + i;
 
                         write(&ob, "case pp_Type_%.*s: ", ed->name.len, ed->name.e);
                     }
@@ -720,7 +720,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
                 if(pr.structs.cnt) {
                     write(&ob, "\n        ");
                     for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                        StructData *sd = pr.structs.e + i;
+                        Struct_Data *sd = pr.structs.e + i;
 
                         write(&ob, "case pp_Type_%.*s: ", sd->name.len, sd->name.e);
                     }
@@ -754,7 +754,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
                 }
 
                 for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                    StructData *sd = pr.structs.e + i;
+                    Struct_Data *sd = pr.structs.e + i;
 
                     write(&ob,
                           "        case pp_Type_%.*s: { return(\"%.*s\"); } break;\n",
@@ -763,7 +763,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
                 }
 
                 for(Int i = 0; (i < pr.typedefs.cnt); ++i) {
-                    TypedefData *td = pr.typedefs.e + i;
+                    Typedef_Data *td = pr.typedefs.e + i;
 
                     write(&ob,
                           "        case pp_Type_%.*s: { return(\"%.*s\"); } break;\n",
@@ -772,7 +772,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
                 }
 
                 for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                    EnumData *ed = pr.enums.e + i;
+                    Enum_Data *ed = pr.enums.e + i;
 
                     write(&ob,
                           "        case pp_Type_%.*s: { return(\"%.*s\"); } break;\n",
@@ -811,7 +811,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
 
                 write(&ob, "\n        // Structs\n");
                 for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                    StructData *sd = pr.structs.e + i;
+                    Struct_Data *sd = pr.structs.e + i;
 
                     write(&ob,
                           "        case pp_Type_%.*s: { return(sizeof(pp_%.*s)); } break;\n",
@@ -1000,7 +1000,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
                           "    switch(pp_typedef_to_original(type)) {\n");
 
                     for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                        EnumData *ed = pr.enums.e + i;
+                        Enum_Data *ed = pr.enums.e + i;
 
                         write(&ob,
                               "        case pp_Type_%.*s: { return(%d); } break;\n",
@@ -1032,14 +1032,14 @@ File write_data(ParseResult pr, Bool is_cpp) {
                     write(&ob, "    switch(pp_typedef_to_original(type)) {\n");
 
                     for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                        EnumData *ed = pr.enums.e + i;
+                        Enum_Data *ed = pr.enums.e + i;
 
                         write(&ob,
                               "        case pp_Type_%.*s: {\n",
                               ed->name.len, ed->name.e);
 
                         for(Int j = 0; (j < ed->no_of_values); ++j) {
-                            EnumValue *ev = ed->values + j;
+                            Enum_Value *ev = ed->values + j;
 
                             if(!j) { write(&ob, "            ");      }
                             else   { write(&ob, "            else "); }
@@ -1076,7 +1076,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
                 if(pr.enums.cnt) {
                     write(&ob, "    switch(pp_typedef_to_original(type)) {\n");
                     for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                        EnumData *ed = pr.enums.e + i;
+                        Enum_Data *ed = pr.enums.e + i;
 
                         write(&ob,
                               "        case pp_Type_%.*s: {\n"
@@ -1084,7 +1084,7 @@ File write_data(ParseResult pr, Bool is_cpp) {
                               ed->name.len, ed->name.e);
 
                         for(Int j = 0; (j < ed->no_of_values); ++j) {
-                            EnumValue *ev = ed->values + j;
+                            Enum_Value *ev = ed->values + j;
 
                             write(&ob,
                                   "                case %d: { return(\"%.*s\"); } break;\n",

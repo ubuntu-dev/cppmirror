@@ -21,7 +21,7 @@ typedef enum {
     StructType_union,
 
     StructType_count
-} StructType;
+} Struct_Type;
 
 typedef struct {
     String template_header;
@@ -32,30 +32,30 @@ typedef struct {
     Int inherited_count;
     String *inherited;
 
-    StructType struct_type;
-} StructData;
+    Struct_Type struct_type;
+} Struct_Data;
 
 typedef struct {
-    StructData *e;
+    Struct_Data *e;
     Int cnt;
 } Structs;
 
 typedef struct {
     String name;
     Int value;
-} EnumValue;
+} Enum_Value;
 
 typedef struct {
     String name;
     String type;
     Bool is_struct;
 
-    EnumValue *values;
+    Enum_Value *values;
     Int no_of_values;
-} EnumData;
+} Enum_Data;
 
 typedef struct {
-    EnumData *e;
+    Enum_Data *e;
     Int cnt;
 } Enums;
 
@@ -67,20 +67,20 @@ typedef struct {
 
     Variable *params;
     Int param_cnt;
-} FunctionData;
+} Function_Data;
 
 typedef struct {
     String original;
     String fresh;
-} TypedefData;
+} Typedef_Data;
 
 typedef struct {
-    FunctionData *e;
+    Function_Data *e;
     Int cnt;
 } Functions;
 
 typedef struct {
-    TypedefData *e;
+    Typedef_Data *e;
     Int cnt;
 } Typedefs;
 
@@ -94,22 +94,22 @@ typedef struct {
     Int enum_max;
     Int func_max;
     Int typedef_max;
-} ParseResult;
+} Parse_Result;
 
-ParseResult parse_streams(Int cnt, Char **fnames);
+Parse_Result parse_streams(Int cnt, Char **fnames);
 
 //
 // The following are only exported for test.c
 //
-typedef struct Tokenizer {
+typedef struct {
     Char *at;
 } Tokenizer;
 
 typedef struct {
-    StructData sd;
+    Struct_Data sd;
     Bool success;
-} ParseStructResult;
-ParseStructResult parse_struct(Tokenizer *tokenizer, StructType struct_type);
+} Parse_Struct_Result;
+Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type);
 
 #define eat_token(tokenizer) eat_tokens(tokenizer, 1)
 Void eat_tokens(Tokenizer *tokenizer, Int num_tokens_to_eat);
