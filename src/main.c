@@ -106,7 +106,9 @@ int main(int argc, char **argv) {
                 switch(type) {
                     case SwitchType_silent:                   should_write_to_file = false;         break;
                     case SwitchType_log_errors:               should_log_errors = true;             break;
+#if INTERNAL
                     case SwitchType_run_tests:                should_run_tests = true;              break;
+#endif
                     case SwitchType_print_help:               print_help();                         break;
                     case SwitchType_is_c_file:                is_c = true;                          break;
                     case SwitchType_output_preprocessed_file: only_output_preprocessed_file = true; break;
@@ -126,6 +128,7 @@ int main(int argc, char **argv) {
             }
 
             if(should_run_tests) {
+#if INTERNAL
                 Int tests_failed = run_tests();
 
                 if(!tests_failed) {
@@ -133,6 +136,7 @@ int main(int argc, char **argv) {
                 } else {
                     system_write_to_console("%d tests failed\n", tests_failed);
                 }
+#endif
             } else {
                 if(!number_of_files) {
                     push_error(ErrorType_no_files_pass_in);

@@ -15,7 +15,7 @@ rem Debug/Release
 set DEBUG_COMMON_COMPILER_FLAGS=-nologo -MTd -Gm- -GR- -EHsc- -Od -Oi %COMMON_WARNINGS% -DINTERNAL=1 -DMEM_CHECK=0 -FC -Zi -GS- -Gs9999999
 set RELEASE_COMMON_COMPILER_FLAGS=-nologo -MT -fp:fast -Gm- -GR- -EHa- -O2 -Oi %COMMON_WARNINGS% -DINTERNAL=0 -DMEM_CHECK=0 -FC -Zi -GS- -Gs9999999
 
-set FILES="../src/utilities.c" "../src/lexer.c" "../src/write_file.c" "../src/platform_win32.c" "../src/main.c"
+set FILES="../src/utilities.c" "../src/lexer.c" "../src/write_file.c" "../src/platform_win32.c" "../src/main.c" "../src/test.c"
 IF NOT EXIST "build" mkdir "build"
 pushd "build"
 if "%RELEASE%"=="true" (
