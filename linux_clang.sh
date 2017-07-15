@@ -22,12 +22,23 @@ if [ "$RELEASE" = "false" ]; then
 fi
 
 # Test.
+#if [ "$RUN_TEST" = "true" ]; then
+#    echo "Building Test"
+#    pushd "test"
+#    "../build/mirror" -c test_code.c
+#    popd
+#
+#    clang-"$CLANG_VERSION" -Wall -Wextra "test/test_code.c" -std=c99 -o test_exe -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable -Wno-switch -Wno-sign-compare -Wno-unused-private-field -Wno-unused-parameter -g -ldl
+#    mv "./test_exe" "build/test"
+#fi
+
+# Math Test.
 if [ "$RUN_TEST" = "true" ]; then
-    echo "Building Test"
+    echo "Building Math"
     pushd "test"
-    "../build/mirror" test_code.cpp
+    "../build/mirror" -c sgl_math.c
     popd
 
-    clang++-"$CLANG_VERSION" -Wall -Wextra "test/test_code.cpp" -std=c++1z -o test_exe -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable -Wno-switch -Wno-sign-compare -Wno-unused-private-field -Wno-unused-parameter -g -ldl
+    clang-"$CLANG_VERSION" -Wall -Wextra "test/sgl_math.c" -std=c99 -o test_exe -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable -Wno-switch -Wno-sign-compare -Wno-unused-private-field -Wno-unused-parameter -g -ldl
     mv "./test_exe" "build/test"
 fi

@@ -1581,8 +1581,15 @@ top:;
             for(Int i = 0; (i < md.param_cnt); ++i) {
                 assert(file->e[0]);
                 if(token_compare_string(token, md.params[i])) {
-                    // Tokenizer may be invalidated after the move_stream call.
+                    // TODO(Jonny): After the breakpoint in the if is hit, the paramters for md are invalidated after move_stream.
+                    //              I check the memory and that seems to be fine, it's just the actual pointer that's getting fucked...
+                    //              somehow.
+                    if((i == 1) && (Uintptr)tokenizer.at - (Uintptr)file->e >= 81245) {
+                        int i = 0;
+                    }
+
                     move_stream(file, tokenizer.at - 1, params[i].len - token.len);
+                    md.params[0].e[0] = md.params[0].e[0]; // TODO(Jonny): Remove.
 
                     iden_len += params[i].len - token.len;
                     end += params[i].len - token.len;
@@ -1593,6 +1600,7 @@ top:;
             }
 
             token = get_token(&tokenizer);
+
         } while(tokenizer.at <= end);
     }
 
@@ -1672,6 +1680,10 @@ File preprocess_macros(File original_file) {
                 } break;
 
                 case Token_Type_identifier: {
+                    if(token_compare_cstring(token, "SGLM_MADD")) {
+                        int i = 0;
+                    }
+
                     for(Int i = 0; (i < macro_cnt); ++i) {
                         if(token_compare_string(token, macro_data[i].iden)) {
                             if(macro_data[i].res.len) {
@@ -1723,9 +1735,12 @@ Parse_Result parse_streams(Int cnt, Char **fnames) {
 
     for(Int i = 0; (i < cnt); ++i) {
         File file = system_read_entire_file_and_null_terminate(fnames[i]); // TODO(Jonny): Leak.
-
-        file = preprocess_macros(file);
-        parse_stream(file.e, &res);
+        if(file.size) {
+            file = preprocess_macros(file);
+            parse_stream(file.e, &res);
+        } else {
+            system_write_to_console("Mirror error: Cannot find file %s", fnames[i]);
+        }
     }
 
     return(res);

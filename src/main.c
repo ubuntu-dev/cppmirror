@@ -80,7 +80,7 @@ Void print_help(void) {
 }
 
 int main(int argc, char **argv) {
-    Int res = 0;
+Int res = 0;
 
     system_write_to_console("Starting Mirror...");
 
