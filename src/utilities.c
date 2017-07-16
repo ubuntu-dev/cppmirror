@@ -128,7 +128,7 @@ Uintptr get_alignment(void *mem, Uintptr desired_alignment) {
     Uintptr res = 0;
 
     Uintptr alignment_mask = desired_alignment - 1;
-    if(cast(Uintptr)mem & alignment_mask) {
+    if((Uintptr)mem & alignment_mask) {
         res = desired_alignment - (cast(Uintptr)mem & alignment_mask);
     }
 
@@ -141,7 +141,6 @@ TempMemory create_temp_buffer(Uintptr size) {
     res.e = system_malloc(size);
     if(res.e) {
         res.size = size;
-        zero(res.e, res.size);
     }
 
     return(res);
@@ -175,7 +174,6 @@ Void *push_size_with_alignment(TempMemory *tm, Uintptr size, Int alignment) {
 
 Void free_temp_buffer(TempMemory *temp_memory) {
     system_free(temp_memory->e);
-    zero(temp_memory, sizeof(temp_memory));
 }
 
 //

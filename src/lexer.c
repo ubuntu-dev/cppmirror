@@ -1568,7 +1568,7 @@ top:;
         iden_len += 2;
     }
 
-    Char *end = tokenizer.at + iden_len;
+    Char *end = tokenizer.at + iden_len - absolute_value(md.res.len - iden_len);
 
     move_stream(file, token_start, md.res.len - iden_len);
     copy(token_start, md.res.e, md.res.len);
@@ -1584,7 +1584,13 @@ top:;
                     // TODO(Jonny): After the breakpoint in the if is hit, the paramters for md are invalidated after move_stream.
                     //              I check the memory and that seems to be fine, it's just the actual pointer that's getting fucked...
                     //              somehow.
-                    if((i == 1) && (Uintptr)tokenizer.at - (Uintptr)file->e >= 81245) {
+                    if(string_cstring_comp(md.iden, "SGLM_MADD")) {
+                        if((i == 1) && (Uintptr)tokenizer.at - (Uintptr)file->e >= 76955) {
+                            int i = 0;
+                        }
+                    }
+
+                    if(file->size > file->memory_size) {
                         int i = 0;
                     }
 
@@ -1640,17 +1646,21 @@ Void add_include_file(Tokenizer *tokenizer, File_With_Extra_Space *file) {
 File preprocess_macros(File original_file) {
     File res = {0};
 
-    File_With_Extra_Space file = {.e = original_file.e, .size = original_file.size, .memory_size = original_file.size * 10};
+    File_With_Extra_Space file = {0};
+    file.size = original_file.size;
+    file.memory_size = file.size * 15;
 
-    Void *p = system_realloc(file.e, file.memory_size);
+    Void *p = system_malloc(file.memory_size);
     if(p) {
+        copy(p, original_file.e, original_file.size);
         file.e = p;
+        zero(original_file.e, original_file.size);
+        system_free(original_file.e);
 
-        TempMemory macro_memory = create_temp_buffer(sizeof(MacroData) * 128);
         TempMemory param_memory = create_temp_buffer(sizeof(String) * 128);
 
-        Int macro_cnt = 0;
-        MacroData *macro_data = cast(MacroData *)macro_memory.e;
+        Int macro_cnt = 0, macro_max = 128;
+        MacroData *macro_data = system_malloc(sizeof(*macro_data) * macro_max);
 
         Tokenizer tokenizer = { file.e };
 
@@ -1668,6 +1678,7 @@ File preprocess_macros(File original_file) {
                     } else if(token_compare_cstring(preprocessor_dir, "define")) {
                         ParseMacroResult pmr = parse_macro(&tokenizer, &param_memory);
                         if(pmr.success) {
+                            assert(macro_cnt + 1 < macro_max);
                             macro_data[macro_cnt++] = pmr.md;
                         }
                     } else if(preprocessor_dir.type == Token_Type_hash) {
@@ -1704,7 +1715,7 @@ File preprocess_macros(File original_file) {
         }
 
         free_temp_buffer(&param_memory);
-        free_temp_buffer(&macro_memory);
+        system_free(macro_data);
 
         assert(file.size < file.memory_size);
 

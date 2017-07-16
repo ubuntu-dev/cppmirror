@@ -39,7 +39,6 @@ Bool system_free(Void *ptr) {
 
 Void *system_realloc(Void *ptr, Uintptr new_size) {
     Void *res = realloc(ptr, new_size);
-    // TODO(Jonny): Is there a realloc and zero for linux?
 
     return(res);
 }
