@@ -139,7 +139,7 @@ File write_data(Parse_Result pr, Bool is_cpp) {
     File res = {0};
     OutputBuffer ob = {0};
     ob.size = 1024 * 1024;
-    ob.buffer = system_malloc(sizeof(*ob.buffer) * ob.size);
+    ob.buffer = new Char[ob.size];
     if(ob.buffer) {
         write(&ob,
               "#if !defined(PP_GENERATED_H)\n"
@@ -368,7 +368,7 @@ File write_data(Parse_Result pr, Bool is_cpp) {
         }
 
         Int type_count = 0;
-        String *types = system_malloc(sizeof(*types) * max_type_count);
+        String *types = new String[max_type_count];
         if(types) {
             // Meta types enum.
             {
@@ -381,7 +381,8 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                       "//\n"
                       "typedef enum pp_Type {\n"
                       "    pp_Type_unknown,\n"
-                      "\n");
+                      "\n"
+                      "    pp_Type_void,\n");
 
                 for(Int i = 0; (i < type_count); ++i) {
                     String *t = types + i;
@@ -1108,7 +1109,7 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                       "}\n");
             }
 
-            system_free(types);
+            delete[] types;
         }
 
         //

@@ -16,28 +16,30 @@
 
 #include "windows.h"
 
-int _fltused;
+extern "C" {
+    int _fltused;
 
 #pragma function(memset)
-void *memset(void *dest, int c, size_t count) {
-    assert(c < 0xFF);
-    Byte *dest8 = dest;
-    while(count--) {
-        *dest8++ = (Byte)c;
-    }
+    void *memset(void *dest, int c, size_t count) {
+        assert(c < 0xFF);
+        Byte *dest8 = (Byte *)dest;
+        while(count--) {
+            *dest8++ = (Byte)c;
+        }
 
-    return(dest);
-}
+        return(dest);
+    }
 
 #pragma function(memcpy)
-void *memcpy(void *dest, void const *src, size_t count) {
-    Byte *dst8 = dest;
-    Byte *src8 = (Byte *)src;
-    while (count--) {
-        *dst8++ = *src8++;
-    }
+    void *memcpy(void *dest, void const *src, size_t count) {
+        Byte *dst8 = (Byte *)dest;
+        Byte *src8 = (Byte *)src;
+        while (count--) {
+            *dst8++ = *src8++;
+        }
 
-    return(dest);
+        return(dest);
+    }
 }
 
 Uint64 system_get_performance_counter(void) {
@@ -64,7 +66,7 @@ static Allocation_Node *global_debug_alloc_storage;
 
 Void add_to_global_alloc(Void *block, Void *ptr, Uintptr size) {
     if(!global_debug_alloc_storage) {
-        global_debug_alloc_storage = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*global_debug_alloc_storage));
+        global_debug_alloc_storage = (Allocation_Node *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*global_debug_alloc_storage));
 
         global_debug_alloc_storage->block = block;
         global_debug_alloc_storage->ptr = ptr;
@@ -75,7 +77,7 @@ Void add_to_global_alloc(Void *block, Void *ptr, Uintptr size) {
             next = next->next;
         }
 
-        next->next = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*next->next));
+        next->next = (Allocation_Node *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*next->next));
         next = next->next;
 
         next->block = block;
@@ -306,7 +308,7 @@ Bool system_create_folder(Char *name) {
 
 Void system_write_to_console(Char *format, ...) {
     Uintptr alloc_size = 1024;
-    Char *buf = system_malloc(sizeof(*buf) * alloc_size);
+    Char *buf = new Char[alloc_size];
     if(buf) {
         va_list args;
         va_start(args, format);
@@ -345,7 +347,7 @@ void mainCRTStartup() {
     }
 
     // Create copy of args.
-    Char *arg_cpy = system_malloc(sizeof(*arg_cpy) * (args_len + 1));
+    Char *arg_cpy = new Char[args_len + 1];
     string_copy(arg_cpy, cmdline);
 
     for(Int i = 0; (i < args_len); ++i) {
@@ -362,7 +364,7 @@ void mainCRTStartup() {
     in_quotes = false;
     Int mem_size = original_cnt * 2;
     Int argc = 1;
-    Char **argv = system_malloc(sizeof(*argv) * mem_size);
+    Char **argv = new Char *[mem_size];
     Char **cur = argv;
     *cur++ = arg_cpy;
     for(Int i = 0; (i < args_len); ++i) {

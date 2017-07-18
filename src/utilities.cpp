@@ -37,6 +37,26 @@ Void set(Void *dest, Byte v, Uintptr n) {
     }
 }
 
+Void *operator new(Uintptr size) {
+    Void *res = system_malloc(size);
+
+    return(res);
+}
+
+Void *operator new[](Uintptr size) {
+    Void *res = system_malloc(size);
+
+    return(res);
+}
+
+Void operator delete(Void *ptr) {
+    system_free(ptr);
+}
+
+Void operator delete[](Void *ptr) {
+    system_free(ptr);
+}
+
 //
 // Error stuff.
 //
@@ -138,7 +158,7 @@ Uintptr get_alignment(void *mem, Uintptr desired_alignment) {
 TempMemory create_temp_buffer(Uintptr size) {
     TempMemory res = {0};
 
-    res.e = system_malloc(size);
+    res.e = new Byte[size];
     if(res.e) {
         res.size = size;
     }
@@ -404,7 +424,7 @@ ResultInt calculator_string_to_int(Char *str) {
         - Make sure each element in the string is either a number or a operator.
         - Do the calculator in order (multiply, divide, add, subtract).
     */
-    String *arr = system_malloc(sizeof(*arr) * 256); // TODO(Jonny): Random size.
+    String *arr = new String[256]; // TODO(Jonny): Random size.
     if(arr) {
         Char *at = str;
         arr[0].e = at;
@@ -417,8 +437,8 @@ ResultInt calculator_string_to_int(Char *str) {
         }
         ++cnt;
 
-        Int *nums = system_malloc(sizeof(*nums) * cnt);
-        Char *ops = system_malloc(sizeof(*ops) * cnt);
+        Int *nums = new Int[cnt];
+        Char *ops = new Char[cnt];
         if((nums) && (ops)) {
             for(Int i = 0, j = 0; (j < cnt); ++i, j += 2) {
                 ResultInt r = string_to_int(arr[j]);
@@ -437,11 +457,11 @@ ResultInt calculator_string_to_int(Char *str) {
             // At this point, I have all the numbers and ops in seperate arrays.
 
 clean_up:;
-            system_free(ops);
-            system_free(nums);
+            delete[] ops;
+            delete[] nums;
         }
 
-        system_free(arr);
+        delete[] arr;
     }
 
     return(res);

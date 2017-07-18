@@ -4,6 +4,11 @@
 
 #define MAX_POINTER_SIZE 4
 
+Void *operator new(Uintptr size);
+Void *operator new[](Uintptr size);
+Void operator delete(Void *ptr);
+Void operator delete[](Void *ptr);
+
 //
 // Error.
 //

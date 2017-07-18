@@ -25,7 +25,7 @@
 #include "lexer.h"
 #include "write_file.h"
 
-typedef enum {
+enum SwitchType {
     SwitchType_unknown,
 
     SwitchType_silent,
@@ -38,10 +38,10 @@ typedef enum {
     SwitchType_source_file,
 
     SwitchType_count
-} SwitchType;
+};
 
 SwitchType get_switch_type(Char *str) {
-    SwitchType res = {0};
+    SwitchType res = {};
 
     Int len = string_length(str);
     if(len >= 2) {
@@ -80,7 +80,7 @@ Void print_help(void) {
 }
 
 int main(int argc, char **argv) {
-Int res = 0;
+    Int res = 0;
 
     system_write_to_console("Starting Mirror...");
 
@@ -95,7 +95,7 @@ Int res = 0;
         Bool only_output_preprocessed_file = false;
 
         Int fnames_max_cnt = 16;
-        Char **fnames = system_malloc(sizeof(*fnames) * fnames_max_cnt);
+        Char **fnames = new Char *[fnames_max_cnt];
         if(fnames) {
             Uintptr total_file_size = 0;
             Int number_of_files = 0;
@@ -171,15 +171,16 @@ Int res = 0;
                     // _really_ care about memory leaks though, so they're only freed in an INTERNAL build.
 #if INTERNAL
                     system_free(file_to_write.e);
-                    system_free(parse_res.enums.e);
-                    system_free(parse_res.structs.e);
-                    system_free(parse_res.funcs.e);
-                    system_free(parse_res.typedefs.e);
+
+                    delete[] parse_res.enums.e;
+                    delete[] parse_res.structs.e;
+                    delete[] parse_res.funcs.e;
+                    delete[] parse_res.typedefs.e;
 #endif
                 }
             }
 
-            system_free(fnames);
+            delete[] fnames;
         }
     }
 

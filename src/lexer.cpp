@@ -164,12 +164,12 @@ Bool token_compare_cstring(Token a, Char *b) {
 }
 
 Modifier is_modifier(Token token) {
-    Modifier res = {0};
+    Modifier res = {};
 
-    typedef struct {
+    struct ModifierWithString {
         String str;
         Modifier mod;
-    } ModifierWithString;
+    };
 
 #define CREATE_MODIFIER(name) { create_string(#name, 0), Modifier_##name }
 
@@ -657,7 +657,7 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
 
         Token peaked_token = peak_token(tokenizer);
         if(peaked_token.type == Token_Type_colon) {
-            res.sd.inherited = system_malloc(sizeof(*res.sd.inherited) * 8);
+            res.sd.inherited = new String[8];
 
             eat_token(tokenizer);
 
@@ -693,7 +693,7 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
             } MemberInfo;
 
             Uintptr member_info_mem_cnt = 256;
-            MemberInfo *member_info = system_malloc(sizeof(*member_info) * member_info_mem_cnt);
+            MemberInfo *member_info = new MemberInfo[member_info_mem_cnt];
             if(member_info) {
                 Bool inside_anonymous_struct = false;
                 for(;;) {
@@ -814,7 +814,7 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
                     }
 
                     // Now actually parse the member variables.
-                    res.sd.members = system_malloc(sizeof(*res.sd.members) * real_member_cnt);
+                    res.sd.members = new Variable[real_member_cnt];
                     if(res.sd.members) {
                         Int member_index = 0;
                         for(Int i = 0; (i < member_cnt); ++i) {
@@ -842,7 +842,7 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
                 }
             }
 
-            system_free(member_info);
+            delete[] member_info;
         }
 
 
@@ -913,7 +913,7 @@ ParseEnumResult parse_enum(Tokenizer *tokenizer) {
                     token = get_token(&copy);
                 }
 
-                res.ed.values = system_malloc(sizeof(*res.ed.values) * res.ed.no_of_values);
+                res.ed.values = new Enum_Value[res.ed.no_of_values];
                 if(res.ed.values) {
                     for(Int i = 0, count = 0; (i < res.ed.no_of_values); ++i, ++count) {
                         Enum_Value *ev = res.ed.values + i;
@@ -1205,7 +1205,7 @@ AttemptFunctionResult attempt_to_parse_function(Token token, Tokenizer *tokenize
 
                 Token ob = get_token(tokenizer);
                 if(ob.type == Token_Type_open_paren) {
-                    Variable *params = system_malloc(sizeof(*params) * 8);
+                    Variable *params = new Variable[8];
                     Int param_cnt = 0;
 
                     Token t = peak_token(tokenizer);
@@ -1244,7 +1244,7 @@ AttemptFunctionResult attempt_to_parse_function(Token token, Tokenizer *tokenize
                         res.fd.param_cnt = param_cnt;
                         res.fd.return_type_ptr = return_pointer_cnt;
                     } else {
-                        system_free(params);
+                        delete[] params;
                     }
                 }
             }
@@ -1288,7 +1288,7 @@ Void parse_stream(Char *stream, Parse_Result *res) {
 
             case Token_Type_identifier: {
                 if((token_equals(token, "struct")) || (token_equals(token, "class")) || (token_equals(token, "union"))) {
-                    Struct_Type struct_type = {0};
+                    Struct_Type struct_type = {};
 
                     if(token_equals(token, "struct"))     { struct_type = StructType_struct; }
                     else if(token_equals(token, "class")) { struct_type = StructType_class;  }
@@ -1298,7 +1298,7 @@ Void parse_stream(Char *stream, Parse_Result *res) {
                         res->struct_max *= 2;
                         Void *p = system_realloc(res->structs.e, res->struct_max);
                         if(p) {
-                            res->structs.e = p;
+                            res->structs.e = (Struct_Data *)p;
                         }
                     }
 
@@ -1324,7 +1324,7 @@ Void parse_stream(Char *stream, Parse_Result *res) {
                         res->enum_max *= 2;
                         Void *p = system_realloc(res->enums.e, res->enum_max);
                         if(p) {
-                            res->enums.e = p;
+                            res->enums.e = (Enum_Data *)p;
                         }
                     }
 
@@ -1568,7 +1568,7 @@ top:;
         iden_len += 2;
     }
 
-    Char *end = tokenizer.at + iden_len - absolute_value(md.res.len - iden_len);
+    Char *end = tokenizer.at + iden_len - absolute_value((Int)(md.res.len - iden_len));
 
     move_stream(file, token_start, md.res.len - iden_len);
     copy(token_start, md.res.e, md.res.len);
@@ -1584,18 +1584,8 @@ top:;
                     // TODO(Jonny): After the breakpoint in the if is hit, the paramters for md are invalidated after move_stream.
                     //              I check the memory and that seems to be fine, it's just the actual pointer that's getting fucked...
                     //              somehow.
-                    if(string_cstring_comp(md.iden, "SGLM_MADD")) {
-                        if((i == 1) && (Uintptr)tokenizer.at - (Uintptr)file->e >= 76955) {
-                            int i = 0;
-                        }
-                    }
-
-                    if(file->size > file->memory_size) {
-                        int i = 0;
-                    }
-
                     move_stream(file, tokenizer.at - 1, params[i].len - token.len);
-                    md.params[0].e[0] = md.params[0].e[0]; // TODO(Jonny): Remove.
+                    assert(file->size < file->memory_size);
 
                     iden_len += params[i].len - token.len;
                     end += params[i].len - token.len;
@@ -1646,21 +1636,21 @@ Void add_include_file(Tokenizer *tokenizer, File_With_Extra_Space *file) {
 File preprocess_macros(File original_file) {
     File res = {0};
 
-    File_With_Extra_Space file = {0};
+    File_With_Extra_Space file = {};
     file.size = original_file.size;
-    file.memory_size = file.size * 15;
+    file.memory_size = original_file.size * 10;
 
     Void *p = system_malloc(file.memory_size);
     if(p) {
         copy(p, original_file.e, original_file.size);
-        file.e = p;
+        file.e = (Char *)p;
         zero(original_file.e, original_file.size);
         system_free(original_file.e);
 
         TempMemory param_memory = create_temp_buffer(sizeof(String) * 128);
 
         Int macro_cnt = 0, macro_max = 128;
-        MacroData *macro_data = system_malloc(sizeof(*macro_data) * macro_max);
+        MacroData *macro_data = new MacroData[macro_max];
 
         Tokenizer tokenizer = { file.e };
 
@@ -1715,7 +1705,7 @@ File preprocess_macros(File original_file) {
         }
 
         free_temp_buffer(&param_memory);
-        system_free(macro_data);
+        delete[] macro_data;
 
         assert(file.size < file.memory_size);
 
@@ -1733,16 +1723,16 @@ Parse_Result parse_streams(Int cnt, Char **fnames) {
     Parse_Result res = {0};
 
     res.enum_max = 8;
-    res.enums.e = system_malloc(sizeof(*res.enums.e) * res.enum_max);
+    res.enums.e = new Enum_Data[res.enum_max];
 
     res.struct_max = 32;
-    res.structs.e = system_malloc(sizeof(*res.structs.e) * res.struct_max);
+    res.structs.e = new Struct_Data[res.struct_max];
 
     res.func_max = 128;
-    res.funcs.e = system_malloc(sizeof(*res.funcs.e) * res.func_max);
+    res.funcs.e = new Function_Data[res.func_max];
 
     res.typedef_max = 64;
-    res.typedefs.e = system_malloc(sizeof(*res.typedefs.e) * res.typedef_max);
+    res.typedefs.e = new Typedef_Data[res.typedef_max];
 
     for(Int i = 0; (i < cnt); ++i) {
         File file = system_read_entire_file_and_null_terminate(fnames[i]); // TODO(Jonny): Leak.
