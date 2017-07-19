@@ -363,7 +363,7 @@ void mainCRTStartup() {
     for(Int i = 0; (i < args_len); ++i) {
         if(!arg_cpy[i]) {
             Char *str = arg_cpy + i + 1;
-            if(!cstring_contains(str, '*')) {
+            if(!string_contains(str, '*')) {
                 *cur = str;
                 ++cur;
                 ++argc;

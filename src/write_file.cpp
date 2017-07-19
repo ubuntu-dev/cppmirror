@@ -42,7 +42,7 @@ global Char *global_primitive_types[] = {
 Bool is_primitive(String str) {
     Bool res = false;
     for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
-        if(string_cstring_comp(str, global_primitive_types[i])) {
+        if(string_comp(str, global_primitive_types[i])) {
             res = true;
             break;
         }
@@ -81,12 +81,24 @@ Bool is_meta_type_already_in_array(String *array, Int len, String test) {
     return(res);
 }
 
+struct FooBar {
+    int a;
+    int b;
+};
+
+Bool operator==(FooBar a, FooBar b) {
+    if(a.a != b.a) { return(false); }
+    if(a.b != b.b) { return(false); }
+
+    return(true);
+}
+
 Int get_actual_type_count(String *types, Structs structs, Enums enums, Typedefs typedefs) {
     Int res = 0;
 
     // Primitives.
     for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
-        types[res++] = create_string(global_primitive_types[i], 0);
+        types[res++] = create_string(global_primitive_types[i]);
     }
 
     // Typedefs.
@@ -180,7 +192,7 @@ File write_data(Parse_Result pr, Bool is_cpp) {
         for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
             Char *p = global_primitive_types[i];
 
-            if((is_cpp) || (!cstring_comp(p, "bool"))) {
+            if((is_cpp) || (!string_comp(p, "bool"))) {
                 write(&ob,
                       "typedef %s pp_%s;\n",
                       p, p);
@@ -795,7 +807,7 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                 for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
                     Char *prim = global_primitive_types[i];
 
-                    if((!is_cpp) && (cstring_comp(prim, "bool"))) {
+                    if((!is_cpp) && (string_comp(prim, "bool"))) {
                         continue;
                     }
                     write(&ob,
@@ -978,6 +990,43 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                                                    "    buffer[bytes_written] = 0;\n"
                                                    "    return(bytes_written);\n"
                                                    "}\n");
+            }
+
+            // TODO(Jonny): This is a really nice feature, but it doesn't work yet because it requires a pp_Thingy, and not a Thingy.
+            //              Maybe I could solve this by putting a constructor into each generated struct that means they can be
+            //              quickly converted?
+            // Struct compare.
+            if(is_cpp) {
+                write(&ob,
+                      "//\n"
+                      "// Generated comparisons.\n"
+                      "//\n");
+
+                for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                    Struct_Data *sd = pr.structs.e + i;
+
+                    write(&ob,
+                          "PP_STATIC pp_MyBool operator==(pp_%.*s a, pp_%.*s b) {\n",
+                          sd->name.len, sd->name.e,
+                          sd->name.len, sd->name.e);
+
+                    for(Int j = 0; (j < sd->member_count); ++j) {
+                        Variable *mem = sd->members + j;
+
+                        // TODO(Jonny): Don't support arrays yet.
+                        if(!mem->array_count) {
+                            write(&ob,
+                                  "    if(a.%.*s != b.%.*s) { return(false); }\n",
+                                  mem->name.len, mem->name.e,
+                                  mem->name.len, mem->name.e);
+                        }
+                    }
+
+                    write(&ob,
+                          "\n"
+                          "    return(true);\n"
+                          "}\n");
+                }
             }
 
             // Enum size.

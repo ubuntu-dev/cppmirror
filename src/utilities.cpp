@@ -261,7 +261,7 @@ Int string_length(Char *str) {
     return(res);
 }
 
-String create_string(Char *str, Int len) {
+String create_string(Char *str, Int len = 0) {
     String res;
     res.e = str;
     res.len = (len) ? len : string_length(str);
@@ -292,7 +292,7 @@ Bool string_comp_len(Char *a, Char *b, Uintptr len) {
     return(true);
 }
 
-Bool cstring_comp(Char *a, Char *b) {
+Bool string_comp(Char *a, Char *b) {
     while((*a) && (*b)) {
         if(*a != *b) {
             return(false);
@@ -333,7 +333,7 @@ Bool string_comp(String a, String b) {
     return(res);
 }
 
-Bool string_cstring_comp(String a, Char *b) {
+Bool string_comp(String a, Char *b) {
     Bool res = true;
 
     for(Int i = 0; (i < a.len); ++i) {
@@ -346,8 +346,8 @@ Bool string_cstring_comp(String a, Char *b) {
     return(res);
 }
 
-Bool cstring_string_comp(Char *a, String b) {
-    Bool res = string_cstring_comp(b, a);
+Bool string_comp(Char *a, String b) {
+    Bool res = string_comp(b, a);
 
     return(res);
 }
@@ -377,7 +377,7 @@ Bool string_contains(String str, Char target) {
     return(res);
 }
 
-Bool cstring_contains(Char *str, Char target) {
+Bool string_contains(Char *str, Char target) {
     Bool res = false;
 
     while(*str) {
@@ -392,7 +392,7 @@ Bool cstring_contains(Char *str, Char target) {
     return(res);
 }
 
-Bool string_contains_cstring(String str, Char *target) {
+Bool string_contains(String str, Char *target) {
     Int target_len = string_length(target);
 
     for(Int i = 0; (i < str.len); ++i) {
@@ -412,9 +412,9 @@ Bool string_contains_cstring(String str, Char *target) {
     return(false);
 }
 
-Bool cstring_contains_cstring(Char *str, Char *target) {
+Bool string_contains(Char *str, Char *target) {
     String s = create_string(str, string_length(str));
-    Bool res = string_contains_cstring(s, target);
+    Bool res = string_contains(s, target);
 
     return(res);
 }
@@ -575,8 +575,8 @@ struct Variable {
 
 Variable create_variable(Char *type, Char *name, Int ptr, Int array_count ) {
     Variable res;
-    res.type = create_string(type, 0);
-    res.name = create_string(name, 0);
+    res.type = create_string(type);
+    res.name = create_string(name);
     res.ptr = ptr;
     res.array_count = array_count;
 

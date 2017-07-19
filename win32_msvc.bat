@@ -52,10 +52,10 @@ rem )
 rem Math test
 if "%RUN_TEST%"=="true" (
     pushd "test"
-    "../build/mirror.exe" -c sgl_math.c
+    "../build/mirror.exe" sgl_math.cpp
     popd
 
     pushd "build"
-    cl -Fetest %DEBUG_COMMON_COMPILER_FLAGS% -Wall "../test/sgl_math.c" -FmTest.map -link -subsystem:console,5.2 kernel32.lib
+    cl -Fetest %DEBUG_COMMON_COMPILER_FLAGS% -Wall "../test/sgl_math.cpp" -FmTest.map -link -subsystem:console,5.2 kernel32.lib
     popd
 )

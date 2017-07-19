@@ -262,7 +262,7 @@ Modifier is_modifier(Token token) {
         Modifier mod;
     };
 
-#define CREATE_MODIFIER(name) { create_string(#name, 0), Modifier_##name }
+#define CREATE_MODIFIER(name) { create_string(#name), Modifier_##name }
 
     ModifierWithString modifiers[] = {
         CREATE_MODIFIER(unsigned),
@@ -438,13 +438,13 @@ Void eat_whitespace(Tokenizer *tokenizer) {
 
             // For #if 0 blocks, just ignore everything in them like a comment.
         } else if(tokenizer->at[0] == '#') { // #if 0 blocks.
-            String hash_if_zero = create_string("#if 0", 0);
-            String hash_if_one = create_string("#if 1", 0);
+            String hash_if_zero = create_string("#if 0");
+            String hash_if_one = create_string("#if 1");
 
-            if(string_cstring_comp(hash_if_zero, tokenizer->at)) {
+            if(string_comp(hash_if_zero, tokenizer->at)) {
                 tokenizer->at += hash_if_zero.len;
 
-                String hash_end_if = create_string("#endif", 0);
+                String hash_end_if = create_string("#endif");
 
                 Int level = 0;
                 while(++tokenizer->at) {
@@ -452,7 +452,7 @@ Void eat_whitespace(Tokenizer *tokenizer) {
                         if((tokenizer->at[1] == 'i') && (tokenizer->at[2] == 'f')) {
                             ++level;
 
-                        } else if(string_cstring_comp(hash_end_if, tokenizer->at)) {
+                        } else if(string_comp(hash_end_if, tokenizer->at)) {
                             if(level) {
                                 --level;
                             } else {
@@ -467,27 +467,27 @@ Void eat_whitespace(Tokenizer *tokenizer) {
 
                 // For #if 1 #else blocks, write everything between #else and #endif into whitespace, then
                 // jump back to the beginning of the beginning of the #if 1 block to parse stuff in it.
-            } else if(string_cstring_comp(hash_if_one, tokenizer->at)) { // #if 1 #else blocks.
+            } else if(string_comp(hash_if_one, tokenizer->at)) { // #if 1 #else blocks.
                 tokenizer->at += hash_if_one.len;
                 Tokenizer cpy = *tokenizer;
 
-                String hash_else = create_string("#else", 0);
+                String hash_else = create_string("#else");
 
-                String hash_end_if = create_string("#endif", 0);
+                String hash_end_if = create_string("#endif");
 
                 Int level = 0;
                 while(++tokenizer->at) {
                     if(tokenizer->at[0] == '#') {
                         if((tokenizer->at[1] == 'i') && (tokenizer->at[2] == 'f')) {
                             ++level;
-                        } else if(string_cstring_comp(hash_end_if, tokenizer->at)) {
+                        } else if(string_comp(hash_end_if, tokenizer->at)) {
                             if(level != 0) {
                                 --level;
                             } else {
                                 tokenizer->at += hash_end_if.len;
                                 break; // for
                             }
-                        } else if(string_cstring_comp(hash_else, tokenizer->at)) {
+                        } else if(string_comp(hash_else, tokenizer->at)) {
                             if(level == 0) {
                                 tokenizer->at += hash_else.len;
                                 Int Level2 = 0;
@@ -497,7 +497,7 @@ Void eat_whitespace(Tokenizer *tokenizer) {
                                         if((tokenizer->at[1] == 'i') && (tokenizer->at[2] == 'f')) {
                                             ++Level2;
 
-                                        } else if(string_cstring_comp(hash_end_if, tokenizer->at)) {
+                                        } else if(string_comp(hash_end_if, tokenizer->at)) {
                                             if(Level2 != 0) {
                                                 --Level2;
                                             } else {
@@ -796,11 +796,11 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
                     Token token = get_token(tokenizer);
                     if(is_stupid_class_keyword(token)) {
                         String access_as_string = token_to_string(token);
-                        if(string_comp(access_as_string, create_string("public", 0))) {
+                        if(string_comp(access_as_string, create_string("public"))) {
                             current_access = Access_public;
-                        } else if(string_comp(access_as_string, create_string("private", 0))) {
+                        } else if(string_comp(access_as_string, create_string("private"))) {
                             current_access = Access_private;
-                        } else if(string_comp(access_as_string, create_string("protected", 0))) {
+                        } else if(string_comp(access_as_string, create_string("protected"))) {
                             current_access = Access_protected;
                         }
                     } else {
@@ -1475,7 +1475,7 @@ Void parse_stream(Char *stream, Parse_Result *res) {
 
                         Typedef_Data *td = res->typedefs.e + res->typedefs.cnt++;
 
-                        td->original = create_string("uintptr_t", 0);
+                        td->original = create_string("uintptr_t");
                         td->fresh = token_to_string(name_before_paren);
                     }
                 } else {
@@ -1713,7 +1713,7 @@ Void add_include_file(Tokenizer *tokenizer, File_With_Extra_Space *file) {
 
     ++tokenizer->at;
 
-    if(!cstring_comp(name_buf, "pp_generated.h")) {
+    if(!string_comp(name_buf, "pp_generated.h")) {
         File include_file = system_read_entire_file_and_null_terminate(name_buf);
 
         if(include_file.size) {
