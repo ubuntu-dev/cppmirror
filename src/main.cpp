@@ -18,13 +18,6 @@
       Visual Studio 2017 is the first one to support long long types correctly, and I don't think GCC supports llu.
 */
 
-#include "types.h"
-#include "utilities.h"
-#include "platform.h"
-#include "test.h"
-#include "lexer.h"
-#include "write_file.h"
-
 enum SwitchType {
     SwitchType_unknown,
 

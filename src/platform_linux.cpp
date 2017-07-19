@@ -9,14 +9,6 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-#include "types.h"
-#include "utilities.h"
-#include "platform.h"
-#include "stb_sprintf.h"
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <sys/stat.h>
 
 Void *system_malloc(Uintptr size) {
     Void *res = malloc(size);

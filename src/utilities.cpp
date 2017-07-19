@@ -1,5 +1,5 @@
 /*===================================================================================================
-  File:                    utils.cpp
+  File:                    utilities.cpp
   Author:                  Jonathan Livingstone
   Email:                   seagull127@ymail.com
   Licence:                 Public Domain
@@ -9,13 +9,7 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-#include "types.h"
-#include "platform.h"
-#include "utilities.h"
-
-#define STB_SPRINTF_IMPLEMENTATION
-#define STB_SPRINTF_NOFLOAT
-#include "stb_sprintf.h"
+Int const MAX_POINTER_SIZE = 4;
 
 //
 // Memset and Memcpy
@@ -60,10 +54,56 @@ Void operator delete[](Void *ptr) {
 //
 // Error stuff.
 //
-typedef struct {
+#if COMPILER_MSVC
+    #define GUID__(file, seperator, line) file seperator line ")"
+    #define GUID_(file, line) GUID__(file, "(", #line)
+    #define GUID(file, line) GUID_(file, line)
+    #define MAKE_GUID GUID(__FILE__, __LINE__)
+#else
+    #define GUID__(file, seperator, line) file seperator line ":1: error:"
+    #define GUID_(file, line) GUID__(file, ":", #line)
+    #define GUID(file, line) GUID_(file, line)
+    #define MAKE_GUID GUID(__FILE__, __LINE__)
+#endif
+
+enum ErrorType {
+    ErrorType_unknown,
+
+    ErrorType_ran_out_of_memory,
+    ErrorType_assert_failed,
+    ErrorType_no_parameters,
+    ErrorType_cannot_find_file,
+    ErrorType_could_not_write_to_disk,
+    ErrorType_could_not_load_file,
+    ErrorType_no_files_pass_in,
+    ErrorType_could_not_find_mallocd_ptr,
+    ErrorType_memory_not_freed,
+    ErrorType_could_not_detect_struct_name,
+    ErrorType_could_not_find_struct,
+    ErrorType_unknown_token_found,
+    ErrorType_failed_to_parse_enum,
+    ErrorType_failed_parsing_variable,
+    ErrorType_failed_to_find_size_of_array,
+    ErrorType_did_not_write_entire_file,
+    ErrorType_did_not_read_entire_file,
+    ErrorType_could_not_create_directory,
+
+    ErrorType_incorrect_number_of_members_for_struct,
+    ErrorType_incorrect_struct_name,
+    ErrorType_incorrect_number_of_base_structs,
+    ErrorType_incorrect_members_in_struct,
+    ErrorType_incorrect_data_structure_type,
+
+    ErrorType_count
+};
+
+#define push_error(type) push_error_(type, MAKE_GUID)
+
+
+struct Error {
     ErrorType type;
     Char *guid;
-} Error;
+};
 
 global Error global_errors[32];
 global Int global_error_count;
@@ -77,6 +117,7 @@ Void push_error_(ErrorType type, Char *guid) {
     }
 }
 
+Int string_length(Char *str);
 Char *ErrorTypeToString(ErrorType e) {
     Char *res = 0;
 
@@ -144,6 +185,12 @@ Bool print_errors(void) {
 //
 // Temp Memory.
 //
+struct TempMemory {
+    Byte *e;
+    Uintptr size;
+    Uintptr used;
+};
+
 Uintptr get_alignment(void *mem, Uintptr desired_alignment) {
     Uintptr res = 0;
 
@@ -166,7 +213,7 @@ TempMemory create_temp_buffer(Uintptr size) {
     return(res);
 }
 
-Void *push_size_with_alignment(TempMemory *tm, Uintptr size, Int alignment) {
+Void *push_size(TempMemory *tm, Uintptr size, Int alignment = -1) {
     Void *res = 0;
 
     // TODO(Jonny): These alignments were setup for x64. Should I have different ones for x86?
@@ -199,6 +246,11 @@ Void free_temp_buffer(TempMemory *temp_memory) {
 //
 // Strings.
 //
+struct String {
+    Char *e;
+    Uintptr len;
+};
+
 Int string_length(Char *str) {
     Int res = 0;
 
@@ -370,6 +422,14 @@ Bool cstring_contains_cstring(Char *str, Char *target) {
 //
 // Stuff
 //
+#define kilobytes(v) ((v)            * (1024LL))
+#define megabytes(v) ((kilobytes(v)) * (1024LL))
+#define gigabytes(v) ((megabytes(v)) * (1024LL))
+
+struct ResultInt {
+    Int e;
+    Bool success;
+};
 ResultInt char_to_int(Char c) {
     ResultInt res = {0};
     switch(c) {
@@ -489,6 +549,30 @@ Uint32 safe_truncate_size_64(Uint64 v) {
 //
 // Variable.
 //
+enum Access {
+    Access_unknown,
+    Access_public,
+    Access_private,
+    Access_protected,
+
+    Access_count
+};
+
+struct Variable {
+    String type;
+    String name;
+
+    Access access;
+
+    Int ptr;
+    Int array_count;
+
+    Uint32 modifier;
+
+    Bool is_inside_anonymous_struct;
+};
+
+
 Variable create_variable(Char *type, Char *name, Int ptr, Int array_count ) {
     Variable res;
     res.type = create_string(type, 0);

@@ -9,12 +9,99 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-#include "types.h"
-#include "utilities.h"
-#include "platform.h"
-#include "lexer.h"
+enum Modifier {
+    Modifier_unknown  = 0x00,
 
-typedef enum {
+    Modifier_unsigned = 0x01,
+    Modifier_const    = 0x02,
+    Modifier_volatile = 0x04,
+    Modifier_mutable  = 0x08,
+    Modifier_signed   = 0x10,
+};
+
+enum Struct_Type {
+    StructType_unknown,
+    StructType_struct,
+    StructType_class,
+    StructType_union,
+
+    StructType_count
+};
+
+struct Struct_Data {
+    String template_header;
+    String name;
+    Int member_count;
+    Variable *members;
+
+    Int inherited_count;
+    String *inherited;
+
+    Struct_Type struct_type;
+};
+
+struct Structs {
+    Struct_Data *e;
+    Int cnt;
+};
+
+struct Enum_Value {
+    String name;
+    Int value;
+};
+
+struct Enum_Data {
+    String name;
+    String type;
+    Bool is_struct;
+
+    Enum_Value *values;
+    Int no_of_values;
+};
+
+struct Enums {
+    Enum_Data *e;
+    Int cnt;
+};
+
+struct Function_Data {
+    String linkage;
+    String return_type;
+    Int return_type_ptr;
+    String name;
+
+    Variable *params;
+    Int param_cnt;
+};
+
+struct Typedef_Data {
+    String original;
+    String fresh;
+};
+
+struct Functions {
+    Function_Data *e;
+    Int cnt;
+};
+
+struct Typedefs {
+    Typedef_Data *e;
+    Int cnt;
+};
+
+struct Parse_Result {
+    Structs structs;
+    Enums enums;
+    Functions funcs;
+    Typedefs typedefs;
+
+    Int struct_max;
+    Int enum_max;
+    Int func_max;
+    Int typedef_max;
+};
+
+enum Token_Type {
     Token_Type_unknown,
 
     Token_Type_open_paren,
@@ -56,14 +143,18 @@ typedef enum {
     Token_Type_end_of_stream,
 
     Token_Type_count
-} Token_Type;
+};
 
-typedef struct {
+struct Token {
     Char *e;
     Uintptr len;
 
     Token_Type type;
-} Token;
+};
+
+struct Tokenizer {
+    Char *at;
+};
 
 Bool is_end_of_line(Char c) {
     Bool res = ((c == '\n') || (c == '\r'));
@@ -218,6 +309,7 @@ Token peak_token(Tokenizer *tokenizer) {
     return(res);
 }
 
+#define eat_token(tokenizer) eat_tokens(tokenizer, 1)
 Void eat_tokens(Tokenizer *tokenizer, Int num_tokens_to_eat) {
     for(Int i = 0; (i < num_tokens_to_eat); ++i) {
         get_token(tokenizer);
@@ -547,12 +639,12 @@ String parse_template(Tokenizer *tokenizer) {
     return(res);
 }
 
-typedef struct {
+struct Parse_Variable_Result {
     Variable var;
     Bool success;
-} Parse_Variable_Result;
+};
 Parse_Variable_Result parse_variable(Tokenizer *tokenizer, Token_Type end_token_type_1,
-                                     Token_Type end_token_type_2/*= Token_Type_unknown*/) {
+                                     Token_Type end_token_type_2) {
 #if INTERNAL
     Tokenizer debug_copy_tokenizer = *tokenizer;
 #endif
@@ -637,6 +729,10 @@ Bool is_forward_declared(Tokenizer *tokenizer) {
     return(res);
 }
 
+struct Parse_Struct_Result {
+    Struct_Data sd;
+    Bool success;
+};
 Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) {
     Parse_Struct_Result res = {0};
 

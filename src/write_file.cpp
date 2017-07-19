@@ -9,19 +9,11 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-#include "types.h"
-#include "utilities.h"
-#include "lexer.h"
-#include "platform.h"
-
-#include <stdarg.h>
-#include "stb_sprintf.h"
-
-typedef struct {
+struct OutputBuffer {
     Char *buffer;
     Int index;
     Int size;
-} OutputBuffer;
+};
 
 Void write(OutputBuffer *ob, Char *format, ...) {
     va_list args;
@@ -515,6 +507,7 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                         Char modifier_string[1024] = {0};
                         if(md->modifier) {
                             Uintptr mod_string_index = 0;
+
                             if(md->modifier & Modifier_unsigned) {
                                 mod_string_index += string_copy(modifier_string + mod_string_index, " unsigned");
                             }
@@ -604,8 +597,8 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                 for(Int i = 0; (i < pr.structs.cnt); ++i) {
                     Struct_Data *sd = pr.structs.e + i;
 
-                    if(!i) { write(&ob, "    ");      }
-                    else   { write(&ob, "    else "); }
+                    if(!i) write(&ob, "    ");
+                    else   write(&ob, "    else ");
 
                     write(&ob,
                           "if(real_type == pp_Type_%.*s) {\n"
@@ -1042,8 +1035,8 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                         for(Int j = 0; (j < ed->no_of_values); ++j) {
                             Enum_Value *ev = ed->values + j;
 
-                            if(!j) { write(&ob, "            ");      }
-                            else   { write(&ob, "            else "); }
+                            if(!j) write(&ob, "            ");
+                            else   write(&ob, "            else ");
 
                             write(&ob,
                                   "if(pp_string_compare(str, \"%.*s\")) { return(%d); }\n",

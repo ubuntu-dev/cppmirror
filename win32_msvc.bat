@@ -15,13 +15,12 @@ rem Debug/Release
 set DEBUG_COMMON_COMPILER_FLAGS=-nologo -MTd -Gm- -GR- -EHsc- -Od -Oi %COMMON_WARNINGS% -DINTERNAL=1 -DMEM_CHECK=0 -FC -Zi -GS- -Gs9999999
 set RELEASE_COMMON_COMPILER_FLAGS=-nologo -MT -fp:fast -Gm- -GR- -EHa- -O2 -Oi %COMMON_WARNINGS% -DINTERNAL=0 -DMEM_CHECK=0 -FC -Zi -GS- -Gs9999999
 
-set FILES="../src/utilities.cpp" "../src/lexer.cpp" "../src/write_file.cpp" "../src/platform_win32.cpp" "../src/main.cpp" "../src/test.cpp"
 IF NOT EXIST "build" mkdir "build"
 pushd "build"
 if "%RELEASE%"=="true" (
-    cl -Femirror %RELEASE_COMMON_COMPILER_FLAGS% -GS- -Gs9999999 -Wall %FILES% -link -nodefaultlib -subsystem:console,5.2 kernel32.lib -stack:0x100000,0x100000
+    cl -Femirror %RELEASE_COMMON_COMPILER_FLAGS% -GS- -Gs9999999 -Wall ../src/build.cpp -link -nodefaultlib -subsystem:console,5.2 kernel32.lib -stack:0x100000,0x100000
 ) else (
-    cl -Femirror %DEBUG_COMMON_COMPILER_FLAGS% -GS- -Gs9999999 -Wall %FILES% -link -nodefaultlib -subsystem:console,5.2 kernel32.lib -stack:0x100000,0x100000
+    cl -Femirror %DEBUG_COMMON_COMPILER_FLAGS% -GS- -Gs9999999 -Wall ../src/build.cpp -link -nodefaultlib -subsystem:console,5.2 kernel32.lib -stack:0x100000,0x100000
     mirror -t
 )
 popd

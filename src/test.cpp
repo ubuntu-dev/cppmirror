@@ -9,11 +9,6 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-#include "types.h"
-#include "test.h"
-#include "utilities.h"
-#include "lexer.h"
-
 Struct_Data parse_struct_test(Char *str, Struct_Type type) {
     Tokenizer tokenizer = {str};
 
