@@ -1637,7 +1637,8 @@ Void macro_replace(Char *token_start, File_With_Extra_Space *file, MacroData md)
         cpy.at += md.iden.len + 1; // Skip identifier and open parenthesis.
 
         String *p = params;
-        p->e = cast(Char *)push_size(&tm, sizeof(Char) * 128);
+        Int max_len = 128;
+        p->e = cast(Char *)push_size(&tm, sizeof(Char) * max_len);
         do {
 top:;
             if(*cpy.at == '(') {
@@ -1647,10 +1648,10 @@ top:;
             ++iden_len;
             if((*cpy.at == ',') && (!brace_cnt)) {
                 ++p;
-                p->e = cast(Char *)push_size(&tm, sizeof(Char) * 128);
+                p->e = cast(Char *)push_size(&tm, sizeof(Char) * max_len);
             } else {
                 p->e[p->len++] = *cpy.at;
-                assert(p->len < 128);
+                assert(p->len < max_len);
 
                 if((brace_cnt) && (*cpy.at == ')')) {
                     --brace_cnt;
@@ -1758,14 +1759,23 @@ File preprocess_macros(File original_file) {
                 case Token_Type_hash: {
                     Token preprocessor_dir = get_token(&tokenizer);
 
-                    // #include files.
-                    if(token_compare_cstring(preprocessor_dir, "include")) {
+                    if(token_compare_cstring(preprocessor_dir, "include")) { // #include files.
                         add_include_file(&tokenizer, &file);
-                    } else if(token_compare_cstring(preprocessor_dir, "define")) {
+                    } else if(token_compare_cstring(preprocessor_dir, "define")) { // #define
                         ParseMacroResult pmr = parse_macro(&tokenizer, &param_memory);
                         if(pmr.success) {
                             assert(macro_cnt + 1 < macro_max);
                             macro_data[macro_cnt++] = pmr.md;
+                        }
+                    } else if(token_compare_cstring(preprocessor_dir, "undef")) { // #undef
+                        // TODO(Jonny): Hacky as fuck...
+                        Token undef_macro = get_token(&tokenizer);
+                        for(Int i = 0; (i < macro_cnt); ++i) {
+                            if(token_compare_string(undef_macro, macro_data[i].iden)) {
+                                for(Int j = 0; (j < macro_data[i].iden.len); ++j) {
+                                    macro_data[i].iden.e[j] = ' ';
+                                }
+                            }
                         }
                     } else if(preprocessor_dir.type == Token_Type_hash) {
                         Char *prev_token_end = prev_token.e + prev_token.len;
