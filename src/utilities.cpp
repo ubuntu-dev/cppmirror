@@ -352,6 +352,7 @@ Bool string_comp(Char *a, String b) {
     return(res);
 }
 
+// TODO(Jonny): The hell is this used for??
 Bool string_comp_array(String *a, String *b, Int cnt) {
     Bool res = true;
     for(Int i = 0; (i < cnt); ++i) {

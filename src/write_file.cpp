@@ -36,7 +36,7 @@ global Char *global_primitive_types[] = {
     "char", "short", "int", "long", "float", "double", "bool",
     "uint64_t", "uint32_t", "uint16_t", "uint8_t",
     "int64_t", "int32_t", "int16_t", "int8_t",
-    "uintptr_t", "intptr_t", "size_t", "__m128", "__m128i"
+    "uintptr_t", "intptr_t", "size_t"
 };
 
 Bool is_primitive(String str) {
@@ -79,18 +79,6 @@ Bool is_meta_type_already_in_array(String *array, Int len, String test) {
     }
 
     return(res);
-}
-
-struct FooBar {
-    int a;
-    int b;
-};
-
-Bool operator==(FooBar a, FooBar b) {
-    if(a.a != b.a) { return(false); }
-    if(a.b != b.b) { return(false); }
-
-    return(true);
 }
 
 Int get_actual_type_count(String *types, Structs structs, Enums enums, Typedefs typedefs) {
@@ -149,6 +137,7 @@ File write_data(Parse_Result pr, Bool is_cpp) {
               "#if !defined(PP_GENERATED_H)\n"
               "\n"
               "#include <stdint.h>\n"
+              "#include <string.h>\n"
               "\n"
               "#if !defined(PP_ASSERT)\n"
               "    #include <assert.h>\n"
@@ -175,12 +164,9 @@ File write_data(Parse_Result pr, Bool is_cpp) {
               "    #define PP_STATIC\n"
               "#endif\n"
               "\n"
-              "#if defined(_WIN32)\n"
-              "    // TODO(Jonny): Is this specific to MSVC or to Windows?\n"
-              "    #include <intrin.h>\n"
-              "#elif defined(__linux__)\n"
-              "    #include <x86intrin.h>\n"
-              "#endif\n");
+              "\n"
+              "typedef struct pp___m128 { float e[4]; } pp___m128;\n"
+              "typedef struct pp___m128i { int e[4]; } pp___m128i;\n");
 
         write(&ob,
               "\n// Primitive types.\n"
@@ -372,11 +358,19 @@ File write_data(Parse_Result pr, Bool is_cpp) {
         }
 
         Int type_count = 0;
-        String *types = new String[max_type_count];
+        String *types = new String[max_type_count + 2]; // Plus 2 because I manually add __m128 and __m128i
         if(types) {
             // Meta types enum.
             {
                 type_count = get_actual_type_count(types, pr.structs, pr.enums, pr.typedefs);
+
+                // Add __m128 and __m128i if they weren't already added.
+                if(!is_meta_type_already_in_array(types, type_count, create_string("__m128"))) {
+                    types[type_count++] = create_string("__m128");
+                }
+                if(!is_meta_type_already_in_array(types, type_count, create_string("__m128i"))) {
+                    types[type_count++] = create_string("__m128i");
+                }
 
                 write(&ob,
                       "\n"
@@ -398,7 +392,7 @@ File write_data(Parse_Result pr, Bool is_cpp) {
 
                 write(&ob,
                       "\n"
-                      "    pp_Type_count,\n"
+                      "    pp_Type_count\n"
                       "} pp_Type;\n");
             }
 
@@ -485,7 +479,7 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                     write(&ob, "%s pp_%.*s", (sd->struct_type != StructType_union) ? "struct" : "union",
                           sd->name.len, sd->name.e);
 
-                    write(&ob, " { ");
+                    write(&ob, " {\n    ");
 
                     Bool is_inside_anonymous_struct = false;
                     for(Int j = 0; (j < sd->member_count); ++j) {
@@ -560,7 +554,13 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                         write(&ob, " };");
                     }
 
-                    write(&ob, " };\n");
+                    write(&ob,
+                          "\n"
+                          //"    pp_%.*s(%.*s *a) { memcpy(this, a, sizeof(*this)); }\n"
+                          "\n"
+                          " };\n",
+                          sd->name.len, sd->name.e,
+                          sd->name.len, sd->name.e);
 
                 }
             }
@@ -605,15 +605,29 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                       "} pp_MemberDefinition;\n"
                       "\n"
                       "PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t index) {\n"
-                      "    pp_Type real_type = pp_typedef_to_original(type);\n");
+                      "    pp_Type real_type = pp_typedef_to_original(type);\n"
+                      "    if(real_type == pp_Type___m128) {\n"
+                      "        switch(index) {\n"
+                      "            case 0: {\n"
+                      "                pp_MemberDefinition res = {pp_Type_float, \"e\", PP_OFFSETOF(pp___m128, e), 0, 4};\n"
+                      "                return(res);\n"
+                      "            }\n"
+                      "        }\n"
+                      "    }\n"
+                      "    else if(real_type == pp_Type___m128i) {\n"
+                      "        switch(index) {\n"
+                      "            case 0: {\n"
+                      "                pp_MemberDefinition res = {pp_Type_float, \"e\", PP_OFFSETOF(pp___m128i, e), 0, 4};\n"
+                      "                return(res);\n"
+                      "            }\n"
+                      "        }\n"
+                      "    }\n");
+
                 for(Int i = 0; (i < pr.structs.cnt); ++i) {
                     Struct_Data *sd = pr.structs.e + i;
 
-                    if(!i) write(&ob, "    ");
-                    else   write(&ob, "    else ");
-
                     write(&ob,
-                          "if(real_type == pp_Type_%.*s) {\n"
+                          "    else if(real_type == pp_Type_%.*s) {\n"
                           "        switch(index) {\n",
                           sd->name.len, sd->name.e);
 
@@ -654,23 +668,21 @@ File write_data(Parse_Result pr, Bool is_cpp) {
             {
                 write(&ob,
                       "\n"
-                      "PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {\n");
-                if(pr.structs.cnt) {
-                    write(&ob,
-                          "    switch(pp_typedef_to_original(type)) {\n");
+                      "PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {\n"
+                      "    switch(pp_typedef_to_original(type)) {\n"
+                      "        case pp_Type___m128: case pp_Type___m128i: { return(1); }\n");
 
-                    for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                        Struct_Data *sd = pr.structs.e + i;
-
-                        write(&ob,
-                              "        case pp_Type_%.*s: { return(%d); } break;\n",
-                              sd->name.len, sd->name.e, sd->member_count);
-
-                    }
+                for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                    Struct_Data *sd = pr.structs.e + i;
 
                     write(&ob,
-                          "    }\n");
+                          "        case pp_Type_%.*s: { return(%d); } break;\n",
+                          sd->name.len, sd->name.e, sd->member_count);
+
                 }
+
+                write(&ob,
+                      "    }\n");
 
                 write(&ob,
                       "\n"
@@ -690,7 +702,7 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                       "    pp_StructureType_struct,\n"
                       "    pp_StructureType_enum,\n"
                       "\n"
-                      "    pp_StructureType_count,\n"
+                      "    pp_StructureType_count\n"
                       "} pp_StructureType;\n"
                       "\n"
                       "PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {\n"
@@ -723,18 +735,16 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                 }
 
                 // Structs.
-                if(pr.structs.cnt) {
-                    write(&ob, "\n        ");
-                    for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                        Struct_Data *sd = pr.structs.e + i;
+                write(&ob, "\n        case pp_Type___m128: case pp_Type___m128i: ");
+                for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                    Struct_Data *sd = pr.structs.e + i;
 
-                        write(&ob, "case pp_Type_%.*s: ", sd->name.len, sd->name.e);
-                    }
-                    write(&ob,
-                          "{\n"
-                          "            return(pp_StructureType_struct);\n"
-                          "        } break;\n");
+                    write(&ob, "case pp_Type_%.*s: ", sd->name.len, sd->name.e);
                 }
+                write(&ob,
+                      "{\n"
+                      "            return(pp_StructureType_struct);\n"
+                      "        } break;\n");
 
                 write(&ob,
                       "    }\n"
@@ -750,7 +760,15 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                       "\n"
                       "PP_STATIC char const * pp_type_to_string(pp_Type type) {\n"
                       "    switch(type) {\n");
+                for(Int i = 0; (i < type_count); ++i) {
+                    String *s = types + i;
 
+                    write(&ob,
+                          "        case pp_Type_%.*s: { return(\"%.*s\"); } break;\n",
+                          s->len, s->e, s->len, s->e);
+                }
+
+#if 0
                 for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
                     Char *prim = global_primitive_types[i];
 
@@ -785,7 +803,7 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                           ed->name.len, ed->name.e,
                           ed->name.len, ed->name.e);
                 }
-
+#endif
                 write(&ob,
                       "    }\n"
                       "    \n"
@@ -801,7 +819,19 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                       "\n"
                       "PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {\n"
                       "    switch(pp_typedef_to_original(type)) {\n");
+                for(Int i = 0; (i < type_count); ++i) {
+                    String *s = types + i;
 
+                    if((!is_cpp) && (string_comp(*s, "bool"))) {
+                        continue;
+                    }
+
+                    write(&ob,
+                          "        case pp_Type_%.*s: { return(sizeof(pp_%.*s)); } break;\n",
+                          s->len, s->e, s->len, s->e);
+                }
+
+#if 0
                 // Primitives.
                 write(&ob, "        // Primitives\n");
                 for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
@@ -824,7 +854,7 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                           sd->name.len, sd->name.e,
                           sd->name.len, sd->name.e);
                 }
-
+#endif
                 write(&ob,
                       "    }\n"
                       "\n"
@@ -1013,13 +1043,12 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                     for(Int j = 0; (j < sd->member_count); ++j) {
                         Variable *mem = sd->members + j;
 
-                        // TODO(Jonny): Don't support arrays yet.
-                        if(!mem->array_count) {
-                            write(&ob,
-                                  "    if(a.%.*s != b.%.*s) { return(false); }\n",
-                                  mem->name.len, mem->name.e,
-                                  mem->name.len, mem->name.e);
-                        }
+                        if(mem->array_count) continue; // TODO(Jonny): Don't support arrays yet.
+
+                        write(&ob,
+                              "    if(a.%.*s != b.%.*s) { return(false); }\n",
+                              mem->name.len, mem->name.e,
+                              mem->name.len, mem->name.e);
                     }
 
                     write(&ob,
