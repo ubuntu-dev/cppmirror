@@ -1637,7 +1637,7 @@ Void macro_replace(Char *token_start, File_With_Extra_Space *file, MacroData md)
         cpy.at += md.iden.len + 1; // Skip identifier and open parenthesis.
 
         String *p = params;
-        Int max_len = 128;
+        Int max_len = 256;
         p->e = cast(Char *)push_size(&tm, sizeof(Char) * max_len);
         do {
 top:;
