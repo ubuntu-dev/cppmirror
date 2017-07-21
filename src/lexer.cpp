@@ -1837,7 +1837,7 @@ Parse_Result parse_streams(Int cnt, Char **fnames) {
     res.func_max = 128;
     res.funcs.e = new Function_Data[res.func_max];
 
-    res.typedef_max = 64;
+    res.typedef_max = 128;
     res.typedefs.e = new Typedef_Data[res.typedef_max];
 
     for(Int i = 0; (i < cnt); ++i) {
