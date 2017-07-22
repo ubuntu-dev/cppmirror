@@ -170,6 +170,7 @@ File write_data(Parse_Result pr, Bool is_cpp) {
 
         write(&ob,
               "\n// Primitive types.\n"
+              "typedef void pp_void;\n"
               "typedef int32_t pp_MyBool;\n"
               "#define PP_TRUE 1\n"
               "#define PP_FALSE 0\n");
@@ -378,9 +379,7 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                       "// An enum, with an index for each type in the codebase.\n"
                       "//\n"
                       "typedef enum pp_Type {\n"
-                      "    pp_Type_unknown,\n"
-                      "\n"
-                      "    pp_Type_void,\n");
+                      "    pp_Type_unknown,\n");
 
                 for(Int i = 0; (i < type_count); ++i) {
                     String *t = types + i;
@@ -388,6 +387,10 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                     write(&ob,
                           "    pp_Type_%.*s,\n",
                           t->len, t->e);
+                }
+
+                if(!is_meta_type_already_in_array(types, type_count, create_string("void"))) {
+                    write(&ob, "   pp_Type_void,");
                 }
 
                 write(&ob,
@@ -554,13 +557,7 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                         write(&ob, " };");
                     }
 
-                    write(&ob,
-                          "\n"
-                          //"    pp_%.*s(%.*s *a) { memcpy(this, a, sizeof(*this)); }\n"
-                          "\n"
-                          " };\n",
-                          sd->name.len, sd->name.e,
-                          sd->name.len, sd->name.e);
+                    write(&ob, "\n};\n");
 
                 }
             }
