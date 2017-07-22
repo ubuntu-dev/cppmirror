@@ -63,7 +63,7 @@ rem )
 rem Platform test
 if "%RUN_TEST%"=="true" (
     pushd "test"
-    rem "../build/mirror.exe" sgl_platform.cpp
+    "../build/mirror.exe" sgl_platform.cpp
     popd
 
     pushd "build"

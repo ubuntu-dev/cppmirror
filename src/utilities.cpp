@@ -469,7 +469,7 @@ ResultInt string_to_int(String str) {
     return(res);
 }
 
-ResultInt cstring_to_int(Char *str) {
+ResultInt string_to_int(Char *str) {
     String string;
     string.e = str;
     string.len = string_length(str);

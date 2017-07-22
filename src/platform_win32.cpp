@@ -48,13 +48,13 @@ Uint64 system_get_performance_counter(void) {
 
 #define PAGE_ALIGNED_MALLOC
 #if defined(PAGE_ALIGNED_MALLOC)
-typedef struct Allocation_Node {
+struct Allocation_Node {
     Void *block;
     Void *ptr;
     Uintptr size;
 
-    struct Allocation_Node *next;
-} Allocation_Node;
+    Allocation_Node *next;
+};
 static Allocation_Node *global_debug_alloc_storage;
 
 Void add_to_global_alloc(Void *block, Void *ptr, Uintptr size) {

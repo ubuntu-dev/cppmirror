@@ -136,6 +136,7 @@ enum Token_Type {
     Token_Type_number,
     Token_Type_identifier,
     Token_Type_string,
+    Token_Type_char,
     Token_Type_var_args,
 
     Token_Type_error,
@@ -399,7 +400,7 @@ Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
                     char buf[32] = {0};
 
                     token_to_cstring(size_token, buf, array_count(buf));
-                    ResultInt arr_count = cstring_to_int(buf);
+                    ResultInt arr_count = string_to_int(buf);
                     if(arr_count.success) {
                         res.array_count = arr_count.e;
                     } else {
@@ -782,11 +783,11 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
             res.sd.member_count = 0;
             Int member_cnt = 0;
 
-            typedef struct {
+            struct MemberInfo {
                 Char *pos;
                 Access access;
                 Bool is_inside_anonymous_struct;
-            } MemberInfo;
+            };
 
             Uintptr member_info_mem_cnt = 256;
             MemberInfo *member_info = new MemberInfo[member_info_mem_cnt];
@@ -952,10 +953,10 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
     return(res);
 }
 
-typedef struct {
+struct ParseEnumResult {
     Enum_Data ed;
     Bool success;
-} ParseEnumResult;
+};
 ParseEnumResult parse_enum(Tokenizer *tokenizer) {
     ParseEnumResult res = {0};
 
@@ -1015,16 +1016,22 @@ ParseEnumResult parse_enum(Tokenizer *tokenizer) {
                         Enum_Value *ev = res.ed.values + i;
 
                         Token temp_token = {0};
-                        while(temp_token.type != Token_Type_identifier) { temp_token = get_token(tokenizer); }
+                        while(temp_token.type != Token_Type_identifier) {
+                            temp_token = get_token(tokenizer);
+                        }
 
                         ev->name = token_to_string(temp_token);
                         if(peak_token(tokenizer).type == Token_Type_assign) {
                             eat_token(tokenizer);
-                            Token num = get_token(tokenizer);
+                            Token num_token = get_token(tokenizer);
 
-                            ResultInt r = token_to_int(num);
-                            if(r.success) { count = r.e;                                }
-                            else          { push_error(ErrorType_failed_to_parse_enum); }
+                            ResultInt r = token_to_int(num_token);
+
+                            if(r.success) {
+                                count = r.e;
+                            } else {
+                                push_error(ErrorType_failed_to_parse_enum);
+                            }
                         }
 
                         ev->value = count;
@@ -1188,7 +1195,9 @@ Token get_token(Tokenizer *tokenizer) {
 
             res.type = Token_Type_string;
             res.len = safe_truncate_size_64(tokenizer->at - res.e);
-            if(tokenizer->at[0] == '"') { ++tokenizer->at; }
+            if(tokenizer->at[0] == '"') {
+                ++tokenizer->at;
+            }
         } break;
 
         case '\'': {
@@ -1198,9 +1207,11 @@ Token get_token(Tokenizer *tokenizer) {
                 ++tokenizer->at;
             }
 
-            res.type = Token_Type_string;
+            res.type = Token_Type_char;
             res.len = safe_truncate_size_64(tokenizer->at - res.e);
-            if(tokenizer->at[0] == '\'') { ++tokenizer->at; }
+            if(tokenizer->at[0] == '\'') {
+                ++tokenizer->at;
+            }
         } break;
 
         default: {
@@ -1254,10 +1265,10 @@ Bool is_control_keyword(Token token) {
     }
 }
 
-typedef struct {
+struct AttemptFunctionResult {
     Bool success;
     Function_Data fd;
-} AttemptFunctionResult;
+};
 AttemptFunctionResult attempt_to_parse_function(Token token, Tokenizer *tokenizer) {
 #if INTERNAL
     Tokenizer debug_copy_tokenizer = *tokenizer;
@@ -1503,19 +1514,19 @@ Void parse_stream(Char *stream, Parse_Result *res) {
 //
 // Preprocessor.
 //
-typedef struct {
+struct MacroData {
     String iden;
     String res;
 
     String *params;
     Int param_cnt;
-} MacroData;
+};
 
-typedef struct {
+struct File_With_Extra_Space {
     Char *e;
     Uintptr size;
     Uintptr memory_size;
-} File_With_Extra_Space;
+};
 
 void move_bytes_forward(Void *ptr, Uintptr num_bytes_to_move, Uintptr move_pos) {
     Byte *ptr8 = cast(Byte *)ptr;
@@ -1573,10 +1584,10 @@ Void move_stream(File_With_Extra_Space *file, Char *offset_ptr, Intptr amount_to
     assert(file->e[0]);
 }
 
-typedef struct {
+struct ParseMacroResult {
     MacroData md;
     Bool success;
-} ParseMacroResult;
+};
 ParseMacroResult parse_macro(Tokenizer *tokenizer, TempMemory *param_memory) {
     ParseMacroResult res = {0};
 
@@ -1621,6 +1632,10 @@ ParseMacroResult parse_macro(Tokenizer *tokenizer, TempMemory *param_memory) {
 
 Void macro_replace(Char *token_start, File_With_Extra_Space *file, MacroData md) {
     TempMemory tm = create_temp_buffer(megabytes(1)); // TODO(Jonny): Arbitrary Size.
+
+    if(token_start - file->e ==  37444) {
+        int i = 0;
+    }
 
     Tokenizer tokenizer = { token_start };
 
