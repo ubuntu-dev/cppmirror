@@ -1440,7 +1440,7 @@ Void parse_stream(Char *stream, Parse_Result *res) {
                         res->enums.e[res->enums.cnt++] = r.ed;
                     }
                 } else if(token_equals(token, "typedef")) {
-                    Bool is_type = false, is_function = false;
+                    Bool is_a_keyword = false, is_function = false;
                     // Check to see if this is a functon, type (struct) or not.
                     {
                         Tokenizer cpy = tokenizer;
@@ -1451,14 +1451,14 @@ Void parse_stream(Char *stream, Parse_Result *res) {
                                 is_function = true;
                                 break;
                             } else if(is_token_storage_keyword(t)) {
-                                is_type = true;
+                                is_a_keyword = true;
                                 break;
                             }
 
                         } while(t.type != Token_Type_semi_colon);
                     }
 
-                    if((!is_type) && (!is_function)) {
+                    if((!is_a_keyword) && (!is_function)) {
                         Token original = peak_token(&tokenizer);
                         if(original.type == Token_Type_identifier) {
                             eat_token(&tokenizer);
