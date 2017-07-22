@@ -43,11 +43,11 @@ Void *operator new[](Uintptr size) {
     return(res);
 }
 
-Void operator delete(Void *ptr) {
+void operator delete(void *ptr) {
     system_free(ptr);
 }
 
-Void operator delete[](Void *ptr) {
+void operator delete[](void *ptr) {
     system_free(ptr);
 }
 

@@ -44,7 +44,7 @@ File system_read_entire_file_and_null_terminate(Char *fname) {
         res.size = ftell(file);
         fseek(file, 0, SEEK_SET);
 
-        res.e = system_malloc(res.size + 1);
+        res.e = (Char *)system_malloc(res.size + 1);
         fread(res.e, 1, res.size, file);
         res.e[res.size] = 0;
         fclose(file);
@@ -83,7 +83,7 @@ Bool system_create_folder(Char *name) {
 
 Void system_write_to_console(Char *format, ...) {
     Uintptr alloc_size = 1024;
-    Char *buf = system_malloc(alloc_size);
+    Char *buf = (Char *)system_malloc(alloc_size);
     if(buf) {
         va_list args;
         va_start(args, format);
