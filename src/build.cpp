@@ -9,45 +9,34 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-// Standard
-#include <stdint.h>
-#include <stdarg.h>  // va_list.
-#include <stdlib.h>  // va_arg()
-
-// 3rd party
+// 3rd party.
 #define STB_SPRINTF_IMPLEMENTATION
 #define STB_SPRINTF_NOFLOAT
 #include "stb_sprintf.h"
 
-// Anoymous namespaces make every function inside them "static", which help with optimizations, even in a unity build.
-//namespace {
-
-// Headers
+// Header files.
 #include "types.h"
 #include "platform.h"
 
-// C++ Files.
-#include "utils.cpp"
+// Source files.
+#include "utilities.cpp"
 #include "lexer.cpp"
+#include "test.cpp"
 #include "write_file.cpp"
-#if INTERNAL
-    #include "test.cpp"
-#endif
 
-// Platform-specific implementations.
-#if OS_LINUX
-    #include <stdio.h>    // File IO.
-    #include <sys/stat.h> // mkdir
-
-    #include "platform_linux.cpp"
-
-#elif OS_WIN32
-    #include <windows.h>
-
-    #include "platform_win32.cpp"
-#endif
-
-//} // namespace
-
-// main.
 #include "main.cpp"
+
+// Windows.
+#if OS_WIN32
+#include "windows.h"
+
+#include "platform_win32.cpp"
+
+// Linux
+#elif OS_LINUX
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/stat.h>
+
+#include "platform_linux.cpp"
+#endif

@@ -9,6 +9,11 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
+#if !defined(_TYPES_H)
+#define _TYPES_H
+
+#include <stdint.h>
+
 typedef uint64_t Uint64;
 typedef uint32_t Uint32;
 typedef uint16_t Uint16;
@@ -33,6 +38,9 @@ typedef intptr_t Intptr;
 typedef float Float32;
 typedef double Float64;
 typedef Float32 Float;
+
+#define true 1
+#define false 0
 
 #define cast(type) (type)
 #define array_count(arr) (sizeof(arr) / (sizeof(*(arr))))
@@ -107,4 +115,6 @@ typedef Float32 Float;
     } while(0)
 #else
 #define assert(Expression) {}
+#endif
+
 #endif

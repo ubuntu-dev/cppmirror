@@ -1,5 +1,5 @@
 /*===================================================================================================
-  File:                    utils.cpp
+  File:                    utilities.cpp
   Author:                  Jonathan Livingstone
   Email:                   seagull127@ymail.com
   Licence:                 Public Domain
@@ -9,14 +9,14 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-const Int max_ptr_size = 4;
+Int const MAX_POINTER_SIZE = 4;
 
 //
 // Memset and Memcpy
 //
 Void copy(Void *dest, Void *src, Uintptr size) {
-    Byte *dest8 = cast(Byte *)dest;
-    Byte *src8 = cast(Byte *)src;
+    Byte *dest8 = (Byte *)dest;
+    Byte *src8 = (Byte *)src;
 
     for(Uintptr i = 0; (i < size); ++i) {
         dest8[i] = src8[i];
@@ -24,11 +24,31 @@ Void copy(Void *dest, Void *src, Uintptr size) {
 }
 
 #define zero(dst, size) set(dst, 0, size)
-Void set(void *dest, Byte v, Uintptr n) {
-    Byte *dest8 = cast(Byte *)dest;
+Void set(Void *dest, Byte v, Uintptr n) {
+    Byte *dest8 = (Byte *)dest;
     for(Uintptr i = 0; (i < n); ++i, ++dest8) {
         *dest8 = cast(Byte)v;
     }
+}
+
+Void *operator new(Uintptr size) {
+    Void *res = system_malloc(size);
+
+    return(res);
+}
+
+Void *operator new[](Uintptr size) {
+    Void *res = system_malloc(size);
+
+    return(res);
+}
+
+Void operator delete(Void *ptr) {
+    system_free(ptr);
+}
+
+Void operator delete[](Void *ptr) {
+    system_free(ptr);
 }
 
 //
@@ -47,6 +67,8 @@ Void set(void *dest, Byte v, Uintptr n) {
 #endif
 
 enum ErrorType {
+    ErrorType_unknown,
+
     ErrorType_ran_out_of_memory,
     ErrorType_assert_failed,
     ErrorType_no_parameters,
@@ -72,8 +94,11 @@ enum ErrorType {
     ErrorType_incorrect_members_in_struct,
     ErrorType_incorrect_data_structure_type,
 
-    ErrorType_count,
+    ErrorType_count
 };
+
+#define push_error(type) push_error_(type, MAKE_GUID)
+
 
 struct Error {
     ErrorType type;
@@ -83,7 +108,6 @@ struct Error {
 global Error global_errors[32];
 global Int global_error_count;
 
-#define push_error(type) push_error_(type, MAKE_GUID)
 Void push_error_(ErrorType type, Char *guid) {
     if(global_error_count + 1 < array_count(global_errors)) {
         Error *e = global_errors + global_error_count++;
@@ -93,6 +117,7 @@ Void push_error_(ErrorType type, Char *guid) {
     }
 }
 
+Int string_length(Char *str);
 Char *ErrorTypeToString(ErrorType e) {
     Char *res = 0;
 
@@ -127,7 +152,7 @@ Char *ErrorTypeToString(ErrorType e) {
     }
 
     if(res) {
-        Int offset = 10;//string_length("ErrorType_");
+        Int offset = string_length("ErrorType_");
         res += offset;
     }
 
@@ -142,12 +167,12 @@ Bool print_errors(void) {
     if(global_error_count) {
         res = true;
 
-        Char buffer2[256] = {};
+        Char buffer2[256] = {0};
         stbsp_snprintf(buffer2, array_count(buffer2), " with %d error(s).\n\n", global_error_count);
         system_write_to_console(buffer2);
 
         for(Int i = 0; (i < global_error_count); ++i) {
-            Char buffer[256] = {};
+            Char buffer[256] = {0};
             stbsp_snprintf(buffer, array_count(buffer), "%s %s\n",
                            global_errors[i].guid, ErrorTypeToString(global_errors[i].type));
             system_write_to_console(buffer);
@@ -160,10 +185,8 @@ Bool print_errors(void) {
 //
 // Temp Memory.
 //
-Int const default_mem_alignment = 4;
-
 struct TempMemory {
-    Void *e;
+    Byte *e;
     Uintptr size;
     Uintptr used;
 };
@@ -172,7 +195,7 @@ Uintptr get_alignment(void *mem, Uintptr desired_alignment) {
     Uintptr res = 0;
 
     Uintptr alignment_mask = desired_alignment - 1;
-    if(cast(Uintptr)mem & alignment_mask) {
+    if((Uintptr)mem & alignment_mask) {
         res = desired_alignment - (cast(Uintptr)mem & alignment_mask);
     }
 
@@ -180,25 +203,34 @@ Uintptr get_alignment(void *mem, Uintptr desired_alignment) {
 }
 
 TempMemory create_temp_buffer(Uintptr size) {
-    TempMemory res = {};
+    TempMemory res = {0};
 
-    res.e = system_malloc(size);
+    res.e = new Byte[size];
     if(res.e) {
         res.size = size;
-        zero(res.e, res.size);
     }
 
     return(res);
 }
 
-#define push_type(tm, Type, ...) (Type *)push_size(tm, sizeof(Type), ##__VA_ARGS__)
-Void *push_size(TempMemory *tm, Uintptr size, Uintptr alignment= default_mem_alignment) {
+Void *push_size(TempMemory *tm, Uintptr size, Int alignment = -1) {
     Void *res = 0;
+
+    // TODO(Jonny): These alignments were setup for x64. Should I have different ones for x86?
+    if(alignment == -1) {
+        if(size <= 4) {
+            alignment = 4;
+        } else if(size <= 8) {
+            alignment = 8;
+        } else {
+            alignment = 16;
+        }
+    }
 
     Uintptr alignment_offset = get_alignment(cast(Byte *)tm->e + tm->used, alignment);
 
     if(tm->used + alignment_offset < tm->size) {
-        res = cast(Byte *)tm->e + tm->used + alignment_offset;
+        res = tm->e + tm->used + alignment_offset;
         tm->used += size + alignment_offset;
     } else {
         assert(0);
@@ -209,7 +241,6 @@ Void *push_size(TempMemory *tm, Uintptr size, Uintptr alignment= default_mem_ali
 
 Void free_temp_buffer(TempMemory *temp_memory) {
     system_free(temp_memory->e);
-    zero(temp_memory, sizeof(temp_memory));
 }
 
 //
@@ -217,7 +248,7 @@ Void free_temp_buffer(TempMemory *temp_memory) {
 //
 struct String {
     Char *e;
-    Int len;
+    Uintptr len;
 };
 
 Int string_length(Char *str) {
@@ -230,8 +261,10 @@ Int string_length(Char *str) {
     return(res);
 }
 
-String create_string(Char *str, Int len= 0) {
-    String res = {str, (len) ? len : string_length(str)};
+String create_string(Char *str, Int len = 0) {
+    String res;
+    res.e = str;
+    res.len = (len) ? len : string_length(str);
 
     return(res);
 }
@@ -249,7 +282,7 @@ Bool string_concat(Char *dest, Int len, Char *a, Int a_len, Char *b, Int b_len) 
     return(res);
 }
 
-Bool string_comp_len(Char *a, Char *b, Int len) {
+Bool string_comp_len(Char *a, Char *b, Uintptr len) {
     for(Int i = 0; (i < len); ++i, ++a, ++b) {
         if(*a != *b) {
             return(false);
@@ -271,12 +304,16 @@ Bool string_comp(Char *a, Char *b) {
     return(true);
 }
 
-Void string_copy(Char *dest, Char *src) {
+Uintptr string_copy(Char *dest, Char *src) {
+    Uintptr res = 0;
     while(*src) {
         *dest = *src;
         ++dest;
         ++src;
+        ++res; // TODO(Jonny): Could work out at end, rather than increment every time through the loop?
     }
+
+    return(res);
 }
 
 Bool string_comp(String a, String b) {
@@ -315,6 +352,7 @@ Bool string_comp(Char *a, String b) {
     return(res);
 }
 
+// TODO(Jonny): The hell is this used for??
 Bool string_comp_array(String *a, String *b, Int cnt) {
     Bool res = true;
     for(Int i = 0; (i < cnt); ++i) {
@@ -376,20 +414,25 @@ Bool string_contains(String str, Char *target) {
 }
 
 Bool string_contains(Char *str, Char *target) {
-    String s = {str, string_length(str)};
-    return(string_contains(s, target));
+    String s = create_string(str, string_length(str));
+    Bool res = string_contains(s, target);
+
+    return(res);
 }
 
 //
 // Stuff
 //
+#define kilobytes(v) ((v)            * (1024LL))
+#define megabytes(v) ((kilobytes(v)) * (1024LL))
+#define gigabytes(v) ((megabytes(v)) * (1024LL))
+
 struct ResultInt {
     Int e;
     Bool success;
 };
-
 ResultInt char_to_int(Char c) {
-    ResultInt res = {};
+    ResultInt res = {0};
     switch(c) {
         case '0': { res.e = 0; res.success = true; } break;
         case '1': { res.e = 1; res.success = true; } break;
@@ -407,7 +450,7 @@ ResultInt char_to_int(Char c) {
 }
 
 ResultInt string_to_int(String str) {
-    ResultInt res = {};
+    ResultInt res = {0};
 
     for(Int i = 0; (i < str.len); ++i) {
         ResultInt temp_int = char_to_int(str.e[i]);
@@ -436,13 +479,13 @@ ResultInt string_to_int(Char *str) {
 }
 
 ResultInt calculator_string_to_int(Char *str) {
-    ResultInt res = {};
+    ResultInt res = {0};
 
     /* TODO(Jonny);
         - Make sure each element in the string is either a number or a operator.
         - Do the calculator in order (multiply, divide, add, subtract).
     */
-    String *arr = system_alloc(String, 256); // TODO(Jonny): Random size.
+    String *arr = new String[256]; // TODO(Jonny): Random size.
     if(arr) {
         Char *at = str;
         arr[0].e = at;
@@ -455,8 +498,8 @@ ResultInt calculator_string_to_int(Char *str) {
         }
         ++cnt;
 
-        Int *nums = system_alloc(Int, cnt);
-        Char *ops = system_alloc(Char, cnt);
+        Int *nums = new Int[cnt];
+        Char *ops = new Char[cnt];
         if((nums) && (ops)) {
             for(Int i = 0, j = 0; (j < cnt); ++i, j += 2) {
                 ResultInt r = string_to_int(arr[j]);
@@ -472,14 +515,14 @@ ResultInt calculator_string_to_int(Char *str) {
                 ops[i] = *arr[j].e;
             }
 
-            // TODO(Jonny): At this point, I have all the numbers and ops in seperate arrays.
+            // At this point, I have all the numbers and ops in seperate arrays.
 
 clean_up:;
-            system_free(ops);
-            system_free(nums);
+            delete[] ops;
+            delete[] nums;
         }
 
-        system_free(arr);
+        delete[] arr;
     }
 
     return(res);
@@ -508,23 +551,30 @@ Uint32 safe_truncate_size_64(Uint64 v) {
 // Variable.
 //
 enum Access {
+    Access_unknown,
     Access_public,
     Access_private,
     Access_protected,
 
-    Access_count,
+    Access_count
 };
 
 struct Variable {
     String type;
     String name;
+
     Access access;
+
     Int ptr;
-    Int array_count; // This is 1 if it's not an array. TODO(Jonny): Is this true anymore?
+    Int array_count;
+
+    Uint32 modifier;
+
     Bool is_inside_anonymous_struct;
 };
 
-Variable create_variable(Char *type, Char *name, Int ptr = 0, Int array_count = 0) {
+
+Variable create_variable(Char *type, Char *name, Int ptr, Int array_count ) {
     Variable res;
     res.type = create_string(type);
     res.name = create_string(name);
@@ -534,32 +584,20 @@ Variable create_variable(Char *type, Char *name, Int ptr = 0, Int array_count = 
     return(res);
 }
 
-Bool compare_variable(Variable a, Variable b) {
+Bool variable_comp(Variable a, Variable b) {
     Bool res = true;
 
-    if(!string_comp(a.type, b.type))        res = false;
-    else if(!string_comp(a.name, b.name))   res = false;
-    else if(a.ptr != b.ptr)                 res = false;
-    else if(a.array_count != b.array_count) res = false;
-
-    return(res);
-}
-
-Bool operator==(Variable a, Variable b) {
-    Bool res = compare_variable(a, b);
-
-    return(res);
-}
-
-Bool operator!=(Variable a, Variable b) {
-    Bool res = !compare_variable(a, b);
+    if(!string_comp(a.type, b.type))        { res = false; }
+    else if(!string_comp(a.name, b.name))   { res = false; }
+    else if(a.ptr != b.ptr)                 { res = false; }
+    else if(a.array_count != b.array_count) { res = false; }
 
     return(res);
 }
 
 Bool compare_variable_array(Variable *a, Variable *b, Int count) {
     for(Int i = 0; (i < count); ++i) {
-        if(!compare_variable(a[i], b[i])) {
+        if(!variable_comp(a[i], b[i])) {
             return(false);
         }
     }
@@ -570,9 +608,6 @@ Bool compare_variable_array(Variable *a, Variable *b, Int count) {
 //
 // Utils.
 //
-#define kilobytes(v) ((v)            * (1024LL))
-#define megabytes(v) ((kilobytes(v)) * (1024LL))
-#define gigabytes(v) ((megabytes(v)) * (1024LL))
 
 Char to_caps(Char c) {
     Char res = c;
@@ -583,8 +618,25 @@ Char to_caps(Char c) {
     return(res);
 }
 
+Char to_lower(Char c) {
+    Char res = c;
+    if((c >= 'A') && (c <= 'Z')) {
+        res += 32;
+    }
+
+    return(res);
+}
+
 Int absolute_value(Int v) {
     Int res = (v > 0) ? v : -v;
 
     return(res);
+}
+
+Void dump_string_to_disk(Char *str, Char *fname) {
+    File file;
+    file.e = str;
+    file.size = string_length(str);
+    Bool success = system_write_to_file(fname, file);
+    assert(success);
 }
