@@ -1603,6 +1603,7 @@ ParseMacroResult parse_macro(Tokenizer *tokenizer, TempMemory *param_memory) {
         res.success = true;
     } else {
         if(*tokenizer->at == '(') {
+            // TODO(Jonny): Why am I doing this myself and not pushing it via the push_size function?
             res.md.params = cast(String *)(cast(Char *)param_memory->e + param_memory->used);
 
             Token param = {0};
