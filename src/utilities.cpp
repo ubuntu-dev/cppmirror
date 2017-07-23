@@ -43,11 +43,12 @@ Void *operator new[](Uintptr size) {
     return(res);
 }
 
-void operator delete(void *ptr) {
+// These won't actually throw, but Clang won't shut up about them...
+void operator delete(void *ptr) throw() {
     system_free(ptr);
 }
 
-void operator delete[](void *ptr) {
+void operator delete[](void *ptr) throw() {
     system_free(ptr);
 }
 
