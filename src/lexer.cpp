@@ -1783,7 +1783,8 @@ File preprocess_macros(File original_file) {
                             macro_data[macro_cnt++] = pmr.md;
                         }
                     } else if(token_compare_cstring(preprocessor_dir, "undef")) { // #undef
-                        // TODO(Jonny): Hacky as fuck...
+                        // TODO(Jonny): Hacky as fuck... I literally just turn whatever the macro identifier was into
+                        //              a series of spaces... instead, could I maybe just set the length of the string to 0?
                         Token undef_macro = get_token(&tokenizer);
                         for(Int i = 0; (i < macro_cnt); ++i) {
                             if(token_compare_string(undef_macro, macro_data[i].iden)) {
@@ -1792,6 +1793,10 @@ File preprocess_macros(File original_file) {
                                 }
                             }
                         }
+                    } else if(token_compare_cstring(preprocessor_dir, "if")) {
+                        // TODO(Jonny): If the macro isn't defined yet, then get rid of everything in the #if block.
+                        //              I'll need some way to pass in a macros for the compiler and stuff like "INTERNAL",
+                        //              but I should be able to detect the platform myself.
                     } else if(preprocessor_dir.type == Token_Type_hash) {
                         Char *prev_token_end = prev_token.e + prev_token.len;
                         Token next_token = peak_token(&tokenizer);
@@ -1802,10 +1807,6 @@ File preprocess_macros(File original_file) {
                 } break;
 
                 case Token_Type_identifier: {
-                    if(token_compare_cstring(token, "SGLM_MADD")) {
-                        int i = 0;
-                    }
-
                     for(Int i = 0; (i < macro_cnt); ++i) {
                         if(token_compare_string(token, macro_data[i].iden)) {
                             if(macro_data[i].res.len) {
