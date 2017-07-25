@@ -97,3 +97,10 @@ Void system_write_to_console(Char *format, ...) {
     }
 
 }
+
+int main(int argc, char **argv) {
+    my_main(argc, argv);
+
+    return(0);
+}
+

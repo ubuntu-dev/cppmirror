@@ -8,7 +8,7 @@
                            The use of this code is at your own risk
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
-
+#if 0
 extern "C" {
     int _fltused;
 
@@ -34,7 +34,7 @@ extern "C" {
         return(dest);
     }
 }
-
+#endif
 Uint64 system_get_performance_counter(void) {
     Uint64 res = 0;
 
@@ -46,7 +46,7 @@ Uint64 system_get_performance_counter(void) {
     return(res);
 }
 
-#define PAGE_ALIGNED_MALLOC
+//#define PAGE_ALIGNED_MALLOC
 #if defined(PAGE_ALIGNED_MALLOC)
 struct Allocation_Node {
     Void *block;
@@ -122,8 +122,6 @@ Void *system_malloc(Uintptr size) {
         LPSTR msg_buf = 0;
         Uintptr msg_size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                                           0, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&msg_buf, 0, 0);
-
-        int i = 0;
     }
 
     return(res);
@@ -207,6 +205,9 @@ File system_read_entire_file_and_null_terminate(Char *fname) {
 
     HANDLE fhandle = CreateFileA(fname, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
     if(fhandle != INVALID_HANDLE_VALUE) {
+        defer {
+            CloseHandle(fhandle);
+        };
         LARGE_INTEGER fsize;
         if(GetFileSizeEx(fhandle, &fsize)) {
             DWORD fsize32 = safe_truncate_size_64(fsize.QuadPart);
@@ -222,8 +223,6 @@ File system_read_entire_file_and_null_terminate(Char *fname) {
                     res.e[res.size] = 0;
                 }
             }
-
-            CloseHandle(fhandle);
         }
     }
 
@@ -235,6 +234,9 @@ Bool system_write_to_file(Char *fname, File file) {
 
     HANDLE fhandle = CreateFileA(fname, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, 0, CREATE_ALWAYS, 0, 0);
     if(fhandle != INVALID_HANDLE_VALUE) {
+        defer {
+            CloseHandle(fhandle);
+        };
         DWORD fsize32;
 #if ENVIRONMENT32
         fsize32 = file.size;
@@ -249,8 +251,6 @@ Bool system_write_to_file(Char *fname, File file) {
                 res = true;
             }
         }
-
-        CloseHandle(fhandle);
     }
 
     return res;
@@ -261,6 +261,9 @@ Uintptr system_get_file_size(Char *fname) {
 
     HANDLE fhandle = CreateFileA(fname, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
     if(fhandle != INVALID_HANDLE_VALUE) {
+        defer {
+            CloseHandle(fhandle);
+        };
         LARGE_INTEGER large_int;
         if(GetFileSizeEx(fhandle, &large_int)) {
 #if ENVIRONMENT32
@@ -270,7 +273,6 @@ Uintptr system_get_file_size(Char *fname) {
 #endif
         }
 
-        CloseHandle(fhandle);
     }
 
     return(res);
@@ -302,6 +304,9 @@ Bool system_create_folder(Char *name) {
 Void system_write_to_console(Char *format, ...) {
     Uintptr alloc_size = 1024;
     Char *buf = new Char[alloc_size];
+    defer {
+        delete[] buf;
+    };
     if(buf) {
         va_list args;
         va_start(args, format);
@@ -315,13 +320,10 @@ Void system_write_to_console(Char *format, ...) {
 
         assert(res);
         assert(chars_written == len);
-
-        system_free(buf);
     }
 }
 
-int main(int argc, char **argv);
-void mainCRTStartup() {
+int main(int argc_, char **argv_) {
     // Get the command line arguments.
     Char *cmdline = GetCommandLineA();
     Int args_len = string_length(cmdline);
@@ -341,6 +343,9 @@ void mainCRTStartup() {
 
     // Create copy of args.
     Char *arg_cpy = new Char[args_len + 1];
+    defer {
+        delete[] arg_cpy;
+    };
     string_copy(arg_cpy, cmdline);
 
     for(Int i = 0; (i < args_len); ++i) {
@@ -358,6 +363,9 @@ void mainCRTStartup() {
     Int mem_size = original_cnt * 2;
     Int argc = 1;
     Char **argv = new Char *[mem_size];
+    defer {
+        delete[] argv;
+    };
     Char **cur = argv;
     *cur++ = arg_cpy;
     for(Int i = 0; (i < args_len); ++i) {
@@ -390,10 +398,7 @@ void mainCRTStartup() {
         }
     }
 
-    int res = main(argc, argv);
+    my_main(argc, argv);
 
-    system_free(arg_cpy);
-    system_free(argv);
-
-    ExitProcess(res);
+    //ExitProcess(0);
 }

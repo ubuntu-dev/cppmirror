@@ -72,7 +72,7 @@ Void print_help(void) {
     system_write_to_console(help);
 }
 
-int main(int argc, char **argv) {
+Void my_main(Int argc, Char **argv) {
     Int res = 0;
 
     system_write_to_console("Starting Mirror...");
@@ -186,6 +186,4 @@ int main(int argc, char **argv) {
     }
 
     system_write_to_console("\n");
-
-    return(res);
 }

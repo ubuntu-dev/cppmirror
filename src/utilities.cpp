@@ -11,6 +11,9 @@
 
 Int const MAX_POINTER_SIZE = 4;
 
+#define TOKEN_CONCAT_(x, y) x##y
+#define TOKEN_CONCAT(x, y) TOKEN_CONCAT_(x, y)
+
 //
 // Memset and Memcpy
 //
@@ -51,6 +54,28 @@ void operator delete(void *ptr) throw() {
 void operator delete[](void *ptr) throw() {
     system_free(ptr);
 }
+
+//
+// Defer
+//
+template<typename F>
+struct Defer_Struct {
+    F f;
+    inline Defer_Struct(F f) : f(f) { }
+
+    inline ~Defer_Struct() {
+        f();
+    }
+};
+
+struct {
+    template<typename F>
+    inline Defer_Struct<F> operator<<(F f) {
+        return Defer_Struct<F>(f);
+    }
+} Defer_Functor;
+
+#define defer auto TOKEN_CONCAT(defer_in_cpp_, __COUNTER__) = Defer_Functor << [&]
 
 //
 // Error stuff.

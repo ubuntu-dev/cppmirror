@@ -360,6 +360,9 @@ File write_data(Parse_Result pr, Bool is_cpp) {
 
         Int type_count = 0;
         String *types = new String[max_type_count + 2]; // Plus 2 because I manually add __m128 and __m128i
+        defer {
+            delete[] types;
+        };
         if(types) {
             // Meta types enum.
             {
@@ -1176,8 +1179,6 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                       "    return(0);\n"
                       "}\n");
             }
-
-            delete[] types;
         }
 
         //

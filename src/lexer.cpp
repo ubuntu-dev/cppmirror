@@ -791,6 +791,9 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
 
             Uintptr member_info_mem_cnt = 256;
             MemberInfo *member_info = new MemberInfo[member_info_mem_cnt];
+            defer {
+                delete[] member_info;
+            };
             if(member_info) {
                 Bool inside_anonymous_struct = false;
                 for(;;) {
@@ -938,8 +941,6 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
                     }
                 }
             }
-
-            delete[] member_info;
         }
 
 
@@ -1761,9 +1762,15 @@ File preprocess_macros(File original_file) {
         system_free(original_file.e);
 
         TempMemory param_memory = create_temp_buffer(sizeof(String) * 128);
+        defer {
+            free_temp_buffer(&param_memory);
+        };
 
         Int macro_cnt = 0, macro_max = 128;
         MacroData *macro_data = new MacroData[macro_max];
+        defer {
+            delete[] macro_data;
+        };
 
         Tokenizer tokenizer = { file.e };
 
@@ -1826,9 +1833,6 @@ File preprocess_macros(File original_file) {
 
             prev_token = token;
         }
-
-        free_temp_buffer(&param_memory);
-        delete[] macro_data;
 
         assert(file.size < file.memory_size);
 

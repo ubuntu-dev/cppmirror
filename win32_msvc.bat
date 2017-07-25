@@ -18,9 +18,9 @@ set RELEASE_COMMON_COMPILER_FLAGS=-nologo -MT -fp:fast -Gm- -GR- -EHa- -O2 -Oi %
 IF NOT EXIST "build" mkdir "build"
 pushd "build"
 if "%RELEASE%"=="true" (
-    cl -Femirror %RELEASE_COMMON_COMPILER_FLAGS% -GS- -Gs9999999 -Wall ../src/build.cpp -link -nodefaultlib -subsystem:console,5.2 kernel32.lib -stack:0x100000,0x100000
+    cl -Femirror %RELEASE_COMMON_COMPILER_FLAGS% -GS- -Gs9999999 -Wall ../src/build.cpp -link -subsystem:console,5.2 kernel32.lib -stack:0x100000,0x100000
 ) else (
-    cl -Femirror %DEBUG_COMMON_COMPILER_FLAGS% -GS- -Gs9999999 -Wall ../src/build.cpp -link -nodefaultlib -subsystem:console,5.2 kernel32.lib -stack:0x100000,0x100000
+    cl -Femirror %DEBUG_COMMON_COMPILER_FLAGS% -GS- -Gs9999999 -Wall ../src/build.cpp -link -subsystem:console,5.2 kernel32.lib -stack:0x100000,0x100000
     mirror -t
 )
 popd
@@ -61,12 +61,12 @@ rem     popd
 rem )
 
 rem Platform test
-if "%RUN_TEST%"=="true" (
-    pushd "test"
-    "../build/mirror.exe" sgl_platform.cpp
-    popd
-
-    pushd "build"
-    cl -Fetest %DEBUG_COMMON_COMPILER_FLAGS% -Wall "../test/sgl_platform.cpp" -FmTest.map -link -subsystem:console,5.2 kernel32.lib
-    popd
-)
+rem if "%RUN_TEST%"=="true" (
+rem     pushd "test"
+rem     "../build/mirror.exe" sgl_platform.cpp
+rem     popd
+rem 
+rem     pushd "build"
+rem     cl -Fetest %DEBUG_COMMON_COMPILER_FLAGS% -Wall "../test/sgl_platform.cpp" -FmTest.map -link -subsystem:console,5.2 kernel32.lib
+rem     popd
+rem )
