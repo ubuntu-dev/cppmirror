@@ -1801,20 +1801,56 @@ Void handle_hash_if_statement(Tokenizer *tokenizer, MacroData *macro_data, Int m
     //              subtract 3.
     Char *start = tokenizer->at - 3;
 
-    Token token = get_token(tokenizer);
+    Bool not = false;
+    Bool defined_macro = false;
 
-    Bool found = false;
+    Token token = get_token(tokenizer);
+    if(token.type == Token_Type_not) {
+        not = true;
+        token = get_token(tokenizer);
+    }
+
+    if(token_compare(token, "defined")) {
+        defined_macro = true;
+        Token should_be_open_paren = get_token(tokenizer);
+        assert(should_be_open_paren.type == Token_Type_open_paren);
+        token = get_token(tokenizer);
+    }
+
+    if(token_compare(token, "SGLP_OS_LINUX")) {
+        int i = 0;
+    }
+
+    Bool should_replace = false;
     for(Int i = 0; (i < macro_cnt); ++i) {
         if(token_compare(token, macro_data[i].iden)) {
-            if(*macro_data[i].res.e != '0') {
-                found = true;
+            if(defined_macro) {
+                // If this is a #if defined(xxx) macro, then just break out when we find xxx.
+                should_replace = true;
+                break;
+            }
+            else {
+                // #define xxx 1
+                // #if xxx
+                if((!not) && (*macro_data[i].res.e != '0')) {
+                    should_replace = true;
+                }
+                // #define xxx 0
+                // #if !xxx
+                else if((not) && (*macro_data[i].res.e == '0')) {
+                    should_replace = true;
+                }
             }
 
             break;
         }
     }
 
-    if(!found) {
+    if((defined_macro) && (not)) {
+        should_replace = !should_replace;
+    }
+
+    if(!should_replace) {
         Token t = get_token(tokenizer);
         Int number_of_ifs = 0;
         Bool should_loop = true;
@@ -1852,100 +1888,100 @@ File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int 
     file.memory_size = original_file.size * 10;
 
     Void *p = system_malloc(file.memory_size);
-    if(p) {
-        copy(p, original_file.e, original_file.size);
-        file.e = (Char *)p;
-        zero(original_file.e, original_file.size);
-        system_free(original_file.e);
+    if(!p) return(res);
 
-        TempMemory param_memory = create_temp_buffer(sizeof(String) * 128);
-        defer {
-            free_temp_buffer(&param_memory);
-        };
+    copy(p, original_file.e, original_file.size);
+    file.e = (Char *)p;
+    zero(original_file.e, original_file.size);
+    system_free(original_file.e);
 
-        Int macro_cnt = 0, macro_max = 128;
-        MacroData *macro_data = new MacroData[macro_max];
-        defer {
-            delete[] macro_data;
-        };
+    TempMemory param_memory = create_temp_buffer(sizeof(String) * 128);
+    // TODO(Jonny): Return if unsuccessful.
+    defer {
+        free_temp_buffer(&param_memory);
+    };
 
-        for(Int i = 0; (i < passed_in_macro_cnt); ++i) {
-            macro_data[macro_cnt++] = passed_in_macro_data[i];
-        }
+    Int macro_cnt = 0, macro_max = 128;
+    MacroData *macro_data = new MacroData[macro_max];
+    if(!macro_data) return(res);
+    defer {
+        delete[] macro_data;
+    };
 
-        Tokenizer tokenizer = { file.e };
-
-        Bool parsing = true;
-        Token prev_token = {0};
-        while(parsing) {
-            Token token = get_token(&tokenizer);
-            switch(token.type) {
-                case Token_Type_hash: {
-                    Token preprocessor_dir = get_token(&tokenizer);
-
-                    if(token_compare(preprocessor_dir, "include")) { // #include files.
-                        add_include_file(&tokenizer, &file);
-                    }
-                    else if(token_compare(preprocessor_dir, "define")) {   // #define
-                        ParseMacroResult pmr = parse_macro(&tokenizer, &param_memory);
-                        if(pmr.success) {
-                            assert(macro_cnt + 1 < macro_max);
-                            macro_data[macro_cnt++] = pmr.md;
-                        }
-                    }
-                    else if(token_compare(preprocessor_dir, "undef")) {   // #undef
-                        // TODO(Jonny): Hacky as fuck... I literally just turn whatever the macro identifier was into
-                        //              a series of spaces... instead, could I maybe just set the length of the string to 0?
-                        Token undef_macro = get_token(&tokenizer);
-                        for(Int i = 0; (i < macro_cnt); ++i) {
-                            if(token_compare(undef_macro, macro_data[i].iden)) {
-                                for(Int j = 0; (j < macro_data[i].iden.len); ++j) {
-                                    macro_data[i].iden.e[j] = ' ';
-                                }
-                            }
-                        }
-                    }
-                    else if(token_compare(preprocessor_dir, "if")) {
-                        // TODO(Jonny): If the macro isn't defined yet, then get rid of everything in the #if block.
-                        //              I'll need some way to pass in a macros for the compiler and stuff like "INTERNAL",
-                        //              but I should be able to detect the platform myself.
-
-                        handle_hash_if_statement(&tokenizer, macro_data, macro_cnt);
-                    }
-                    else if(preprocessor_dir.type == Token_Type_hash) {
-                        Char *prev_token_end = prev_token.e + prev_token.len;
-                        Token next_token = peak_token(&tokenizer);
-                        Intptr diff = next_token.e - prev_token_end;
-
-                        move_stream(&file, token.e, -diff);
-                    }
-                } break;
-
-                case Token_Type_identifier: {
-                    for(Int i = 0; (i < macro_cnt); ++i) {
-                        if(token_compare(token, macro_data[i].iden)) {
-                            if(macro_data[i].res.len) {
-                                Char *start = token.e;
-                                macro_replace(token.e, &file, macro_data[i]);
-                                tokenizer.at = start;
-                            }
-                        }
-                    }
-                } break;
-
-                case Token_Type_end_of_stream: {
-                    parsing = false;
-                };
-            }
-
-            prev_token = token;
-        }
-
-        assert(file.size < file.memory_size);
-
-        res.e = file.e;
-        res.size = file.size;
+    for(Int i = 0; (i < passed_in_macro_cnt); ++i) {
+        macro_data[macro_cnt++] = passed_in_macro_data[i];
     }
+
+    Tokenizer tokenizer = { file.e };
+
+    Bool parsing = true;
+    Token prev_token = {0};
+    while(parsing) {
+        Token token = get_token(&tokenizer);
+        switch(token.type) {
+            case Token_Type_hash: {
+                Token preprocessor_dir = get_token(&tokenizer);
+
+                if(token_compare(preprocessor_dir, "include")) { // #include files.
+                    add_include_file(&tokenizer, &file);
+                }
+                else if(token_compare(preprocessor_dir, "define")) {   // #define
+                    ParseMacroResult pmr = parse_macro(&tokenizer, &param_memory);
+                    if(pmr.success) {
+                        assert(macro_cnt + 1 < macro_max);
+                        macro_data[macro_cnt++] = pmr.md;
+                    }
+                }
+                else if(token_compare(preprocessor_dir, "undef")) {   // #undef
+                    // TODO(Jonny): Hacky as fuck... I literally just turn whatever the macro identifier was into
+                    //              a series of spaces... instead, could I maybe just set the length of the string to 0?
+                    Token undef_macro = get_token(&tokenizer);
+                    for(Int i = 0; (i < macro_cnt); ++i) {
+                        if(token_compare(undef_macro, macro_data[i].iden)) {
+                            for(Int j = 0; (j < macro_data[i].iden.len); ++j) {
+                                macro_data[i].iden.e[j] = ' ';
+                            }
+                        }
+                    }
+                }
+                else if(token_compare(preprocessor_dir, "if")) {
+                    Char *before = tokenizer.at;
+                    handle_hash_if_statement(&tokenizer, macro_data, macro_cnt);
+                    int i = 0;
+                }
+                else if(preprocessor_dir.type == Token_Type_hash) {
+                    Char *prev_token_end = prev_token.e + prev_token.len;
+                    Token next_token = peak_token(&tokenizer);
+                    Intptr diff = next_token.e - prev_token_end;
+
+                    move_stream(&file, token.e, -diff);
+                }
+            } break;
+
+            case Token_Type_identifier: {
+                for(Int i = 0; (i < macro_cnt); ++i) {
+                    if(token_compare(token, macro_data[i].iden)) {
+                        if(macro_data[i].res.len) {
+                            Char *start = token.e;
+                            macro_replace(token.e, &file, macro_data[i]);
+                            tokenizer.at = start;
+                        }
+                    }
+                }
+            } break;
+
+            case Token_Type_end_of_stream: {
+                parsing = false;
+            };
+        }
+
+        prev_token = token;
+    }
+
+    assert(file.size < file.memory_size);
+
+    res.e = file.e;
+    res.size = file.size;
 
     return(res);
 }
