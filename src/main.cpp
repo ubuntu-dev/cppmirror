@@ -25,6 +25,7 @@ enum SwitchType {
     SwitchType_log_errors,
     SwitchType_is_c_file,
     SwitchType_run_tests,
+    SwitchType_macro,
     SwitchType_print_help,
     SwitchType_output_preprocessed_file,
 
@@ -40,13 +41,14 @@ SwitchType get_switch_type(Char *str) {
     if(len >= 2) {
         if(str[0] == '-') {
             switch(str[1]) {
-                case 'e': res = SwitchType_log_errors;               break;
-                case 'h': res = SwitchType_print_help;               break;
+                case 'e': case 'E': res = SwitchType_log_errors;               break;
+                case 'h': case 'H': res = SwitchType_print_help;               break;
+                case 'c': case 'C': res = SwitchType_is_c_file;                break;
+                case 'p': case 'P': res = SwitchType_output_preprocessed_file; break;
+                case 'd': case 'D': res = SwitchType_macro;                    break;
 #if INTERNAL
-                case 's': res = SwitchType_silent;                   break;
-                case 't': res = SwitchType_run_tests;                break;
-                case 'c': res = SwitchType_is_c_file;                break;
-                case 'p': res = SwitchType_output_preprocessed_file; break;
+                case 's': case 'S': res = SwitchType_silent;                   break;
+                case 't': case 'T': res = SwitchType_run_tests;                break;
 #endif
                 default: assert(0); break;
             }
@@ -72,6 +74,20 @@ Void print_help(void) {
     system_write_to_console(help);
 }
 
+// TODO(Jonny): This will fail if the format isn't "-Diden=res";
+MacroData parse_passed_in_macro(Char *str) {
+    Tokenizer tokenizer = {str};
+    Token iden = get_token(&tokenizer);
+    eat_token(&tokenizer);
+    Token result = get_token(&tokenizer);
+
+    MacroData res = {};
+    res.iden = token_to_string(iden);
+    res.res = token_to_string(result);
+
+    return(res);
+}
+
 Void my_main(Int argc, Char **argv) {
     Int res = 0;
 
@@ -92,6 +108,10 @@ Void my_main(Int argc, Char **argv) {
         if(fnames) {
             Uintptr total_file_size = 0;
             Int number_of_files = 0;
+
+            Int macro_cnt = 0;
+            MacroData passed_in_macro_data[8] = {};
+
             for(Int i = 1; (i < argc); ++i) {
                 Char *switch_name = argv[i];
 
@@ -105,6 +125,10 @@ Void my_main(Int argc, Char **argv) {
                     case SwitchType_print_help:               print_help();                         break;
                     case SwitchType_is_c_file:                is_c = true;                          break;
                     case SwitchType_output_preprocessed_file: only_output_preprocessed_file = true; break;
+
+                    case SwitchType_macro: {
+                        passed_in_macro_data[macro_cnt++] = parse_passed_in_macro(argv[i] + 2); // Skip "-D".
+                    } break;
 
                     case SwitchType_source_file: {
                         if(number_of_files >= fnames_max_cnt - 1) {
@@ -134,31 +158,12 @@ Void my_main(Int argc, Char **argv) {
                 if(!number_of_files) {
                     push_error(ErrorType_no_files_pass_in);
                 } else {
-                    File file_to_write = {0};
-                    Char *output_string = 0;
-                    Parse_Result parse_res = {0};
-                    if(only_output_preprocessed_file) {
-                        if(number_of_files == 1) {
-                            output_string = "something.c";  // TODO(Jonny): Come up with a better name than "something.c"...
-                            file_to_write = system_read_entire_file_and_null_terminate(fnames[0]); // TODO(Jonny): Leak.
+                    Parse_Result parse_res = parse_streams(number_of_files, fnames, passed_in_macro_data, macro_cnt);
 
-                            file_to_write = preprocess_macros(file_to_write);
-                        } else {
-                            system_write_to_console("Can only write one preprocessed file at a time (soz). You input %d file(s).",
-                                                    number_of_files);
-                        }
-                    } else {
-                        output_string = "pp_generated.h";
+                    File file_to_write = write_data(parse_res, !is_c);
 
-                        parse_res = parse_streams(number_of_files, fnames);
-
-                        file_to_write = write_data(parse_res, !is_c);
-                    }
-
-                    if(output_string) {
-                        Bool write_success = system_write_to_file(output_string, file_to_write);
-                        assert(write_success);
-                    }
+                    Bool write_success = system_write_to_file("pp_generated.h", file_to_write);
+                    assert(write_success);
 
                     // These are freed so that they don't show up as false positives when I'm checking for memory leaks. I don't
                     // _really_ care about memory leaks though, so they're only freed in an INTERNAL build.
