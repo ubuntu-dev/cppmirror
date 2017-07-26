@@ -213,7 +213,7 @@ File system_read_entire_file_and_null_terminate(Char *fname) {
             DWORD fsize32 = safe_truncate_size_64(fsize.QuadPart);
             Void *memory = system_malloc(fsize32 + 1);
 
-            DWORD bytes_read;
+            DWORD bytes_read = 0;
             if(ReadFile(fhandle, memory, fsize32, &bytes_read, 0)) {
                 if(bytes_read != fsize32) {
                     push_error(ErrorType_did_not_read_entire_file);
@@ -243,7 +243,7 @@ Bool system_write_to_file(Char *fname, File file) {
 #else
         fsize32 = safe_truncate_size_64(file.size);
 #endif
-        DWORD bytes_written;
+        DWORD bytes_written = 0;
         if(WriteFile(fhandle, file.e, fsize32, &bytes_written, 0)) {
             if(bytes_written != fsize32) {
                 push_error(ErrorType_did_not_write_entire_file);
@@ -264,7 +264,7 @@ Uintptr system_get_file_size(Char *fname) {
         defer {
             CloseHandle(fhandle);
         };
-        LARGE_INTEGER large_int;
+        LARGE_INTEGER large_int = {};
         if(GetFileSizeEx(fhandle, &large_int)) {
 #if ENVIRONMENT32
             res = safe_truncate_size_64(large_int.QuadPart);

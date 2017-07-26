@@ -61,11 +61,8 @@ void operator delete[](void *ptr) throw() {
 template<typename F>
 struct Defer_Struct {
     F f;
-    inline Defer_Struct(F f) : f(f) { }
-
-    inline ~Defer_Struct() {
-        f();
-    }
+    inline Defer_Struct(F f) : f(f) {}
+    inline ~Defer_Struct() { f(); }
 };
 
 struct {
