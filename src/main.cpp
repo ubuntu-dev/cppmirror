@@ -52,7 +52,8 @@ SwitchType get_switch_type(Char *str) {
 #endif
                 default: assert(0); break;
             }
-        } else {
+        }
+        else {
             res = SwitchType_source_file;
         }
     }
@@ -98,7 +99,8 @@ Void my_main(Int argc, Char **argv) {
     if(argc <= 1) {
         push_error(ErrorType_no_parameters);
         print_help();
-    } else {
+    }
+    else {
         Bool should_run_tests = false;
         Bool should_write_to_file = true;
         Bool only_output_preprocessed_file = false;
@@ -117,18 +119,33 @@ Void my_main(Int argc, Char **argv) {
 
                 SwitchType type = get_switch_type(switch_name);
                 switch(type) {
-                    case SwitchType_silent:                   should_write_to_file = false;         break;
-                    case SwitchType_log_errors:               should_log_errors = true;             break;
-#if INTERNAL
-                    case SwitchType_run_tests:                should_run_tests = true;              break;
-#endif
-                    case SwitchType_print_help:               print_help();                         break;
-                    case SwitchType_is_c_file:                is_c = true;                          break;
-                    case SwitchType_output_preprocessed_file: only_output_preprocessed_file = true; break;
+                    case SwitchType_silent:
+                        should_write_to_file = false;
+                        break;
 
-                    case SwitchType_macro: {
+                    case SwitchType_log_errors:
+                        should_log_errors = true;
+                        break;
+#if INTERNAL
+                    case SwitchType_run_tests:
+                        should_run_tests = true;
+                        break;
+#endif
+                    case SwitchType_print_help:
+                        print_help();
+                        break;
+
+                    case SwitchType_is_c_file:
+                        is_c = true;
+                        break;
+
+                    case SwitchType_output_preprocessed_file:
+                        only_output_preprocessed_file = true;
+                        break;
+
+                    case SwitchType_macro:
                         passed_in_macro_data[macro_cnt++] = parse_passed_in_macro(argv[i] + 2); // Skip "-D".
-                    } break;
+                        break;
 
                     case SwitchType_source_file: {
                         if(number_of_files >= fnames_max_cnt - 1) {
@@ -150,14 +167,17 @@ Void my_main(Int argc, Char **argv) {
 
                 if(!tests_failed) {
                     system_write_to_console("all tests passed...");
-                } else {
+                }
+                else {
                     system_write_to_console("%d tests failed\n", tests_failed);
                 }
 #endif
-            } else {
+            }
+            else {
                 if(!number_of_files) {
                     push_error(ErrorType_no_files_pass_in);
-                } else {
+                }
+                else {
                     Parse_Result parse_res = parse_streams(number_of_files, fnames, passed_in_macro_data, macro_cnt);
 
                     File file_to_write = write_data(parse_res, !is_c);

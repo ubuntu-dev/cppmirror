@@ -278,7 +278,8 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                           ed->name.len, ed->name.e,
                           ed->name.len, ed->name.e);
                 }
-            } else {
+            }
+            else {
                 for(Int i = 0; (i < pr.enums.cnt); ++i) {
                     Enum_Data *ed = pr.enums.e + i;
 
@@ -443,7 +444,8 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                           "typedef enum pp_%.*s pp_%.*s;\n",
                           ed->name.len, ed->name.e,
                           ed->name.len, ed->name.e);
-                } else if(ed->type.len) {
+                }
+                else if(ed->type.len) {
                     write(&ob,
                           "enum pp_%.*s : %.*s;\n",
                           ed->name.len, ed->name.e,
@@ -496,7 +498,8 @@ File write_data(Parse_Result pr, Bool is_cpp) {
 
                             if(is_inside_anonymous_struct) {
                                 write(&ob, " struct {");
-                            } else {
+                            }
+                            else {
                                 write(&ob, "};");
                             }
                         }
@@ -820,41 +823,23 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                       "PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {\n"
                       "    switch(pp_typedef_to_original(type)) {\n");
                 for(Int i = 0; (i < type_count); ++i) {
-                    String *s = types + i;
+                    auto is_typedef_for_void=[](String str, Typedefs typedefs) -> Bool {
+                        for(Int i = 0; (i < typedefs.cnt); ++i) {
+                            if(string_comp(typedefs.e[i].fresh, str) && string_comp(typedefs.e[i].original, "void")) {
+                                return(true);
+                            }
+                        }
 
-                    if((!is_cpp) && (string_comp(*s, "bool"))) {
-                        continue;
+                        return(false);
+                    };
+
+                    if(!string_comp(types[i], "void") && !is_typedef_for_void(types[i], pr.typedefs)) {
+                        write(&ob,
+                              "        case pp_Type_%.*s: { return sizeof(pp_%.*s); } break;\n",
+                              types[i].len, types[i].e, types[i].len, types[i].e);
                     }
-
-                    write(&ob,
-                          "        case pp_Type_%.*s: { return(sizeof(pp_%.*s)); } break;\n",
-                          s->len, s->e, s->len, s->e);
                 }
 
-#if 0
-                // Primitives.
-                write(&ob, "        // Primitives\n");
-                for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
-                    Char *prim = global_primitive_types[i];
-
-                    if((!is_cpp) && (string_comp(prim, "bool"))) {
-                        continue;
-                    }
-                    write(&ob,
-                          "        case pp_Type_%s: { return(sizeof(pp_%s)); } break;\n",
-                          prim, prim);
-                }
-
-                write(&ob, "\n        // Structs\n");
-                for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                    Struct_Data *sd = pr.structs.e + i;
-
-                    write(&ob,
-                          "        case pp_Type_%.*s: { return(sizeof(pp_%.*s)); } break;\n",
-                          sd->name.len, sd->name.e,
-                          sd->name.len, sd->name.e);
-                }
-#endif
                 write(&ob,
                       "    }\n"
                       "\n"
@@ -1026,37 +1011,37 @@ File write_data(Parse_Result pr, Bool is_cpp) {
             //              Maybe I could solve this by putting a constructor into each generated struct that means they can be
             //              quickly converted?
             // Struct compare.
-            if(is_cpp) {
+#if 0
+            write(&ob,
+                  "//\n"
+                  "// Generated comparisons.\n"
+                  "//\n");
+
+            for(Int i = 0; (i < pr.structs.cnt); ++i) {
+                Struct_Data *sd = pr.structs.e + i;
+
                 write(&ob,
-                      "//\n"
-                      "// Generated comparisons.\n"
-                      "//\n");
+                      "PP_STATIC pp_MyBool operator==(pp_%.*s a, pp_%.*s b) {\n",
+                      sd->name.len, sd->name.e,
+                      sd->name.len, sd->name.e);
 
-                for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                    Struct_Data *sd = pr.structs.e + i;
+                for(Int j = 0; (j < sd->member_count); ++j) {
+                    Variable *mem = sd->members + j;
 
-                    write(&ob,
-                          "PP_STATIC pp_MyBool operator==(pp_%.*s a, pp_%.*s b) {\n",
-                          sd->name.len, sd->name.e,
-                          sd->name.len, sd->name.e);
-
-                    for(Int j = 0; (j < sd->member_count); ++j) {
-                        Variable *mem = sd->members + j;
-
-                        if(mem->array_count) continue; // TODO(Jonny): Don't support arrays yet.
-
-                        write(&ob,
-                              "    if(a.%.*s != b.%.*s) { return(false); }\n",
-                              mem->name.len, mem->name.e,
-                              mem->name.len, mem->name.e);
-                    }
+                    if(mem->array_count) continue; // TODO(Jonny): Don't support arrays yet.
 
                     write(&ob,
-                          "\n"
-                          "    return(true);\n"
-                          "}\n");
+                          "    if(a.%.*s != b.%.*s) { return(false); }\n",
+                          mem->name.len, mem->name.e,
+                          mem->name.len, mem->name.e);
                 }
+
+                write(&ob,
+                      "\n"
+                      "    return(true);\n"
+                      "}\n");
             }
+#endif
 
             // Enum size.
             {
