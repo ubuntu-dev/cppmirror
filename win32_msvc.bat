@@ -18,9 +18,9 @@ set RELEASE_COMMON_COMPILER_FLAGS=-nologo -MT -fp:fast -Gm- -GR- -EHa- -O2 -Oi %
 IF NOT EXIST "build" mkdir "build"
 pushd "build"
 if "%RELEASE%"=="true" (
-    cl -std:c++latest -Femirror %RELEASE_COMMON_COMPILER_FLAGS% -GS- -Gs9999999 -Wall ../src/build.cpp -link -subsystem:console,5.2 kernel32.lib -stack:0x100000,0x100000
+    cl -Femirror %RELEASE_COMMON_COMPILER_FLAGS% -GS- -Gs9999999 -Wall ../src/build.cpp -link -subsystem:console,5.2 kernel32.lib -stack:0x100000,0x100000
 ) else (
-    cl -std:c++latest -Femirror %DEBUG_COMMON_COMPILER_FLAGS% -GS- -Gs9999999 -Wall ../src/build.cpp -link -subsystem:console,5.2 kernel32.lib -stack:0x100000,0x100000
+    cl -Femirror %DEBUG_COMMON_COMPILER_FLAGS% -GS- -Gs9999999 -Wall ../src/build.cpp -link -subsystem:console,5.2 kernel32.lib -stack:0x100000,0x100000
     rem mirror -t
 )
 popd

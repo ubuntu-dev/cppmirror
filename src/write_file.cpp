@@ -127,6 +127,37 @@ Int get_actual_type_count(String *types, Structs structs, Enums enums, Typedefs 
     return(res);
 }
 
+Bool is_typedef_for_void(String str, Typedefs typedefs) {
+    for(Int i = 0; (i < typedefs.cnt); ++i) {
+        if(string_comp(typedefs.e[i].fresh, str) && string_comp(typedefs.e[i].original, "void")) {
+            return(true);
+        }
+    }
+
+    return(false);
+}
+
+Void write_get_size_from_type(OutputBuffer *ob, String *types, Int type_count, Typedefs typedefs) {
+    write(ob,
+          "\n"
+          "PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {\n"
+          "    switch(pp_typedef_to_original(type)) {\n");
+    for(Int i = 0; (i < type_count); ++i) {
+        if(!string_comp(types[i], "void") && !is_typedef_for_void(types[i], typedefs)) {
+            write(ob,
+                  "        case pp_Type_%.*s: { return sizeof(pp_%.*s); } break;\n",
+                  types[i].len, types[i].e, types[i].len, types[i].e);
+        }
+    }
+
+    write(ob,
+          "    }\n"
+          "\n"
+          "    PP_ASSERT(0);\n"
+          "    return(0);\n"
+          "}\n");
+}
+
 File write_data(Parse_Result pr, Bool is_cpp) {
     File res = {0};
     OutputBuffer ob = {0};
@@ -771,42 +802,6 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                           s->len, s->e, s->len, s->e);
                 }
 
-#if 0
-                for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
-                    Char *prim = global_primitive_types[i];
-
-                    write(&ob,
-                          "        case pp_Type_%s: { return(\"%s\"); } break;\n",
-                          prim, prim);
-                }
-
-                for(Int i = 0; (i < pr.structs.cnt); ++i) {
-                    Struct_Data *sd = pr.structs.e + i;
-
-                    write(&ob,
-                          "        case pp_Type_%.*s: { return(\"%.*s\"); } break;\n",
-                          sd->name.len, sd->name.e,
-                          sd->name.len, sd->name.e);
-                }
-
-                for(Int i = 0; (i < pr.typedefs.cnt); ++i) {
-                    Typedef_Data *td = pr.typedefs.e + i;
-
-                    write(&ob,
-                          "        case pp_Type_%.*s: { return(\"%.*s\"); } break;\n",
-                          td->fresh.len, td->fresh.e,
-                          td->fresh.len, td->fresh.e);
-                }
-
-                for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                    Enum_Data *ed = pr.enums.e + i;
-
-                    write(&ob,
-                          "        case pp_Type_%.*s: { return(\"%.*s\"); } break;\n",
-                          ed->name.len, ed->name.e,
-                          ed->name.len, ed->name.e);
-                }
-#endif
                 write(&ob,
                       "    }\n"
                       "    \n"
@@ -817,36 +812,7 @@ File write_data(Parse_Result pr, Bool is_cpp) {
             }
 
             // Get size from type.
-            {
-                write(&ob,
-                      "\n"
-                      "PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {\n"
-                      "    switch(pp_typedef_to_original(type)) {\n");
-                for(Int i = 0; (i < type_count); ++i) {
-                    auto is_typedef_for_void=[](String str, Typedefs typedefs) -> Bool {
-                        for(Int i = 0; (i < typedefs.cnt); ++i) {
-                            if(string_comp(typedefs.e[i].fresh, str) && string_comp(typedefs.e[i].original, "void")) {
-                                return(true);
-                            }
-                        }
-
-                        return(false);
-                    };
-
-                    if(!string_comp(types[i], "void") && !is_typedef_for_void(types[i], pr.typedefs)) {
-                        write(&ob,
-                              "        case pp_Type_%.*s: { return sizeof(pp_%.*s); } break;\n",
-                              types[i].len, types[i].e, types[i].len, types[i].e);
-                    }
-                }
-
-                write(&ob,
-                      "    }\n"
-                      "\n"
-                      "    PP_ASSERT(0);\n"
-                      "    return(0);\n"
-                      "}\n");
-            }
+            write_get_size_from_type(&ob, types, type_count, pr.typedefs);
 
             // Print struct.
             {

@@ -243,9 +243,11 @@ Void *push_size(TempMemory *tm, Uintptr size, Int alignment = -1) {
     if(alignment == -1) {
         if(size <= 4) {
             alignment = 4;
-        } else if(size <= 8) {
+        }
+        else if(size <= 8) {
             alignment = 8;
-        } else {
+        }
+        else {
             alignment = 16;
         }
     }
@@ -255,7 +257,8 @@ Void *push_size(TempMemory *tm, Uintptr size, Int alignment = -1) {
     if(tm->used + alignment_offset < tm->size) {
         res = tm->e + tm->used + alignment_offset;
         tm->used += size + alignment_offset;
-    } else {
+    }
+    else {
         assert(0);
     }
 
@@ -528,7 +531,8 @@ ResultInt calculator_string_to_int(Char *str) {
                 ResultInt r = string_to_int(arr[j]);
                 if(r.success) {
                     nums[i] = r.e;
-                } else          {
+                }
+                else          {
                     goto clean_up;
                 }
             }
