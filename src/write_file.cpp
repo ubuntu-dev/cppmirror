@@ -145,7 +145,9 @@ Void write_get_size_from_type(OutputBuffer *ob, String *types, Int type_count, T
     for(Int i = 0; (i < type_count); ++i) {
         if(!string_comp(types[i], "void") && !is_typedef_for_void(types[i], typedefs)) {
             write(ob,
-                  "        case pp_Type_%.*s: { return sizeof(pp_%.*s); } break;\n",
+                  "        case pp_Type_%.*s:\n"
+                  "            return sizeof(pp_%.*s);\n"
+                  "            break;\n",
                   types[i].len, types[i].e, types[i].len, types[i].e);
         }
     }
