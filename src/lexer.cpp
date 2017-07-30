@@ -249,7 +249,7 @@ Bool token_compare(Token a, Char *b, Uintptr string_len = 0) {
 }
 
 Modifier is_modifier(Token token) {
-    Modifier res = {};
+    Modifier res = Modifier_unknown;
 
     struct ModifierWithString {
         String str;
@@ -1433,7 +1433,7 @@ Void parse_stream(Char *stream, Parse_Result *res) {
 
             case Token_Type_identifier: {
                 if((token_equals(token, "struct")) || (token_equals(token, "class")) || (token_equals(token, "union"))) {
-                    Struct_Type struct_type = {};
+                    Struct_Type struct_type = StructType_unknown;
 
                     if(token_equals(token, "struct"))     { struct_type = StructType_struct; }
                     else if(token_equals(token, "class")) { struct_type = StructType_class;  }

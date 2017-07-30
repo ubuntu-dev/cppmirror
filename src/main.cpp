@@ -1,5 +1,5 @@
 /*===================================================================================================
-  File:                    main.c
+  File:                    main.cpp
   Author:                  Jonathan Livingstone
   Email:                   seagull127@ymail.com
   Licence:                 Public Domain
@@ -35,7 +35,7 @@ enum SwitchType {
 };
 
 SwitchType get_switch_type(Char *str) {
-    SwitchType res = {};
+    SwitchType res = SwitchType_unknown;
 
     Int len = string_length(str);
     if(len >= 2) {
@@ -122,23 +122,18 @@ Void my_main(Int argc, Char **argv) {
                     case SwitchType_silent:
                         should_write_to_file = false;
                         break;
-
                     case SwitchType_log_errors:
                         should_log_errors = true;
                         break;
-#if INTERNAL
                     case SwitchType_run_tests:
                         should_run_tests = true;
                         break;
-#endif
                     case SwitchType_print_help:
                         print_help();
                         break;
-
                     case SwitchType_is_c_file:
                         is_c = true;
                         break;
-
                     case SwitchType_output_preprocessed_file:
                         only_output_preprocessed_file = true;
                         break;

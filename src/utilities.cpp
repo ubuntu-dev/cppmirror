@@ -63,6 +63,7 @@ struct Defer_Struct {
     F f;
     inline Defer_Struct(F f) : f(f) {}
     inline ~Defer_Struct() { f(); }
+    Defer_Struct<F> operator=(Defer_Struct<F> other) {assert(0);} // Visual Studio was complaining about this... but it shouldn't be called...
 };
 
 struct {
