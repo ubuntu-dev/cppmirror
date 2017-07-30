@@ -137,18 +137,32 @@ Bool is_typedef_for_void(String str, Typedefs typedefs) {
     return(false);
 }
 
-Void write_get_size_from_type(OutputBuffer *ob, String *types, Int type_count, Typedefs typedefs) {
+Bool is_unsized_enum(String str, Enums enums) {
+    for(Int i = 0; (i < enums.cnt); ++i) {
+        if(string_comp(str, enums.e[i].name)) {
+            if(!enums.e[i].type.len) {
+                return(true);
+            }
+        }
+    }
+
+    return(false);
+}
+
+Void write_get_size_from_type(OutputBuffer *ob, String *types, Int type_count, Typedefs typedefs, Enums enums) {
     write(ob,
           "\n"
           "PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {\n"
           "    switch(pp_typedef_to_original(type)) {\n");
     for(Int i = 0; (i < type_count); ++i) {
         if(!string_comp(types[i], "void") && !is_typedef_for_void(types[i], typedefs)) {
+            String cpy = (is_unsized_enum(types[i], enums)) ? create_string("int") : types[i];
+
             write(ob,
                   "        case pp_Type_%.*s:\n"
                   "            return sizeof(pp_%.*s);\n"
                   "            break;\n",
-                  types[i].len, types[i].e, types[i].len, types[i].e);
+                  types[i].len, types[i].e, cpy.len, cpy.e);
         }
     }
 
@@ -814,7 +828,7 @@ File write_data(Parse_Result pr, Bool is_cpp) {
             }
 
             // Get size from type.
-            write_get_size_from_type(&ob, types, type_count, pr.typedefs);
+            write_get_size_from_type(&ob, types, type_count, pr.typedefs, pr.enums);
 
             // Print struct.
             {
