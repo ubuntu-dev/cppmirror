@@ -248,6 +248,15 @@ Bool token_compare(Token a, Char *b, Uintptr string_len = 0) {
     return(res);
 }
 
+Bool is_token_struct(Token token) {
+    if((token_compare(token, "struct")) || (token_compare(token, "class")) || (token_compare(token, "union"))) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
 Modifier is_modifier(Token token) {
     Modifier res = Modifier_unknown;
 
