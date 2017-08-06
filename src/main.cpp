@@ -23,7 +23,6 @@ enum SwitchType {
 
     SwitchType_silent,
     SwitchType_log_errors,
-    SwitchType_is_c_file,
     SwitchType_run_tests,
     SwitchType_macro,
     SwitchType_print_help,
@@ -43,7 +42,6 @@ SwitchType get_switch_type(Char *str) {
             switch(str[1]) {
                 case 'e': case 'E': res = SwitchType_log_errors;               break;
                 case 'h': case 'H': res = SwitchType_print_help;               break;
-                case 'c': case 'C': res = SwitchType_is_c_file;                break;
                 case 'p': case 'P': res = SwitchType_output_preprocessed_file; break;
                 case 'd': case 'D': res = SwitchType_macro;                    break;
 #if INTERNAL
@@ -94,7 +92,6 @@ Void my_main(Int argc, Char **argv) {
 
     system_write_to_console("Starting Mirror...");
 
-    Bool is_c = false;
     Bool should_log_errors = true;
     if(argc <= 1) {
         push_error(ErrorType_no_parameters);
@@ -119,24 +116,11 @@ Void my_main(Int argc, Char **argv) {
 
                 SwitchType type = get_switch_type(switch_name);
                 switch(type) {
-                    case SwitchType_silent:
-                        should_write_to_file = false;
-                        break;
-                    case SwitchType_log_errors:
-                        should_log_errors = true;
-                        break;
-                    case SwitchType_run_tests:
-                        should_run_tests = true;
-                        break;
-                    case SwitchType_print_help:
-                        print_help();
-                        break;
-                    case SwitchType_is_c_file:
-                        is_c = true;
-                        break;
-                    case SwitchType_output_preprocessed_file:
-                        only_output_preprocessed_file = true;
-                        break;
+                    case SwitchType_silent:                   should_write_to_file = false;         break;
+                    case SwitchType_log_errors:               should_log_errors = true;             break;
+                    case SwitchType_run_tests:                should_run_tests = true;              break;
+                    case SwitchType_print_help:               print_help();                         break;
+                    case SwitchType_output_preprocessed_file: only_output_preprocessed_file = true; break;
 
                     case SwitchType_macro:
                         passed_in_macro_data[macro_cnt++] = parse_passed_in_macro(argv[i] + 2); // Skip "-D".
@@ -174,22 +158,23 @@ Void my_main(Int argc, Char **argv) {
                 }
                 else {
                     Parse_Result parse_res = parse_streams(number_of_files, fnames, passed_in_macro_data, macro_cnt);
+#if INTERNAL
+                    defer {
+                        delete[] parse_res.enums.e;
+                        delete[] parse_res.structs.e;
+                        delete[] parse_res.funcs.e;
+                        delete[] parse_res.typedefs.e;
+                    };
+#endif
 
-                    File file_to_write = write_data(parse_res, !is_c);
-
+                    File file_to_write = write_data(parse_res);
+#if INTERNAL
+                    defer {
+                        delete[] file_to_write.e;
+                    };
+#endif
                     Bool write_success = system_write_to_file("pp_generated.h", file_to_write);
                     assert(write_success);
-
-                    // These are freed so that they don't show up as false positives when I'm checking for memory leaks. I don't
-                    // _really_ care about memory leaks though, so they're only freed in an INTERNAL build.
-#if INTERNAL
-                    system_free(file_to_write.e);
-
-                    delete[] parse_res.enums.e;
-                    delete[] parse_res.structs.e;
-                    delete[] parse_res.funcs.e;
-                    delete[] parse_res.typedefs.e;
-#endif
                 }
             }
 

@@ -174,9 +174,9 @@ Void write_get_size_from_type(OutputBuffer *ob, String *types, Int type_count, T
           "}\n");
 }
 
-File write_data(Parse_Result pr, Bool is_cpp) {
-    File res = {0};
-    OutputBuffer ob = {0};
+File write_data(Parse_Result pr) {
+    File res = {};
+    OutputBuffer ob = {};
     ob.size = 1024 * 1024;
     ob.buffer = new Char[ob.size];
     if(ob.buffer) {
@@ -224,11 +224,9 @@ File write_data(Parse_Result pr, Bool is_cpp) {
         for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
             Char *p = global_primitive_types[i];
 
-            if((is_cpp) || (!string_comp(p, "bool"))) {
-                write(&ob,
-                      "typedef %s pp_%s;\n",
-                      p, p);
-            }
+            write(&ob,
+                  "typedef %s pp_%s;\n",
+                  p, p);
         }
 
         write(&ob,
@@ -314,25 +312,14 @@ File write_data(Parse_Result pr, Bool is_cpp) {
                   "// Forward declared structs, enums, and functions\n"
                   "//\n");
 
-            if(!is_cpp) {
-                for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                    Enum_Data *ed = pr.enums.e + i;
+            for(Int i = 0; (i < pr.enums.cnt); ++i) {
+                Enum_Data *ed = pr.enums.e + i;
 
+                if(ed->type.len) {
                     write(&ob,
-                          "enum%.*s;\n",
-                          ed->name.len, ed->name.e);
-                }
-            }
-            else {
-                for(Int i = 0; (i < pr.enums.cnt); ++i) {
-                    Enum_Data *ed = pr.enums.e + i;
-
-                    if(ed->type.len) {
-                        write(&ob,
-                              "enum %.*s : %.*s;\n",
-                              ed->name.len, ed->name.e,
-                              ed->type.len, ed->type.e);
-                    }
+                          "enum %.*s : %.*s;\n",
+                          ed->name.len, ed->name.e,
+                          ed->type.len, ed->type.e);
                 }
             }
 
