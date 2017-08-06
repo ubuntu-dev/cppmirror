@@ -35,15 +35,11 @@ Void set(Void *dest, Byte v, Uintptr n) {
 }
 
 Void *operator new(Uintptr size) {
-    Void *res = system_malloc(size);
-
-    return(res);
+    return system_malloc(size);
 }
 
 Void *operator new[](Uintptr size) {
-    Void *res = system_malloc(size);
-
-    return(res);
+    return system_malloc(size);
 }
 
 // These won't actually throw, but Clang won't shut up about them...

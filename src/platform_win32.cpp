@@ -48,6 +48,7 @@ Uint64 system_get_performance_counter(void) {
 
 //#define PAGE_ALIGNED_MALLOC
 #if defined(PAGE_ALIGNED_MALLOC)
+#if 0
 struct Allocation_Node {
     Void *block;
     Void *ptr;
@@ -64,7 +65,8 @@ Void add_to_global_alloc(Void *block, Void *ptr, Uintptr size) {
         global_debug_alloc_storage->block = block;
         global_debug_alloc_storage->ptr = ptr;
         global_debug_alloc_storage->size = size;
-    } else {
+    }
+    else {
         Allocation_Node *next = global_debug_alloc_storage;
         while(next->next) {
             next = next->next;
@@ -117,7 +119,8 @@ Void *system_malloc(Uintptr size) {
     if(block) {
         res = (Byte *)block + (alloc_size - size);
         add_to_global_alloc(block, res, size);
-    } else {
+    }
+    else {
         Uint err = GetLastError();
         LPSTR msg_buf = 0;
         Uintptr msg_size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -160,20 +163,53 @@ Void *system_realloc(Void *ptr, Uintptr size) {
                 node->block = 0;
                 node->size = 0;
             }
-        } else {
+        }
+        else {
             assert(0);
             res = ptr;
             node->size = size;
         }
-    } else {
+    }
+    else {
         res = system_malloc(size);
     }
 
     return(res);
 }
+#endif
 #else
+#if 0
+Void *operator new(Uintptr size) {
+    Uintptr *res = (Uintptr *)system_malloc(size + sizeof(Uintptr));
+    *res++ = size;
+
+    return(res);
+}
+
+Void *operator new[](Uintptr size) {
+    Uintptr *res = (Uintptr *)system_malloc(size + sizeof(Uintptr));
+    *res++ = size;
+
+    return(res);
+}
+
+// These won't actually throw, but Clang won't shut up about them...
+void operator delete(void *ptr) throw() {
+    Uintptr *raw = (Uintptr *)ptr - 1;
+
+    system_free(raw);
+}
+
+void operator delete[](void *ptr) throw() {
+    Uintptr *raw = (Uintptr *)ptr - 1;
+
+    system_free(raw);
+}
+#endif
+
 Void *system_malloc(Uintptr size) {
-    Void *res = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size);
+    Uintptr *res = (Uintptr *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size + sizeof(Uintptr));
+    *res++ = size;
 
     return(res);
 }
@@ -181,7 +217,8 @@ Void *system_malloc(Uintptr size) {
 Bool system_free(Void *ptr) {
     Bool res = false;
     if(ptr) {
-        res = HeapFree(GetProcessHeap(), 0, ptr);
+        Void *raw = (Uintptr *)ptr - 1;
+        res = HeapFree(GetProcessHeap(), 0, raw);
     }
 
     return(res);
@@ -190,9 +227,22 @@ Bool system_free(Void *ptr) {
 Void *system_realloc(Void *ptr, Uintptr size) {
     Void *res = 0;
     if(ptr) {
-        res = HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ptr, size);
-    } else {
+        Void *original_raw = (Uintptr *)ptr - 1;
+        Uintptr *new_raw = (Uintptr *)HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, original_raw, size + sizeof(Uintptr));
+        *new_raw++ = size;
+    }
+    else {
         res = system_malloc(size);
+    }
+
+    return(res);
+}
+
+Uintptr system_get_alloc_size(Void *ptr) {
+    Uintptr res = 0;
+    assert(ptr);
+    if(ptr) {
+        res = *((Uintptr *)ptr - 1);
     }
 
     return(res);
@@ -217,7 +267,8 @@ File system_read_entire_file_and_null_terminate(Char *fname) {
             if(ReadFile(fhandle, memory, fsize32, &bytes_read, 0)) {
                 if(bytes_read != fsize32) {
                     push_error(ErrorType_did_not_read_entire_file);
-                } else {
+                }
+                else {
                     res.size = fsize32;
                     res.e = cast(Char *)memory;
                     res.e[res.size] = 0;
@@ -247,7 +298,8 @@ Bool system_write_to_file(Char *fname, File file) {
         if(WriteFile(fhandle, file.e, fsize32, &bytes_written, 0)) {
             if(bytes_written != fsize32) {
                 push_error(ErrorType_did_not_write_entire_file);
-            } else {
+            }
+            else {
                 res = true;
             }
         }
@@ -284,9 +336,11 @@ Bool is_valid_cpp_file(Char *fname) {
     Int len = string_length(fname);
     if((fname[len - 1] == 'p') && (fname[len - 2] == 'p') && (fname[len - 3] == 'c') && (fname[len - 4] == '.')) {
         res = true;
-    } else if((fname[len - 1] == 'c') && (fname[len - 2] == 'c') && (fname[len - 3] == '.')) {
+    }
+    else if((fname[len - 1] == 'c') && (fname[len - 2] == 'c') && (fname[len - 3] == '.')) {
         res = true;
-    } else if((fname[len - 1] == 'c') && (fname[len - 2] == '.')) {
+    }
+    else if((fname[len - 1] == 'c') && (fname[len - 2] == '.')) {
         res = true;
     }
 
@@ -334,7 +388,8 @@ int main(int argc_, char **argv_) {
     for(Int i = 0; (i < args_len); ++i) {
         if(cmdline[i] == '"') {
             in_quotes = !in_quotes;
-        } else if(cmdline[i] == ' ') {
+        }
+        else if(cmdline[i] == ' ') {
             if(!in_quotes) {
                 ++original_cnt;
             }
@@ -351,7 +406,8 @@ int main(int argc_, char **argv_) {
     for(Int i = 0; (i < args_len); ++i) {
         if(arg_cpy[i] == '"') {
             in_quotes = !in_quotes;
-        } else if(arg_cpy[i] == ' ') {
+        }
+        else if(arg_cpy[i] == ' ') {
             if(!in_quotes) {
                 arg_cpy[i] = 0;
             }
@@ -375,7 +431,8 @@ int main(int argc_, char **argv_) {
                 *cur = str;
                 ++cur;
                 ++argc;
-            } else {
+            }
+            else {
                 WIN32_FIND_DATA find_data;
                 HANDLE fhandle = FindFirstFile(str, &find_data);
 
@@ -392,7 +449,8 @@ int main(int argc_, char **argv_) {
                         *cur = find_data.cFileName;
                         ++cur;
                         ++argc;
-                    } while(FindNextFile(fhandle, &find_data));
+                    }
+                    while(FindNextFile(fhandle, &find_data));
                 }
             }
         }

@@ -15,6 +15,7 @@
 Void *system_malloc(Uintptr size);
 Bool system_free(Void *ptr);
 Void *system_realloc(Void *ptr, Uintptr size);
+Uintptr system_get_alloc_size(Void *ptr);
 
 // File IO.
 struct File {

@@ -104,6 +104,7 @@ Void my_main(Int argc, Char **argv) {
 
         Int fnames_max_cnt = 16;
         Char **fnames = new Char *[fnames_max_cnt];
+        Uintptr size = system_get_alloc_size(fnames);
         if(fnames) {
             Uintptr total_file_size = 0;
             Int number_of_files = 0;
