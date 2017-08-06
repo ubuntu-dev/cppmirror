@@ -21,7 +21,7 @@ if "%RELEASE%"=="true" (
     cl -Femirror %RELEASE_COMMON_COMPILER_FLAGS% -GS- -Gs9999999 -Wall ../src/build.cpp -link -subsystem:console,5.2 kernel32.lib -stack:0x100000,0x100000
 ) else (
     cl -Femirror %DEBUG_COMMON_COMPILER_FLAGS% -GS- -Gs9999999 -Wall ../src/build.cpp -link -subsystem:console,5.2 kernel32.lib -stack:0x100000,0x100000
-    rem mirror -t
+    mirror -t
 )
 popd
 
