@@ -1810,12 +1810,12 @@ Void handle_hash_if_statement(Tokenizer *tokenizer, MacroData *macro_data, Int m
     //              subtract 3.
     Char *start = tokenizer->at - 3;
 
-    Bool not = false;
+    Bool my_not = false;
     Bool defined_macro = false;
 
     Token token = get_token(tokenizer);
     if(token.type == Token_Type_not) {
-        not = true;
+        my_not = true;
         token = get_token(tokenizer);
     }
 
@@ -1841,12 +1841,12 @@ Void handle_hash_if_statement(Tokenizer *tokenizer, MacroData *macro_data, Int m
             else {
                 // #define xxx 1
                 // #if xxx
-                if((!not) && (*macro_data[i].res.e != '0')) {
+                if((!my_not) && (*macro_data[i].res.e != '0')) {
                     should_replace = true;
                 }
                 // #define xxx 0
                 // #if !xxx
-                else if((not) && (*macro_data[i].res.e == '0')) {
+                else if((my_not) && (*macro_data[i].res.e == '0')) {
                     should_replace = true;
                 }
             }
@@ -1855,7 +1855,7 @@ Void handle_hash_if_statement(Tokenizer *tokenizer, MacroData *macro_data, Int m
         }
     }
 
-    if((defined_macro) && (not)) {
+    if((defined_macro) && (my_not)) {
         should_replace = !should_replace;
     }
 
