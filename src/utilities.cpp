@@ -30,20 +30,16 @@ Void copy(Void *dest, Void *src, Uintptr size) {
 Void set(Void *dest, Byte v, Uintptr n) {
     Byte *dest8 = (Byte *)dest;
     for(Uintptr i = 0; (i < n); ++i, ++dest8) {
-        *dest8 = cast(Byte)v;
+        *dest8 = (Byte)v;
     }
 }
 
 Void *operator new(Uintptr size) {
-    Void *res = system_malloc(size);
-
-    return(res);
+    return system_malloc(size);
 }
 
 Void *operator new[](Uintptr size) {
-    Void *res = system_malloc(size);
-
-    return(res);
+    return system_malloc(size);
 }
 
 // These won't actually throw, but Clang won't shut up about them...
@@ -54,6 +50,8 @@ void operator delete(void *ptr) throw() {
 void operator delete[](void *ptr) throw() {
     system_free(ptr);
 }
+
+#define get_alloc_count(ptr) (system_get_alloc_size((ptr)) / sizeof(*(ptr)))
 
 //
 // Error stuff.
@@ -220,7 +218,7 @@ Uintptr get_alignment(void *mem, Uintptr desired_alignment) {
 
     Uintptr alignment_mask = desired_alignment - 1;
     if((Uintptr)mem & alignment_mask) {
-        res = desired_alignment - (cast(Uintptr)mem & alignment_mask);
+        res = desired_alignment - ((Uintptr)mem & alignment_mask);
     }
 
     return(res);
@@ -253,7 +251,7 @@ Void *push_size(TempMemory *tm, Uintptr size, Int alignment = -1) {
         }
     }
 
-    Uintptr alignment_offset = get_alignment(cast(Byte *)tm->e + tm->used, alignment);
+    Uintptr alignment_offset = get_alignment((Byte *)tm->e + tm->used, alignment);
 
     if(tm->used + alignment_offset < tm->size) {
         res = tm->e + tm->used + alignment_offset;
@@ -570,7 +568,7 @@ Bool is_in_string_array(String target, String *arr, Int arr_cnt) {
 
 Uint32 safe_truncate_size_64(Uint64 v) {
     assert(v <= 0xFFFFFFFF);
-    Uint32 res = cast(Uint32)v;
+    Uint32 res = (Uint32)v;
 
     return(res);
 }
