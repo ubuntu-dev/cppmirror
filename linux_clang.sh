@@ -9,9 +9,9 @@ WARNINGS="-Wno-unused-function -Wno-unused-variable -Wno-switch -Wno-sign-compar
 
 echo "Building mirror"
 if [ "$RELEASE" = "true" ]; then
-    clang-"$CLANG_VERSION" -Wall -Wextra src/build.cpp -std=c++11 -fno-exceptions -fno-rtti -o mirror_exe -DINTERNAL=0 $WARNINGS -ldl
+    clang-"$CLANG_VERSION" -Wall -Wextra src/build.cpp -std=c++1y -fno-exceptions -fno-rtti -o mirror_exe -DINTERNAL=0 $WARNINGS -ldl
 else
-    clang-"$CLANG_VERSION" -Wall -Wextra src/build.cpp -std=c++11 -fno-exceptions -fno-rtti -o mirror_exe -DINTERNAL=1 $WARNINGS -g -ldl
+    clang-"$CLANG_VERSION" -Wall -Wextra src/build.cpp -std=c++1y -fno-exceptions -fno-rtti -o mirror_exe -DINTERNAL=1 $WARNINGS -g -ldl
 fi
 mv "./mirror_exe" "build/mirror"
 
