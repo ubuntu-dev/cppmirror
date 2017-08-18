@@ -56,26 +56,6 @@ void operator delete[](void *ptr) throw() {
 }
 
 //
-// Defer
-//
-template<typename F>
-struct Defer_Struct {
-    F f;
-    inline Defer_Struct(F f) : f(f) {}
-    inline ~Defer_Struct() { f(); }
-    Defer_Struct<F> operator=(Defer_Struct<F> other) {assert(0);} // Visual Studio was complaining about this... but it shouldn't be called...
-};
-
-struct {
-    template<typename F>
-    inline Defer_Struct<F> operator<<(F f) {
-        return Defer_Struct<F>(f);
-    }
-} Defer_Functor;
-
-#define defer auto TOKEN_CONCAT(defer_in_cpp_, __COUNTER__) = Defer_Functor << [&]
-
-//
 // Error stuff.
 //
 #if COMPILER_MSVC
@@ -205,6 +185,26 @@ Bool print_errors(void) {
 
     return(res);
 }
+
+//
+// Defer
+//
+template<typename F>
+struct Defer_Struct {
+    F f;
+    inline Defer_Struct(F f) : f(f) {}
+    inline ~Defer_Struct() { f(); }
+    Defer_Struct<F> operator=(Defer_Struct<F> other) {assert(0); Defer_Struct<F> r; return(r); } // Visual Studio was complaining about this... but it shouldn't be called...
+};
+
+struct {
+    template<typename F>
+    inline Defer_Struct<F> operator<<(F f) {
+        return Defer_Struct<F>(f);
+    }
+} Defer_Functor;
+
+#define defer auto TOKEN_CONCAT(defer_in_cpp_, __COUNTER__) = Defer_Functor << [&]
 
 //
 // Temp Memory.
