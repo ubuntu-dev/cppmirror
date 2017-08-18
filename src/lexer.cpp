@@ -782,9 +782,9 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
             while(next.type != Token_Type_open_brace) {
                 if(!(is_stupid_class_keyword(next)) && (next.type != Token_Type_comma)) {
                     // TODO(Jonny): Fix properly.
-                    /*if(res.sd.inherited_count + 1 >= cast(Int)(get_alloc_size(res.sd.inherited) / sizeof(String))) {
+                    /*if(res.sd.inherited_count + 1 >= (Int)(get_alloc_size(res.sd.inherited) / sizeof(String))) {
                         Void *p = system_realloc(res.sd.inherited);
-                        if(p) { res.sd.inherited = cast(String *)p; }
+                        if(p) { res.sd.inherited = (String *)p; }
                     }*/
 
                     res.sd.inherited[res.sd.inherited_count++] = token_to_string(next);
@@ -892,7 +892,7 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
                                         member_info_mem_cnt *= 2;
                                         Void *p = system_realloc(member_info, sizeof(MemberInfo) * member_info_mem_cnt);
                                         if(p) {
-                                            member_info = cast(MemberInfo *)p;
+                                            member_info = (MemberInfo *)p;
                                         }
                                     }
 
@@ -1550,7 +1550,7 @@ Void parse_stream(Char *stream, Parse_Result *res) {
                             res->func_max *= 2;
                             Void *p = system_realloc(res->funcs.e, res->func_max);
                             if(p) {
-                                res->funcs.e = cast(Function_Data *)p;
+                                res->funcs.e = (Function_Data *)p;
                             }
                         }
 
@@ -1582,14 +1582,14 @@ struct File_With_Extra_Space {
 };
 
 void move_bytes_forward(Void *ptr, Uintptr num_bytes_to_move, Uintptr move_pos) {
-    Byte *ptr8 = cast(Byte *)ptr;
+    Byte *ptr8 = (Byte *)ptr;
     for(Intptr i = num_bytes_to_move - 1; (i >= 0); --i) {
         ptr8[i + move_pos] = ptr8[i];
     }
 }
 
 void move_bytes_backwards(Void *ptr, Uintptr num_bytes_to_move, Uintptr move_pos) {
-    Byte *ptr8 = cast(Byte *)ptr;
+    Byte *ptr8 = (Byte *)ptr;
     for(Uintptr i = 0; (i < num_bytes_to_move); ++i) {
         ptr8[i + move_pos] = ptr8[i];
     }
@@ -1659,7 +1659,7 @@ ParseMacroResult parse_macro(Tokenizer *tokenizer, TempMemory *param_memory) {
     else {
         if(*tokenizer->at == '(') {
             // TODO(Jonny): Why am I doing this myself and not pushing it via the push_size function?
-            res.md.params = cast(String *)(cast(Char *)param_memory->e + param_memory->used);
+            res.md.params = (String *)((Char *)param_memory->e + param_memory->used);
 
             Token param = {0};
             do {
@@ -1701,7 +1701,7 @@ Void macro_replace(Char *token_start, File_With_Extra_Space *file, MacroData md)
 
     // Read the parameters the user passed in.
     if(md.param_cnt) {
-        params = cast(String *)push_size(&tm, sizeof(String) * md.param_cnt);
+        params = (String *)push_size(&tm, sizeof(String) * md.param_cnt);
 
         Int brace_cnt = 0; // Is used for when we pass a function into a macro, so the commas don't confuse things.
 
@@ -1710,7 +1710,7 @@ Void macro_replace(Char *token_start, File_With_Extra_Space *file, MacroData md)
 
         String *p = params;
         Int max_len = 256;
-        p->e = cast(Char *)push_size(&tm, sizeof(Char) * max_len);
+        p->e = (Char *)push_size(&tm, sizeof(Char) * max_len);
         do {
 top:;
             if(*cpy.at == '(') {
@@ -1720,7 +1720,7 @@ top:;
             ++iden_len;
             if((*cpy.at == ',') && (!brace_cnt)) {
                 ++p;
-                p->e = cast(Char *)push_size(&tm, sizeof(Char) * max_len);
+                p->e = (Char *)push_size(&tm, sizeof(Char) * max_len);
             }
             else {
                 p->e[p->len++] = *cpy.at;

@@ -270,7 +270,7 @@ File system_read_entire_file_and_null_terminate(Char *fname) {
                 }
                 else {
                     res.size = fsize32;
-                    res.e = cast(Char *)memory;
+                    res.e = (Char *)memory;
                     res.e[res.size] = 0;
                 }
             }
@@ -442,7 +442,7 @@ int main(int argc_, char **argv_) {
                             mem_size *= 2;
                             Void *p = system_realloc(argv, sizeof(*argv) * mem_size);
                             if(p) {
-                                argv = cast(Char **)p;
+                                argv = (Char **)p;
                             }
                         }
 

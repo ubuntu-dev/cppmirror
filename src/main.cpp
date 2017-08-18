@@ -132,7 +132,7 @@ Void my_main(Int argc, Char **argv) {
                             fnames_max_cnt *= 2;
                             Void *p = system_realloc(fnames, sizeof(*fnames) * fnames_max_cnt);
                             if(p) {
-                                fnames = cast(Char **)p;
+                                fnames = (Char **)p;
                             }
                         }
 
