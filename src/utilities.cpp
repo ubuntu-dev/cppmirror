@@ -51,7 +51,12 @@ void operator delete[](void *ptr) throw() {
     system_free(ptr);
 }
 
-#define get_alloc_count(ptr) (system_get_alloc_size((ptr)) / sizeof(*(ptr)))
+template<typename T>
+Uintptr get_alloc_count(T *ptr) {
+    Uintptr res = system_get_alloc_size(ptr) / sizeof(T);
+
+    return(res);
+}
 
 //
 // Error stuff.
