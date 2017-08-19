@@ -1690,10 +1690,6 @@ ParseMacroResult parse_macro(Tokenizer *tokenizer, TempMemory *param_memory) {
 Void macro_replace(Char *token_start, File_With_Extra_Space *file, MacroData md) {
     TempMemory tm = create_temp_buffer(megabytes(1)); // TODO(Jonny): Arbitrary Size.
 
-    if(token_start - file->e ==  37444) {
-        int i = 0;
-    }
-
     Tokenizer tokenizer = { token_start };
 
     Uintptr iden_len = md.iden.len;
@@ -1795,7 +1791,7 @@ Void add_include_file(Tokenizer *tokenizer, File_With_Extra_Space *file) {
         if(include_file.size) {
             // Tokenizer is invalid after the move_stream call.
             Uintptr offset = tokenizer->at - file->e;
-            move_stream(file, tokenizer->at, include_file.size);
+            move_stream(file, tokenizer->at, include_file.size - 1);
             tokenizer->at = file->e + offset;
 
             copy(tokenizer->at, include_file.e, include_file.size);
@@ -1890,11 +1886,11 @@ Void handle_hash_if_statement(Tokenizer *tokenizer, MacroData *macro_data, Int m
 }
 
 File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int passed_in_macro_cnt) {
-    File res = {0};
+    File res = {};
 
     File_With_Extra_Space file = {};
     file.size = original_file.size;
-    file.memory_size = original_file.size * 10;
+    file.memory_size = original_file.size * 500;
 
     Void *p = system_malloc(file.memory_size);
     if(p) {
