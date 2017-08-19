@@ -458,5 +458,6 @@ int main(int argc_, char **argv_) {
 
     my_main(argc, argv);
 
+    return(0);
     //ExitProcess(0);
 }
