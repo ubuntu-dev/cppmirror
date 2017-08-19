@@ -11,8 +11,9 @@
 
 
 Void *system_malloc(Uintptr size) {
-    Void *res = malloc(size);
+    Uintptr *res = (Uintptr *)malloc(size + sizeof(Uintptr));
     if(res) {
+        *res++ = size;
         zero(res, size);
     }
 
@@ -22,15 +23,35 @@ Void *system_malloc(Uintptr size) {
 Bool system_free(Void *ptr) {
     Bool res = false;
     if(ptr) {
-        free(ptr);
+        Void *raw = (Uintptr *)ptr - 1;
+        free(raw);
         res = true;
     }
 
     return(res);
 }
 
-Void *system_realloc(Void *ptr, Uintptr new_size) {
-    Void *res = realloc(ptr, new_size);
+Void *system_realloc(Void *ptr, Uintptr size) {
+    Void *res = 0;
+    if(ptr) {
+        Void *original_raw = (Uintptr *)ptr - 1;
+        Uintptr *new_raw = (Uintptr *)realloc(ptr, size + sizeof(Uintptr));
+        *new_raw++ = size;
+        res = new_raw;
+    }
+    else {
+        res = system_malloc(size);
+    }
+
+    return(res);
+}
+
+Uintptr system_get_alloc_size(Void *ptr) {
+    Uintptr res = 0;
+    assert(ptr);
+    if(ptr) {
+        res = *((Uintptr *)ptr - 1);
+    }
 
     return(res);
 }
@@ -74,7 +95,8 @@ Bool system_create_folder(Char *name) {
 
     if(stat(name, &st) == -1) {
         res = (mkdir(name, 0700) == 0);
-    } else {
+    }
+    else {
         res = true;
     }
 
