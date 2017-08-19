@@ -214,8 +214,8 @@ struct {
 //
 struct TempMemory {
     Byte *e;
-    Uintptr size;
     Uintptr used;
+    Uintptr size;
 };
 
 Uintptr get_alignment(void *mem, Uintptr desired_alignment) {
@@ -230,7 +230,7 @@ Uintptr get_alignment(void *mem, Uintptr desired_alignment) {
 }
 
 TempMemory create_temp_buffer(Uintptr size) {
-    TempMemory res = {0};
+    TempMemory res = {};
 
     res.e = new Byte[size];
     if(res.e) {
@@ -323,15 +323,17 @@ Bool string_comp_len(Char *a, Char *b, Uintptr len) {
 }
 
 Bool string_comp(Char *a, Char *b) {
+    Bool res = true;
     while((*a) && (*b)) {
         if(*a != *b) {
-            return(false);
+            res = false;
+            break;
         }
 
         ++a; ++b;
     }
 
-    return(true);
+    return(res);
 }
 
 Uintptr string_copy(Char *dest, Char *src) {
@@ -424,6 +426,7 @@ Bool string_contains(Char *str, Char target) {
 }
 
 Bool string_contains(String str, Char *target) {
+    Bool res = false;
     Int target_len = string_length(target);
 
     for(Int i = 0; (i < str.len); ++i) {
@@ -434,13 +437,16 @@ Bool string_contains(String str, Char *target) {
                 }
 
                 if(j == (target_len - 1)) {
-                    return(true);
+                    res = true;
+                    goto func_end;
                 }
             }
         }
     }
 
-    return(false);
+func_end:;
+
+    return(res);
 }
 
 Bool string_contains(Char *str, Char *target) {
@@ -504,57 +510,6 @@ ResultInt string_to_int(Char *str) {
     string.e = str;
     string.len = string_length(str);
     ResultInt res = string_to_int(string);
-
-    return(res);
-}
-
-ResultInt calculator_string_to_int(Char *str) {
-    ResultInt res = {0};
-
-    /* TODO(Jonny);
-        - Make sure each element in the string is either a number or a operator.
-        - Do the calculator in order (multiply, divide, add, subtract).
-    */
-    String *arr = new String[256]; // TODO(Jonny): Random size.
-    if(arr) {
-        Char *at = str;
-        arr[0].e = at;
-        Int cnt = 0;
-        for(; (*at); ++at, ++arr[cnt].len) {
-            if(*at == ' ') {
-                ++at;
-                arr[++cnt].e = at;
-            }
-        }
-        ++cnt;
-
-        Int *nums = new Int[cnt];
-        Char *ops = new Char[cnt];
-        if((nums) && (ops)) {
-            for(Int i = 0, j = 0; (j < cnt); ++i, j += 2) {
-                ResultInt r = string_to_int(arr[j]);
-                if(r.success) {
-                    nums[i] = r.e;
-                }
-                else          {
-                    goto clean_up;
-                }
-            }
-
-            for(Int i = 0, j = 1; (j < cnt); ++i, j += 2) {
-                assert(arr[j].len == 1);
-                ops[i] = *arr[j].e;
-            }
-
-            // At this point, I have all the numbers and ops in seperate arrays.
-
-clean_up:;
-            delete[] ops;
-            delete[] nums;
-        }
-
-        delete[] arr;
-    }
 
     return(res);
 }
@@ -627,19 +582,20 @@ Bool variable_comp(Variable a, Variable b) {
 }
 
 Bool compare_variable_array(Variable *a, Variable *b, Int count) {
+    Bool res = true;
     for(Int i = 0; (i < count); ++i) {
         if(!variable_comp(a[i], b[i])) {
-            return(false);
+            res = false;
+            break;
         }
     }
 
-    return(true);
+    return(res);
 }
 
 //
 // Utils.
 //
-
 Char to_caps(Char c) {
     Char res = c;
     if((c >= 'a') && (c <= 'z')) {

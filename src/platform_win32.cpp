@@ -215,6 +215,7 @@ Void system_write_to_console(Char *format, ...) {
 }
 
 int main(int argc_, char **argv_) {
+    int res = 0xFF;
     // Get the command line arguments.
     Char *cmdline = GetCommandLineA();
     Int args_len = string_length(cmdline);
@@ -235,66 +236,73 @@ int main(int argc_, char **argv_) {
 
     // Create copy of args.
     Char *arg_cpy = new Char[args_len + 1];
-    defer {
-        delete[] arg_cpy;
-    };
-    string_copy(arg_cpy, cmdline);
+    if(arg_cpy) {
+        defer {
+            delete[] arg_cpy;
+        };
+        string_copy(arg_cpy, cmdline);
 
-    for(Int i = 0; (i < args_len); ++i) {
-        if(arg_cpy[i] == '"') {
-            in_quotes = !in_quotes;
-        }
-        else if(arg_cpy[i] == ' ') {
-            if(!in_quotes) {
-                arg_cpy[i] = 0;
+        for(Int i = 0; (i < args_len); ++i) {
+            if(arg_cpy[i] == '"') {
+                in_quotes = !in_quotes;
             }
-        }
-    }
-
-    // Setup pointers.
-    in_quotes = false;
-    Int mem_size = original_cnt * 2;
-    Int argc = 1;
-    Char **argv = new Char *[mem_size];
-    defer {
-        delete[] argv;
-    };
-    Char **cur = argv;
-    *cur++ = arg_cpy;
-    for(Int i = 0; (i < args_len); ++i) {
-        if(!arg_cpy[i]) {
-            Char *str = arg_cpy + i + 1;
-            if(!string_contains(str, '*')) {
-                *cur = str;
-                ++cur;
-                ++argc;
-            }
-            else {
-                WIN32_FIND_DATA find_data;
-                HANDLE fhandle = FindFirstFile(str, &find_data);
-
-                if(fhandle != INVALID_HANDLE_VALUE) {
-                    do {
-                        if(argc + 1 >= mem_size) {
-                            mem_size *= 2;
-                            Void *p = system_realloc(argv, sizeof(*argv) * mem_size);
-                            if(p) {
-                                argv = (Char **)p;
-                            }
-                        }
-
-                        *cur = find_data.cFileName;
-                        ++cur;
-                        ++argc;
-                    }
-                    while(FindNextFile(fhandle, &find_data));
+            else if(arg_cpy[i] == ' ') {
+                if(!in_quotes) {
+                    arg_cpy[i] = 0;
                 }
             }
         }
+
+        // Setup pointers.
+        in_quotes = false;
+        Int mem_size = original_cnt * 2;
+        Int argc = 1;
+        Char **argv = new Char *[mem_size];
+        if(!argv) {
+            system_write_to_console("Memory allocation fail");
+        }
+        else {
+            defer {
+                delete[] argv;
+            };
+            Char **cur = argv;
+            *cur++ = arg_cpy;
+            for(Int i = 0; (i < args_len); ++i) {
+                if(!arg_cpy[i]) {
+                    Char *str = arg_cpy + i + 1;
+                    if(!string_contains(str, '*')) {
+                        *cur = str;
+                        ++cur;
+                        ++argc;
+                    }
+                    else {
+                        WIN32_FIND_DATA find_data = {};
+                        HANDLE fhandle = FindFirstFile(str, &find_data);
+
+                        if(fhandle != INVALID_HANDLE_VALUE) {
+                            do {
+                                if(argc + 1 >= mem_size) {
+                                    mem_size *= 2;
+                                    Void *p = system_realloc(argv, sizeof(*argv) * mem_size);
+                                    if(p) {
+                                        argv = (Char **)p;
+                                    }
+                                }
+
+                                *cur = find_data.cFileName;
+                                ++cur;
+                                ++argc;
+                            }
+                            while(FindNextFile(fhandle, &find_data));
+                        }
+                    }
+                }
+            }
+
+            my_main(argc, argv);
+            res = 0;
+        }
     }
 
-    my_main(argc, argv);
-
-    return(0);
-    //ExitProcess(0);
+    return(res);
 }
