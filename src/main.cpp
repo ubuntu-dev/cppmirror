@@ -158,6 +158,11 @@ Void my_main(Int argc, Char **argv) {
                     push_error(ErrorType_no_files_pass_in);
                 }
                 else {
+                    Char directory[1024] = {};
+                    get_current_directory(directory, 1024);
+
+                    Uintptr size_of_all_files = system_get_total_size_of_directory(directory);
+
                     Parse_Result parse_res = parse_streams(number_of_files, fnames, passed_in_macro_data, macro_cnt);
 #if INTERNAL
                     defer {

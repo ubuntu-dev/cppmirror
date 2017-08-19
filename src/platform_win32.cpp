@@ -167,6 +167,53 @@ Uintptr system_get_file_size(Char *fname) {
     return(res);
 }
 
+Uintptr system_get_total_size_of_directory(Char *path) {
+    WIN32_FIND_DATA data = {};
+    Uintptr res = 0;
+
+    Char fname[1024] = {};
+    Int fname_index = string_copy(fname, path);
+    fname[fname_index++] = '\\';
+    fname[fname_index++] = '*';
+    fname[fname_index++] = '.';
+    fname[fname_index++] = '*';
+
+    HANDLE handle = FindFirstFile(fname, &data);
+    if(handle != INVALID_HANDLE_VALUE) {
+        do {
+            if((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+                if((strcmp(data.cFileName, ".")) && (strcmp(data.cFileName, ".."))) {
+                    // Found a subdirectory.
+                    Char new_fname[1024] = {};
+                    Uintptr str_i = string_copy(new_fname, fname);
+                    new_fname[str_i++] = '\\';
+                    string_copy(new_fname + str_i, data.cFileName);
+
+                    res += system_get_total_size_of_directory(new_fname);
+                }
+            }
+            else {
+                LARGE_INTEGER sz;
+                sz.LowPart = data.nFileSizeLow;
+                sz.HighPart = data.nFileSizeHigh;
+                res += sz.QuadPart;
+            }
+        }
+        while(FindNextFile(handle,&data));
+
+        FindClose(handle);
+    }
+
+    return(res);
+}
+
+Uintptr get_current_directory(Char *buffer, Uintptr size) {
+    Uintptr res = GetCurrentDirectory(size, buffer);
+
+    return(res);
+}
+
+// TODO(Jonny): This function is _really_ stupid... fix it.
 Bool is_valid_cpp_file(Char *fname) {
     Bool res = false;
 

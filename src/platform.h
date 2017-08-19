@@ -26,6 +26,10 @@ struct File {
 Bool system_write_to_file(Char *fname, File file);
 File system_read_entire_file_and_null_terminate(Char *fname);
 
+Uintptr system_get_total_size_of_directory(Char *dir_name);
+Uintptr get_current_directory(Char *buffer, Uintptr size);
+
+
 // Utility stuff.
 Void system_write_to_console(Char *str, ...);
 

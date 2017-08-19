@@ -27,35 +27,46 @@ popd
 
 rem Run after building.
 
+if "%RUN_TEST%"=="true" (
+    pushd "test/game"
+    "../../build/mirror.exe" game.cpp
+    popd
+
+    pushd "build"
+    cl -Fegame %DEBUG_COMMON_COMPILER_FLAGS% -Wall "../test/game/game.cpp" -FmGame.map -link -subsystem:windows,5.2 kernel32.lib
+    popd
+)
+
 rem Test code for C++.
-if "%RUN_TEST%"=="true" (
-    pushd "test"
-    "../build/mirror.exe" test_code.cpp
-    popd
-
-    pushd "build"
-    cl -Fetest %DEBUG_COMMON_COMPILER_FLAGS% -Wall "../test/test_code.cpp" -FmTest.map -link -subsystem:console,5.2 kernel32.lib
-    popd
-)
-
-rem Math test
-if "%RUN_TEST%"=="true" (
-    pushd "test"
-    "../build/mirror.exe" sgl_math.cpp
-    popd
-
-    pushd "build"
-    cl -Fetest %DEBUG_COMMON_COMPILER_FLAGS% -Wall "../test/sgl_math.cpp" -FmTest.map -link -subsystem:console,5.2 kernel32.lib
-    popd
-)
-
-rem Platform test
-if "%RUN_TEST%"=="true" (
-    pushd "test"
-    "../build/mirror.exe" sgl_platform.cpp
-    popd
-
-    pushd "build"
-    cl -Fetest %DEBUG_COMMON_COMPILER_FLAGS% -Wall "../test/sgl_platform.cpp" -FmTest.map -link -subsystem:console,5.2 kernel32.lib
-    popd
-)
+rem if "%RUN_TEST%"=="true" (
+rem     pushd "test"
+rem     "../build/mirror.exe" test_code.cpp
+rem     popd
+rem 
+rem     pushd "build"
+rem     cl -Fetest %DEBUG_COMMON_COMPILER_FLAGS% -Wall "../test/test_code.cpp" -FmTest.map -link -subsystem:console,5.2 kernel32.lib
+rem     popd
+rem )
+rem 
+rem rem Math test
+rem if "%RUN_TEST%"=="true" (
+rem     pushd "test"
+rem     "../build/mirror.exe" sgl_math.cpp
+rem     popd
+rem 
+rem     pushd "build"
+rem     cl -Fetest %DEBUG_COMMON_COMPILER_FLAGS% -Wall "../test/sgl_math.cpp" -FmTest.map -link -subsystem:console,5.2 kernel32.lib
+rem     popd
+rem )
+rem 
+rem rem Platform test
+rem if "%RUN_TEST%"=="true" (
+rem     pushd "test"
+rem     "../build/mirror.exe" sgl_platform.cpp
+rem     popd
+rem 
+rem     pushd "build"
+rem     cl -Fetest %DEBUG_COMMON_COMPILER_FLAGS% -Wall "../test/sgl_platform.cpp" -FmTest.map -link -subsystem:console,5.2 kernel32.lib
+rem     popd
+rem )
+rem 

@@ -446,6 +446,7 @@ File write_data(Parse_Result pr) {
                   "//\n");
 
             // Forward declared recreated structs.
+            // TODO(Jonny): I don't think I need this anymore. I seem to be forward declaring structs more than once.
             write(&ob, "\n// Forward declared structs.\n");
             for(Int i = 0; (i < pr.structs.cnt); ++i) {
                 Struct_Data *sd = pr.structs.e + i;
