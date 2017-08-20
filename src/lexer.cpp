@@ -1885,12 +1885,12 @@ Void handle_hash_if_statement(Tokenizer *tokenizer, MacroData *macro_data, Int m
     }
 }
 
-File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int passed_in_macro_cnt) {
+File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int passed_in_macro_cnt, Uintptr max_file_size) {
     File res = {};
 
     File_With_Extra_Space file = {};
     file.size = original_file.size;
-    file.memory_size = original_file.size * 500;
+    file.memory_size = max_file_size * 2;
 
     Void *p = system_malloc(file.memory_size);
     if(p) {
@@ -1994,7 +1994,7 @@ File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int 
 //
 // Start point.
 //
-Parse_Result parse_streams(Int cnt, Char **fnames, MacroData *md, Int macro_cnt) {
+Parse_Result parse_streams(Int cnt, Char **fnames, MacroData *md, Int macro_cnt, Uintptr max_file_size) {
     Parse_Result res = {0};
 
     res.enum_max = 8;
@@ -2012,7 +2012,7 @@ Parse_Result parse_streams(Int cnt, Char **fnames, MacroData *md, Int macro_cnt)
     for(Int i = 0; (i < cnt); ++i) {
         File file = system_read_entire_file_and_null_terminate(fnames[i]); // TODO(Jonny): Leak.
         if(file.size) {
-            file = preprocess_macros(file, md, macro_cnt);
+            file = preprocess_macros(file, md, macro_cnt, max_file_size);
             parse_stream(file.e, &res);
         }
         else {

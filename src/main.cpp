@@ -88,8 +88,6 @@ MacroData parse_passed_in_macro(Char *str) {
 }
 
 Void my_main(Int argc, Char **argv) {
-    Int res = 0;
-
     system_write_to_console("Starting Mirror...");
 
     Bool should_log_errors = true;
@@ -160,10 +158,10 @@ Void my_main(Int argc, Char **argv) {
                 else {
                     Char directory[1024] = {};
                     get_current_directory(directory, 1024);
-
                     Uintptr size_of_all_files = system_get_total_size_of_directory(directory);
 
-                    Parse_Result parse_res = parse_streams(number_of_files, fnames, passed_in_macro_data, macro_cnt);
+                    Parse_Result parse_res = parse_streams(number_of_files, fnames, passed_in_macro_data,
+                                                           macro_cnt, size_of_all_files);
 #if INTERNAL
                     defer {
                         delete[] parse_res.enums.e;
@@ -191,9 +189,8 @@ Void my_main(Int argc, Char **argv) {
     system_write_to_console("Done");
 
     if(should_log_errors) {
-        if(print_errors()) {
-            res = 255;
-        }
+        Int err_cnt = print_errors();
+        assert(err_cnt == 0);
     }
 
     system_write_to_console("\n");
