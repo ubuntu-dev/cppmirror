@@ -28,12 +28,12 @@ popd
 rem Run after building.
 
 if "%RUN_TEST%"=="true" (
-    pushd "test/game"
-    "../../build/mirror.exe" game.cpp
+    pushd "game"
+    rem "../build/mirror.exe" game.cpp
     popd
 
     pushd "build"
-    cl -Fegame %DEBUG_COMMON_COMPILER_FLAGS% -Wall "../test/game/game.cpp" -FmGame.map -link -subsystem:windows,5.2 kernel32.lib
+    cl -Fegame %DEBUG_COMMON_COMPILER_FLAGS% -Wall "../game/game.cpp" -FmGame.map -link -subsystem:windows,5.2 kernel32.lib
     popd
 )
 
