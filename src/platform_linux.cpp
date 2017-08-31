@@ -103,6 +103,37 @@ Bool system_create_folder(Char *name) {
     return(res);
 }
 
+Uintptr system_get_total_size_of_directory(Char *dir_name) {
+    DIR *d = opendir(".");
+    if (d == NULL) {
+        perror("prsize");
+        exit(1);
+    }
+
+    Uintptr total_size = 0;
+
+    struct stat buf = {};
+    Bool exists = true;
+    for (dirent *de = readdir(d); de != NULL; de = readdir(d)) {
+        exists = stat(de->d_name, &buf);
+        if (exists < 0) {
+            fprintf(stderr, "Couldn't stat %s\n", de->d_name);
+        }
+        else {
+            total_size += buf.st_size;
+        }
+    }
+
+    return(total_size);
+}
+
+Uintptr get_current_directory(Char *buffer, Uintptr size) {
+    buffer = getcwd(buffer, size);
+    Uintptr result_size = string_length(buffer);
+
+    return(result_size);
+}
+
 Void system_write_to_console(Char *format, ...) {
     Uintptr alloc_size = 1024;
     Char *buf = (Char *)system_malloc(alloc_size);
