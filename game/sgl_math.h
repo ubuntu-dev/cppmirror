@@ -59,6 +59,7 @@
     #endif
 #endif
 
+#if defined(SGLM_IMPLEMENTATION)
 
 #if SGLM_OS_WIN32
     // TODO(Jonny): Is this specific to MSVC or to Windows?
@@ -114,9 +115,9 @@ sglm_V2 sglm_v2_midpoint(sglm_V2 a, sglm_V2 b);
 //
 // Mat4x4.
 //
-typedef struct sglm_Mat4x4 {
+struct sglm_Mat4x4 {
     __m128 e[4];
-} sglm_Mat4x4;
+};
 
 sglm_Mat4x4 sglm_mat4x4_set_trans_scale(float x, float y, float scalex, float scaley);
 sglm_Mat4x4 sglm_mat4x4_set_trans_scale_rot(float x, float y, float scalex, float scaley, float angle);
@@ -135,7 +136,7 @@ float *sglm_mat4x4_as_float_arr(float *arr, sglm_Mat4x4 *mat);
     #if SGLM_COMPILER_MSVC
         #define SGLM_ASSERT(x, ...) do { if(!(x)) { __debugbreak(); } } while(0)
     #else
-        #define SGLM_ASSERT(x, ...) do { if(!(x)) { *(Uintptr volatile *)0 = 0; } } while(0) // TODO(Jonny): Find out what debugbreak is actually on Linux.
+        #define SGLM_ASSERT(x, ...) do { if(!(x)) { *(int volatile *)0 = 0; } } while(0) // TODO(Jonny): Find out what debugbreak is actually on Linux.
     #endif
 #endif
 
@@ -491,6 +492,8 @@ sglm_Mat4x4 sglm_mat4x4_mul(sglm_Mat4x4 *a, sglm_Mat4x4 *b) {
 
     return(res);
 }
+
+#endif // defined(SGLM_IMPLEMENTATION)
 
 #define _SGLM_MATH_H
 #endif // !defined(_SGLM_MATH_H)

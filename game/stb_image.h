@@ -1494,6 +1494,16 @@ static stbi__uint16 *stbi__convert_format16(stbi__uint16 *data, int img_n, int r
     return good;
 }
 
+static double stbi_pow(double a, int b) {
+    double res = a;
+    int i;
+    for(i = 0; i < b; ++i) {
+        res *= a;
+    }
+
+    return res;
+}
+
 #ifndef STBI_NO_LINEAR
 static float   *stbi__ldr_to_hdr(stbi_uc *data, int x, int y, int comp) {
     int i,k,n;
@@ -1505,7 +1515,7 @@ static float   *stbi__ldr_to_hdr(stbi_uc *data, int x, int y, int comp) {
     if (comp & 1) n = comp; else n = comp-1;
     for (i=0; i < x*y; ++i) {
         for (k=0; k < n; ++k) {
-            output[i*comp + k] = (float) (pow(data[i*comp+k]/255.0f, stbi__l2h_gamma) * stbi__l2h_scale);
+            output[i*comp + k] = (float) (stbi_pow(data[i*comp+k]/255.0f, stbi__l2h_gamma) * stbi__l2h_scale);
         }
         if (k < comp) output[i*comp + k] = data[i*comp+k]/255.0f;
     }
@@ -1526,7 +1536,7 @@ static stbi_uc *stbi__hdr_to_ldr(float   *data, int x, int y, int comp) {
     if (comp & 1) n = comp; else n = comp-1;
     for (i=0; i < x*y; ++i) {
         for (k=0; k < n; ++k) {
-            float z = (float) pow(data[i*comp+k]*stbi__h2l_scale_i, stbi__h2l_gamma_i) * 255 + 0.5f;
+            float z = (float) stbi_pow(data[i*comp+k]*stbi__h2l_scale_i, stbi__h2l_gamma_i) * 255 + 0.5f;
             if (z < 0) z = 0;
             if (z > 255) z = 255;
             output[i*comp + k] = (stbi_uc) stbi__float2int(z);
@@ -1586,12 +1596,12 @@ typedef struct {
     stbi__uint16 dequant[4][64];
     stbi__int16 fast_ac[4][1 << FAST_BITS];
 
-// sizes for components, interleaved MCUs
+    // sizes for components, interleaved MCUs
     int img_h_max, img_v_max;
     int img_mcu_x, img_mcu_y;
     int img_mcu_w, img_mcu_h;
 
-// definition of jpeg image component
+    // definition of jpeg image component
     struct {
         int id;
         int h,v;
@@ -1625,7 +1635,7 @@ typedef struct {
     int scan_n, order[4];
     int restart_interval, todo;
 
-// kernels
+    // kernels
     void (*idct_block_kernel)(stbi_uc *out, int out_stride, short data[64]);
     void (*YCbCr_to_RGB_kernel)(stbi_uc *out, const stbi_uc *y, const stbi_uc *pcb, const stbi_uc *pcr, int count, int step);
     stbi_uc *(*resample_row_hv_2_kernel)(stbi_uc *out, stbi_uc *in_near, stbi_uc *in_far, int w, int hs);
@@ -2353,17 +2363,17 @@ static void stbi__idct_simd(stbi_uc *out, int out_stride, short data[64]) {
     int32x4_t out##_l = vshll_n_s16(vget_low_s16(inq), 12); \
     int32x4_t out##_h = vshll_n_s16(vget_high_s16(inq), 12)
 
-// wide add
+    // wide add
 #define dct_wadd(out, a, b) \
     int32x4_t out##_l = vaddq_s32(a##_l, b##_l); \
     int32x4_t out##_h = vaddq_s32(a##_h, b##_h)
 
-// wide sub
+    // wide sub
 #define dct_wsub(out, a, b) \
     int32x4_t out##_l = vsubq_s32(a##_l, b##_l); \
     int32x4_t out##_h = vsubq_s32(a##_h, b##_h)
 
-// butterfly a/b, then shift using "shiftop" by "s" and pack
+    // butterfly a/b, then shift using "shiftop" by "s" and pack
 #define dct_bfly32o(out0,out1, a,b,shiftop,s) \
     { \
         dct_wadd(sum, a, b); \
@@ -2430,8 +2440,8 @@ static void stbi__idct_simd(stbi_uc *out, int out_stride, short data[64]) {
 
     // 16bit 8x8 transpose
     {
-// these three map to a single VTRN.16, VTRN.32, and VSWP, respectively.
-// whether compilers actually get this is another story, sadly.
+        // these three map to a single VTRN.16, VTRN.32, and VSWP, respectively.
+        // whether compilers actually get this is another story, sadly.
 #define dct_trn16(x, y) { int16x8x2_t t = vtrnq_s16(x, y); x = t.val[0]; y = t.val[1]; }
 #define dct_trn32(x, y) { int32x4x2_t t = vtrnq_s32(vreinterpretq_s32_s16(x), vreinterpretq_s32_s16(y)); x = vreinterpretq_s16_s32(t.val[0]); y = vreinterpretq_s16_s32(t.val[1]); }
 #define dct_trn64(x, y) { int16x8_t x0 = x; int16x8_t y0 = y; x = vcombine_s16(vget_low_s16(x0), vget_low_s16(y0)); y = vcombine_s16(vget_high_s16(x0), vget_high_s16(y0)); }
