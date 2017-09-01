@@ -25,7 +25,7 @@ popd
 
 if "%RUN_TEST%"=="true" (
     pushd "game"
-    rem "../build/mirror.exe" game.cpp
+    "../build/mirror.exe" game.cpp
     popd
 
     pushd "build"
