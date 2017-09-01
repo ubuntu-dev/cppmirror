@@ -1,7 +1,5 @@
 #if !defined(_SGL_PLATFORM_H)
 
-#include "pp_generated.h"
-
 #define SGLP_COMPILER_MSVC 1
 #define SGLP_COMPILER_CLANG 0
 #define SGLP_COMPILER_GCC 0

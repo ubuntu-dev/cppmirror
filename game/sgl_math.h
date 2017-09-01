@@ -1,7 +1,5 @@
 #if !defined(_SGLM_MATH_H)
 
-#include "pp_generated.h"
-
 //
 // Environment.
 //
