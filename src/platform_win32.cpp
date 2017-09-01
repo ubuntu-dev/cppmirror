@@ -196,7 +196,10 @@ Uintptr system_get_total_size_of_directory(Char *path) {
                 LARGE_INTEGER sz;
                 sz.LowPart = data.nFileSizeLow;
                 sz.HighPart = data.nFileSizeHigh;
-                res += sz.QuadPart;
+#if ENVIRONMENT32
+                // Assert sz.QuadPart will fit in a 32-bit Uintptr.
+#endif
+                res += (Uintptr)sz.QuadPart;
             }
         }
         while(FindNextFile(handle,&data));
