@@ -1,8 +1,12 @@
 //#include "pp_generated.h"
 #include "sgl_platform.h"
+
+#define SGLM_IMPLEMENTATION
 #include "sgl_math.h"
 
 #define STB_IMAGE_IMPLEMENTATION
+#define STBI_ONLY_PNG
+#include <math.h>
 #include "stb_image.h"
 
 struct Player {

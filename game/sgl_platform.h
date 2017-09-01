@@ -1,14 +1,56 @@
 #if !defined(_SGL_PLATFORM_H)
 
-#define SGLP_COMPILER_MSVC 1
+#define SGLP_COMPILER_MSVC 0
 #define SGLP_COMPILER_CLANG 0
 #define SGLP_COMPILER_GCC 0
 
 #define SGLP_ENVIRONMENT64 1
 #define SGLP_ENVIRONMENT32 0
 
-#define SGLP_OS_WIN32 1
+#define SGLP_OS_WIN32 0
 #define SGLP_OS_LINUX 0
+
+#if defined(__clang__)
+    #undef SGLP_COMPILER_CLANG
+    #define SGLP_COMPILER_CLANG 1
+#elif defined(_MSC_VER)
+    #undef SGLP_COMPILER_MSVC
+    #define SGLP_COMPILER_MSVC 1
+#elif (defined(__GNUC__) || defined(__GNUG__)) // This has to be after __clang__, because Clang also defines this.
+    #undef SGLP_COMPILER_GCC
+    #define SGLP_COMPILER_GCC 1
+#else
+    #error "Could not detect compiler."
+#endif
+
+#if defined(__linux__)
+    #undef SGLP_OS_LINUX
+    #define SGLP_OS_LINUX 1
+#elif defined(_WIN32)
+    #undef SGLP_OS_WIN32
+    #define SGLP_OS_WIN32 1
+#else
+    #error "Could not detect OS"
+#endif
+
+#if SGLP_OS_LINUX
+    #if (__x86_64__ || __ppc64__)
+        #undef SGLP_ENVIRONMENT64
+        #define SGLP_ENVIRONMENT64 1
+    #else
+        #undef SGLP_ENVIRONMENT32
+        #define SGLP_ENVIRONMENT32 1
+    #endif
+#elif SGLP_OS_WIN32
+    #if defined(_WIN64)
+        #undef SGLP_ENVIRONMENT64
+        #define SGLP_ENVIRONMENT64 1
+    #else
+        #undef SGLP_ENVIRONMENT32
+        #define SGLP_ENVIRONMENT32 1
+    #endif
+#endif
+
 
 // stdcall
 #define SGLP_STDCALL
@@ -544,7 +586,7 @@ static void sglp_generate_2d_mesh(sglp_Sprite *sprite, float no_frames_x, float 
 sglp_Sprite sglp_load_image(sglp_API *api, uint8_t *img_data, int32_t frame_cnt, int32_t id,
                             int32_t width, int32_t height, int32_t no_components) {
     int i, j;
-    sglp_Sprite res = {0};
+    sglp_Sprite res = {};
     res.id = id;
     res.w = width;
     res.h = height;
@@ -1178,6 +1220,7 @@ static void sglp_free_file(sglp_API *api, sglp_File *file) {
 // TODO(Jonny): Remove these.
 #include <windows.h>
 #include <dsound.h>
+#include <intrin.h>
 
 // intrin.h
 #if defined(__cplusplus)
@@ -1848,7 +1891,7 @@ static void sglp_win32_process_pending_messages(HWND wnd, float *key, sglp_Bool 
 
 int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int show_code) {
     int i;
-    sglp_API api = {0};
+    sglp_API api = {};
 
     // Setup all the .
     api.free_file = sglp_free_file;
@@ -2211,7 +2254,6 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 //
 // Linux
 //
-/*
 #if SGLP_OS_LINUX
 
 #if !defined(_GNU_SOURCE)
@@ -2242,7 +2284,7 @@ typedef Colormap sglp_XCreateColorMap_t(Display *, Window, Visual *, int);
 static sglp_XCreateColorMap_t *sglp_x11_XCreateColorMap;
 
 typedef Window sglp_XCreateWindow_t(Display *, Window, int, int, unsigned int, unsigned int, int, int, unsigned int, Visual *, unsigned long, XSetWindowAttributes *);
-static sglp_XCreateWindow_t *sglp_XCreateWindow;
+static sglp_XCreateWindow_t *sglp_x11_XCreateWindow;
 
 typedef void sglp_XMapWindow_t(Display *, Window);
 static sglp_XMapWindow_t *sglp_x11_XMapWindow;
@@ -2273,19 +2315,19 @@ static sglp_Bool sglp_linux_load_x11(void) {
 
     void *x11 = dlopen("libX11.so", RTLD_LAZY);
     if(x11) {
-        sglp_x11_XOpenDisplay         = (XOpenDisplay_t *)        dlsym(x11, "XOpenDisplay");
-        sglp_x11_XCreateColorMap      = (XCreateColorMap_t *)     dlsym(x11, "XCreateColormap");
-        sglp_XCreateWindow            = (XCreateWindow_t *)       dlsym(x11, "sglp_XCreateWindow");
-        sglp_x11_XMapWindow           = (XMapWindow_t *)          dlsym(x11, "XMapWindow");
-        sglp_x11_XStoreName           = (XStoreName_t *)          dlsym(x11, "XStoreName");
-        sglp_x11_XSelectInput         = (XSelectInput_t *)        dlsym(x11, "XSelectInput");
-        sglp_x11_XPending             = (XPending_t *)            dlsym(x11, "XPending");
-        sglp_x11_XNextEvent           = (XNextEvent_t *)          dlsym(x11, "XNextEvent");
-        sglp_x11_XKeycodeToKeysym     = (XKeycodeToKeysym_t *)    dlsym(x11, "XKeycodeToKeysym");
-        sglp_x11_XGetWindowAttributes = (XGetWindowAttributes_t *)dlsym(x11, "XGetWindowAttributes");
-        sglp_x11_XQueryPointer        = (XQueryPointer_t *)       dlsym(x11, "XQueryPointer");
+        sglp_x11_XOpenDisplay         = (sglp_XOpenDisplay_t *)        dlsym(x11, "XOpenDisplay");
+        sglp_x11_XCreateColorMap      = (sglp_XCreateColorMap_t *)     dlsym(x11, "XCreateColormap");
+        sglp_x11_XCreateWindow        = (sglp_XCreateWindow_t *)       dlsym(x11, "XCreateWindow");
+        sglp_x11_XMapWindow           = (sglp_XMapWindow_t *)          dlsym(x11, "XMapWindow");
+        sglp_x11_XStoreName           = (sglp_XStoreName_t *)          dlsym(x11, "XStoreName");
+        sglp_x11_XSelectInput         = (sglp_XSelectInput_t *)        dlsym(x11, "XSelectInput");
+        sglp_x11_XPending             = (sglp_XPending_t *)            dlsym(x11, "XPending");
+        sglp_x11_XNextEvent           = (sglp_XNextEvent_t *)          dlsym(x11, "XNextEvent");
+        sglp_x11_XKeycodeToKeysym     = (sglp_XKeycodeToKeysym_t *)    dlsym(x11, "XKeycodeToKeysym");
+        sglp_x11_XGetWindowAttributes = (sglp_XGetWindowAttributes_t *)dlsym(x11, "XGetWindowAttributes");
+        sglp_x11_XQueryPointer        = (sglp_XQueryPointer_t *)       dlsym(x11, "XQueryPointer");
 
-        if((sglp_x11_XOpenDisplay) && (sglp_x11_XCreateColorMap) && (sglp_XCreateWindow) && (sglp_x11_XMapWindow) && (sglp_x11_XStoreName) && (sglp_x11_XSelectInput) && (sglp_x11_XPending) && (sglp_x11_XNextEvent) && (sglp_x11_XKeycodeToKeysym) && (sglp_x11_XGetWindowAttributes)) {
+        if((sglp_x11_XOpenDisplay) && (sglp_x11_XCreateColorMap) && (sglp_x11_XCreateWindow) && (sglp_x11_XMapWindow) && (sglp_x11_XStoreName) && (sglp_x11_XSelectInput) && (sglp_x11_XPending) && (sglp_x11_XNextEvent) && (sglp_x11_XKeycodeToKeysym) && (sglp_x11_XGetWindowAttributes)) {
             res = SGLP_TRUE;
         }
     }
@@ -2427,7 +2469,7 @@ static sglp_Bool sglp_linux_load_opengl_funcs(void) {
 struct WorkQueueEntry {
     void (*callback)(void *data);
     void *e;
-} WorkQueueEntry;
+};
 
 struct WorkQueue {
     int32_t volatile goal;
@@ -2438,8 +2480,8 @@ struct WorkQueue {
 
     sem_t *hsem;
     WorkQueueEntry entries[256]; // TODO(Jonny): Should I make this a Linked List?? Or a dynamically resizing array??
-} WorkQueue;
-static WorkQueue sglp_global_work_queue = {0};
+};
+static WorkQueue sglp_global_work_queue;
 
 static void sglp_linux_add_work_queue_entry(void *data, void (*callback)(void *data)) {
     int32_t NewNextEntryToWrite = (sglp_global_work_queue.next_entry_to_write + 1) % SGLP_ARRAY_COUNT(sglp_global_work_queue.entries);
@@ -2503,7 +2545,7 @@ static void *sglp_linux_thread_proc(void *Parameter) {
 // sglp_File IO
 //
 static sglp_File sglp_linux_read_file(sglp_API *api, char const *fname) {
-    sglp_File res = {0};
+    sglp_File res = {};
 
     int32_t file_desc = open(fname, O_RDONLY);
     if(file_desc != -1) {
@@ -2518,7 +2560,7 @@ static sglp_File sglp_linux_read_file(sglp_API *api, char const *fname) {
 }
 
 static sglp_File sglp_linux_read_file_and_null_terminate(sglp_API *api, char const *fname) {
-    sglp_File res = {0};
+    sglp_File res = {};
 
     int32_t file_desc = open(fname, O_RDONLY);
     if(file_desc != -1) {
@@ -2571,9 +2613,9 @@ static void sglp_linux_free(void *ptr) {
 }
 
 int main(int argc, char **argv) {
-    sglp_API api = {0};
+    sglp_API api = {};
 
-    api.sglp_free_file = sglp_free_file;
+    api.free_file = sglp_free_file;
     api.read_file = sglp_linux_read_file;
     api.read_file_and_null_terminate = sglp_linux_read_file_and_null_terminate;
 
@@ -2606,7 +2648,7 @@ int main(int argc, char **argv) {
                 Window win, root_window = DefaultRootWindow(disp);
                 Colormap colour_map = sglp_x11_XCreateColorMap(disp, root_window, visual_info->visual, AllocNone);
 
-                XSetWindowAttributes set_window_attributes = {0};
+                XSetWindowAttributes set_window_attributes = {};
                 set_window_attributes.colormap = colour_map;
                 set_window_attributes.event_mask = ExposureMask | KeyPressMask;
 
@@ -2618,12 +2660,12 @@ int main(int argc, char **argv) {
                     api.settings.win_height = 1080 / 2;
                 }
 
-                win = sglp_XCreateWindow(disp, root_window, 0, 0, api.settings.win_width,
-                                         api.settings.win_height, 0, visual_info->depth, InputOutput,
-                                         visual_info->visual, CWColormap | CWEventMask, &set_window_attributes);
+                win = sglp_x11_XCreateWindow(disp, root_window, 0, 0, api.settings.win_width,
+                                             api.settings.win_height, 0, visual_info->depth, InputOutput,
+                                             visual_info->visual, CWColormap | CWEventMask, &set_window_attributes);
                 if(win) {
                     sglp_x11_XMapWindow(disp, win);
-                    sglp_x11_XStoreName(disp, win, api.settings.window_title);
+                    sglp_x11_XStoreName(disp, win, (char *)api.settings.window_title);
 
                     GLXContext gl_context = sglp_gl_glXCreateContext(disp, visual_info, 0, GL_TRUE);
                     sglp_x11_XSelectInput(disp, win, KeyPressMask | KeyReleaseMask);
@@ -2632,7 +2674,7 @@ int main(int argc, char **argv) {
 
                         api.permanent_memory = api.os_malloc(api.settings.permanent_memory_size);
                         if(api.permanent_memory) {
-                            WorkQueue work_queue = {0};
+                            WorkQueue work_queue = {};
 
                             if(api.settings.thread_cnt > 0) {
                                 if(sglp_pthread_sem_open) {
@@ -2652,7 +2694,7 @@ int main(int argc, char **argv) {
 
                                 api.init_game = SGLP_TRUE;
                                 api.dt = 16.6f; // TODO(Jonny): Hacky!
-                                XWindowAttributes win_attribs = {0};
+                                XWindowAttributes win_attribs = {};
                                 sglp_Bool quit = SGLP_FALSE; // TODO(Jonny): Should quit be in sglp_API?
 
                                 int32_t last_time = 0, this_time = 0;
@@ -2670,8 +2712,8 @@ int main(int argc, char **argv) {
                                                 case XK_Left:  { api.key[sglp_key_left]  = SGLP_TRUE; } break;
                                                 case XK_Right: { api.key[sglp_key_right] = SGLP_TRUE; } break;
 
-                                                case 'w': { api.key[key_w] = SGLP_TRUE; } break;
-                                                case 's': { api.key[key_s] = SGLP_TRUE; } break;
+                                                case 'w': { api.key[sglp_key_w] = SGLP_TRUE; } break;
+                                                case 's': { api.key[sglp_key_s] = SGLP_TRUE; } break;
                                                 case 'a': { api.key[sglp_key_a] = SGLP_TRUE; } break;
                                                 case 'd': { api.key[sglp_key_d] = SGLP_TRUE; } break;
 
@@ -2688,8 +2730,8 @@ int main(int argc, char **argv) {
                                                 case XK_Left:  { api.key[sglp_key_left]  = SGLP_FALSE; } break;
                                                 case XK_Right: { api.key[sglp_key_right] = SGLP_FALSE; } break;
 
-                                                case 'w': { api.key[key_w] = SGLP_FALSE; } break;
-                                                case 's': { api.key[key_s] = SGLP_FALSE; } break;
+                                                case 'w': { api.key[sglp_key_w] = SGLP_FALSE; } break;
+                                                case 's': { api.key[sglp_key_s] = SGLP_FALSE; } break;
                                                 case 'a': { api.key[sglp_key_a] = SGLP_FALSE; } break;
                                                 case 'd': { api.key[sglp_key_d] = SGLP_FALSE; } break;
 
@@ -2738,7 +2780,6 @@ int main(int argc, char **argv) {
 }
 
 #endif // SGLP_OS_LINUX
-*/
 
 #define _SGLP_PLATFORM_H
 #endif

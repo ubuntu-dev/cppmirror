@@ -5,7 +5,7 @@ RELEASE=false
 RUN_TEST=true
 
 # Mirror
-WARNINGS="-Wno-unused-function -Wno-unused-variable -Wno-switch -Wno-sign-compare -Wno-unused-parameter -Wno-writable-strings -Wno-unknown-escape-sequence -Wno-missing-field-initializers -Wno-missing-braces" 
+WARNINGS="-Wno-unused-function -Wno-unused-variable -Wno-switch -Wno-sign-compare -Wno-unused-parameter -Wno-writable-strings -Wno-unknown-escape-sequence -Wno-missing-field-initializers -Wno-missing-braces -Wno-char-subscripts" 
 
 echo "Building mirror"
 if [ "$RELEASE" = "true" ]; then
@@ -20,6 +20,17 @@ if [ "$RELEASE" = "false" ]; then
     build/mirror -t    
 fi
 
+if [ "$RUN_TEST" = "true" ]; then
+    echo "Building Test"
+    pushd "game"
+    #"../build/mirror" game.cpp
+    popd
+
+    clang-"$CLANG_VERSION" -Wall -Wextra "game/game.cpp" -std=c++1y -o game_exe -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable -Wno-switch -Wno-sign-compare -Wno-unused-private-field -Wno-unused-parameter -Wno-char-subscripts -g -ldl
+    mv "./game_exe" "build/game"
+fi
+
+
 # Test.
 #if [ "$RUN_TEST" = "true" ]; then
 #    echo "Building Test"
@@ -32,12 +43,12 @@ fi
 #fi
 
 # Math Test.
-if [ "$RUN_TEST" = "true" ]; then
-    echo "Building Math"
-    pushd "test"
-    "../build/mirror" sgl_math.cpp
-    popd
-
-    clang++-"$CLANG_VERSION" -Wall -Wextra "test/sgl_math.cpp" -std=c++1y -o test_exe -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable -Wno-switch -Wno-sign-compare -Wno-unused-private-field -Wno-unused-parameter -g -ldl
-    mv "./test_exe" "build/test"
-fi
+#if [ "$RUN_TEST" = "true" ]; then
+#    echo "Building Math"
+#    pushd "test"
+#    "../build/mirror" sgl_math.cpp
+#    popd
+#
+#    clang++-"$CLANG_VERSION" -Wall -Wextra "test/sgl_math.cpp" -std=c++1y -o test_exe -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable -Wno-switch -Wno-sign-compare -Wno-unused-private-field -Wno-unused-parameter -g -ldl
+#    mv "./test_exe" "build/test"
+#fi
