@@ -1904,7 +1904,7 @@ File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int 
             free_temp_buffer(&param_memory);
         };
 
-        Int macro_cnt = 0, macro_max = 128;
+        Int macro_cnt = 0, macro_max = 512;
         MacroData *macro_data = new MacroData[macro_max];
         if(macro_data) {
             defer {
@@ -1929,6 +1929,7 @@ File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int 
                             add_include_file(&tokenizer, &file);
                         }
                         else if(token_compare(preprocessor_dir, "define")) {   // #define
+
                             ParseMacroResult pmr = parse_macro(&tokenizer, &param_memory);
                             if(pmr.success) {
                                 assert(macro_cnt + 1 < macro_max);
