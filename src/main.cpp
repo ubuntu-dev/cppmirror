@@ -10,6 +10,8 @@
   ===================================================================================================*/
 
 /* TODO(Jonny):
+    - Have a command, like PP_IGNORE, which you can put just before including a file. If you put this, mirror will not include
+      that file when preprocessing.
     - In serialize struct, if there is a member which is an enum, call enum_to_string on it's value.
     - Allow mathematical macros (1 + 1) to be the index for an array.
     - Global consts for arrays.

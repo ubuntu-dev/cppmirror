@@ -1,12 +1,14 @@
-//#include "pp_generated.h"
+#include "pp_generated.h"
 #include "sgl_platform.h"
 
 #define SGLM_IMPLEMENTATION
 #include "sgl_math.h"
 
+#include <math.h>
+
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
-#include <math.h>
+PP_IGNORE
 #include "stb_image.h"
 
 struct Player {
@@ -45,6 +47,11 @@ void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
 
 void sglp_platform_update_and_render_callback(sglp_API *api) {
     Game_State *gs = (Game_State *)api->permanent_memory;
+
+    char buffer[1024] = {};
+    pp_serialize_struct(gs, Game_State, buffer, 1024);
+    OutputDebugStringA(buffer);
+    OutputDebugStringA("\n");
 
     if(api->init_game) {
         // Load the player.

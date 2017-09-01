@@ -1918,7 +1918,8 @@ File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int 
             Tokenizer tokenizer = { file.e };
 
             Bool parsing = true;
-            Token prev_token = {0};
+            Token prev_token = {};
+            Bool ignore_next_file = false;
             while(parsing) {
                 Token token = get_token(&tokenizer);
                 switch(token.type) {
@@ -1926,7 +1927,12 @@ File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int 
                         Token preprocessor_dir = get_token(&tokenizer);
 
                         if(token_compare(preprocessor_dir, "include")) { // #include files.
-                            add_include_file(&tokenizer, &file);
+                            if(!ignore_next_file) {
+                                add_include_file(&tokenizer, &file);
+                            }
+                            else {
+                                ignore_next_file = false;
+                            }
                         }
                         else if(token_compare(preprocessor_dir, "define")) {   // #define
 
@@ -1963,12 +1969,17 @@ File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int 
                     } break;
 
                     case Token_Type_identifier: {
-                        for(Int i = 0; (i < macro_cnt); ++i) {
-                            if(token_compare(token, macro_data[i].iden)) {
-                                if(macro_data[i].res.len) {
-                                    Char *start = token.e;
-                                    macro_replace(token.e, &file, macro_data[i]);
-                                    tokenizer.at = start;
+                        if(token_compare(token, "PP_IGNORE")) {
+                            ignore_next_file = true;
+                        }
+                        else {
+                            for(Int i = 0; (i < macro_cnt); ++i) {
+                                if(token_compare(token, macro_data[i].iden)) {
+                                    if(macro_data[i].res.len) {
+                                        Char *start = token.e;
+                                        macro_replace(token.e, &file, macro_data[i]);
+                                        tokenizer.at = start;
+                                    }
                                 }
                             }
                         }

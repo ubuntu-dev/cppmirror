@@ -1,5 +1,7 @@
 #if !defined(PP_GENERATED_H)
 
+#define PP_IGNORE // TODO(Jonny): Put this before a #include to ignore the file.
+
 #include <stdint.h>
 #include <string.h>
 
@@ -100,8 +102,10 @@ struct SGLP_XINPUT_VIBRATION;
 struct sglp_Win32SoundOutput;
 struct WorkQueueEntry;
 struct WorkQueue;
-struct Vector2;
-struct GameState;
+union sglm_V2;
+struct sglm_Mat4x4;
+struct Player;
+struct Game_State;
 
 //
 // An enum, with an index for each type in the codebase.
@@ -210,7 +214,28 @@ enum pp_Type {
     pp_Type_wglCreateContextAttribsArb_t,
     pp_Type_wglSwapIntervalExt_t,
     pp_Type_TimeBeginPeriod_t,
+    pp_Type_sglp_XOpenDisplay_t,
+    pp_Type_sglp_XCreateColorMap_t,
+    pp_Type_sglp_XCreateWindow_t,
+    pp_Type_sglp_XMapWindow_t,
+    pp_Type_sglp_XStoreName_t,
+    pp_Type_sglp_XSelectInput_t,
+    pp_Type_sglp_XPending_t,
+    pp_Type_sglp_XNextEvent_t,
+    pp_Type_sglp_XKeycodeToKeysym_t,
+    pp_Type_sglp_XGetWindowAttributes_t,
+    pp_Type_sglp_XQueryPointer_t,
+    pp_Type_sglp_sem_open_t,
+    pp_Type_sglp_sem_close_t,
+    pp_Type_sglp_pthread_create_t,
+    pp_Type_sglp_glXGetProcAddressArb_t,
+    pp_Type_sglp_glXChooseVisual_t,
+    pp_Type_sglp_glXCreateContext_t,
+    pp_Type_sglp_glXMakeCurrent_t,
+    pp_Type_sglp_glXSwapBuffers_t,
+    pp_Type_sglm_Bool,
     pp_Type_sglp_Key,
+    pp_Type_ID,
     pp_Type_sglp_Sprite,
     pp_Type_sglp_PlayingSound,
     pp_Type_sglp_OpenGlFunctions,
@@ -231,9 +256,11 @@ enum pp_Type {
     pp_Type_sglp_Win32SoundOutput,
     pp_Type_WorkQueueEntry,
     pp_Type_WorkQueue,
-    pp_Type_Vector2,
-    pp_Type_GameState,
+    pp_Type_sglm_V2,
+    pp_Type_sglm_Mat4x4,
     pp_Type___m128,
+    pp_Type_Player,
+    pp_Type_Game_State,
     pp_Type___m128i,
 
     pp_Type_count
@@ -263,8 +290,10 @@ typedef struct pp_SGLP_XINPUT_VIBRATION pp_SGLP_XINPUT_VIBRATION;    typedef str
 typedef struct pp_sglp_Win32SoundOutput pp_sglp_Win32SoundOutput;    typedef struct pp_sglp_Win32SoundOutput pp_pp_sglp_Win32SoundOutput;
 typedef struct pp_WorkQueueEntry pp_WorkQueueEntry;    typedef struct pp_WorkQueueEntry pp_pp_WorkQueueEntry;
 typedef struct pp_WorkQueue pp_WorkQueue;    typedef struct pp_WorkQueue pp_pp_WorkQueue;
-typedef struct pp_Vector2 pp_Vector2;    typedef struct pp_Vector2 pp_pp_Vector2;
-typedef struct pp_GameState pp_GameState;    typedef struct pp_GameState pp_pp_GameState;
+typedef union pp_sglm_V2 pp_sglm_V2;    typedef union pp_sglm_V2 pp_pp_sglm_V2;
+typedef struct pp_sglm_Mat4x4 pp_sglm_Mat4x4;    typedef struct pp_sglm_Mat4x4 pp_pp_sglm_Mat4x4;
+typedef struct pp_Player pp_Player;    typedef struct pp_Player pp_pp_Player;
+typedef struct pp_Game_State pp_Game_State;    typedef struct pp_Game_State pp_pp_Game_State;
 
 // Forward declared enums
 
@@ -355,6 +384,26 @@ typedef pp_uintptr_t pp_wglDeleteContext_t;
 typedef pp_uintptr_t pp_wglCreateContextAttribsArb_t;
 typedef pp_uintptr_t pp_wglSwapIntervalExt_t;
 typedef pp_uintptr_t pp_TimeBeginPeriod_t;
+typedef pp_uintptr_t pp_sglp_XOpenDisplay_t;
+typedef pp_uintptr_t pp_sglp_XCreateColorMap_t;
+typedef pp_uintptr_t pp_sglp_XCreateWindow_t;
+typedef pp_uintptr_t pp_sglp_XMapWindow_t;
+typedef pp_uintptr_t pp_sglp_XStoreName_t;
+typedef pp_uintptr_t pp_sglp_XSelectInput_t;
+typedef pp_uintptr_t pp_sglp_XPending_t;
+typedef pp_uintptr_t pp_sglp_XNextEvent_t;
+typedef pp_uintptr_t pp_sglp_XKeycodeToKeysym_t;
+typedef pp_uintptr_t pp_sglp_XGetWindowAttributes_t;
+typedef pp_uintptr_t pp_sglp_XQueryPointer_t;
+typedef pp_uintptr_t pp_sglp_sem_open_t;
+typedef pp_uintptr_t pp_sglp_sem_close_t;
+typedef pp_uintptr_t pp_sglp_pthread_create_t;
+typedef pp_uintptr_t pp_sglp_glXGetProcAddressArb_t;
+typedef pp_uintptr_t pp_sglp_glXChooseVisual_t;
+typedef pp_uintptr_t pp_sglp_glXCreateContext_t;
+typedef pp_uintptr_t pp_sglp_glXMakeCurrent_t;
+typedef pp_uintptr_t pp_sglp_glXSwapBuffers_t;
+typedef pp_int pp_sglm_Bool;
 
 //
 // Recreated structs.
@@ -416,11 +465,17 @@ struct pp_WorkQueueEntry {
 struct pp_WorkQueue {
     int32_t volatile goal; int32_t volatile cnt; int32_t volatile next_entry_to_write; int32_t volatile next_entry_to_read; pp_void *hsem; pp_WorkQueueEntry entries[256]; 
 };
-struct pp_Vector2 {
-    float x; float y; 
+union pp_sglm_V2 {
+    float e[2];  struct {float x; float y;  };
 };
-struct pp_GameState {
-    int x; 
+struct pp_sglm_Mat4x4 {
+    pp___m128 e[4]; 
+};
+struct pp_Player {
+    pp_sglp_Sprite sprite; float x; float y; float scale_x; float scale_y; float rot; 
+};
+struct pp_Game_State {
+    pp_Player player; 
 };
 
 // Turn a typedef'd type into it's original type.
@@ -510,6 +565,26 @@ PP_CONSTEXPR PP_STATIC pp_Type pp_typedef_to_original(pp_Type type) {
         case pp_Type_wglCreateContextAttribsArb_t: { return(pp_Type_uintptr_t); } break;
         case pp_Type_wglSwapIntervalExt_t: { return(pp_Type_uintptr_t); } break;
         case pp_Type_TimeBeginPeriod_t: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sglp_XOpenDisplay_t: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sglp_XCreateColorMap_t: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sglp_XCreateWindow_t: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sglp_XMapWindow_t: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sglp_XStoreName_t: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sglp_XSelectInput_t: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sglp_XPending_t: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sglp_XNextEvent_t: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sglp_XKeycodeToKeysym_t: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sglp_XGetWindowAttributes_t: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sglp_XQueryPointer_t: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sglp_sem_open_t: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sglp_sem_close_t: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sglp_pthread_create_t: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sglp_glXGetProcAddressArb_t: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sglp_glXChooseVisual_t: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sglp_glXCreateContext_t: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sglp_glXMakeCurrent_t: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sglp_glXSwapBuffers_t: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sglm_Bool: { return(pp_Type_int); } break;
     }
 
     return(type);
@@ -1080,22 +1155,62 @@ PP_CONSTEXPR PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type
             } break; 
         }
     }
-    else if(real_type == pp_Type_Vector2) {
+    else if(real_type == pp_Type_sglm_V2) {
         switch(index) {
             case 0: {
-                pp_MemberDefinition res = {pp_Type_float, "x", PP_OFFSETOF(pp_Vector2, x), 0, 0};
+                pp_MemberDefinition res = {pp_Type_float, "e", PP_OFFSETOF(pp_sglm_V2, e), 0, 2};
                 return(res);
             } break; 
             case 1: {
-                pp_MemberDefinition res = {pp_Type_float, "y", PP_OFFSETOF(pp_Vector2, y), 0, 0};
+                pp_MemberDefinition res = {pp_Type_float, "x", PP_OFFSETOF(pp_sglm_V2, x), 0, 0};
+                return(res);
+            } break; 
+            case 2: {
+                pp_MemberDefinition res = {pp_Type_float, "y", PP_OFFSETOF(pp_sglm_V2, y), 0, 0};
                 return(res);
             } break; 
         }
     }
-    else if(real_type == pp_Type_GameState) {
+    else if(real_type == pp_Type_sglm_Mat4x4) {
         switch(index) {
             case 0: {
-                pp_MemberDefinition res = {pp_Type_int, "x", PP_OFFSETOF(pp_GameState, x), 0, 0};
+                pp_MemberDefinition res = {pp_Type___m128, "e", PP_OFFSETOF(pp_sglm_Mat4x4, e), 0, 4};
+                return(res);
+            } break; 
+        }
+    }
+    else if(real_type == pp_Type_Player) {
+        switch(index) {
+            case 0: {
+                pp_MemberDefinition res = {pp_Type_sglp_Sprite, "sprite", PP_OFFSETOF(pp_Player, sprite), 0, 0};
+                return(res);
+            } break; 
+            case 1: {
+                pp_MemberDefinition res = {pp_Type_float, "x", PP_OFFSETOF(pp_Player, x), 0, 0};
+                return(res);
+            } break; 
+            case 2: {
+                pp_MemberDefinition res = {pp_Type_float, "y", PP_OFFSETOF(pp_Player, y), 0, 0};
+                return(res);
+            } break; 
+            case 3: {
+                pp_MemberDefinition res = {pp_Type_float, "scale_x", PP_OFFSETOF(pp_Player, scale_x), 0, 0};
+                return(res);
+            } break; 
+            case 4: {
+                pp_MemberDefinition res = {pp_Type_float, "scale_y", PP_OFFSETOF(pp_Player, scale_y), 0, 0};
+                return(res);
+            } break; 
+            case 5: {
+                pp_MemberDefinition res = {pp_Type_float, "rot", PP_OFFSETOF(pp_Player, rot), 0, 0};
+                return(res);
+            } break; 
+        }
+    }
+    else if(real_type == pp_Type_Game_State) {
+        switch(index) {
+            case 0: {
+                pp_MemberDefinition res = {pp_Type_Player, "player", PP_OFFSETOF(pp_Game_State, player), 0, 0};
                 return(res);
             } break; 
         }
@@ -1129,8 +1244,10 @@ PP_CONSTEXPR PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_sglp_Win32SoundOutput: { return(5); } break;
         case pp_Type_WorkQueueEntry: { return(1); } break;
         case pp_Type_WorkQueue: { return(6); } break;
-        case pp_Type_Vector2: { return(2); } break;
-        case pp_Type_GameState: { return(1); } break;
+        case pp_Type_sglm_V2: { return(3); } break;
+        case pp_Type_sglm_Mat4x4: { return(1); } break;
+        case pp_Type_Player: { return(6); } break;
+        case pp_Type_Game_State: { return(1); } break;
     }
 
     PP_ASSERT(0);
@@ -1153,11 +1270,11 @@ PP_CONSTEXPR PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {
             return(pp_StructureType_primitive);
         } break;
 
-        case pp_Type_sglp_Key: {
+        case pp_Type_sglp_Key: case pp_Type_ID: {
             return(pp_StructureType_enum);
         } break;
 
-        case pp_Type___m128: case pp_Type___m128i: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_Settings: case pp_Type_sglp_File: case pp_Type_sglp_API: case pp_Type_sglp_LoadedSound: case pp_Type_sglp_SoundOutputBuffer: case pp_Type_sglp_AudioState: case pp_Type_sglp_WAVEHeader: case pp_Type_sglp_WavChunk: case pp_Type_sglp_WavFormat: case pp_Type_sglp_RiffIter: case pp_Type_SGLP_XINPUT_GAMEPAD: case pp_Type_SGLP_XINPUT_STATE: case pp_Type_SGLP_XINPUT_VIBRATION: case pp_Type_sglp_Win32SoundOutput: case pp_Type_WorkQueueEntry: case pp_Type_WorkQueue: case pp_Type_Vector2: case pp_Type_GameState: {
+        case pp_Type___m128: case pp_Type___m128i: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_Settings: case pp_Type_sglp_File: case pp_Type_sglp_API: case pp_Type_sglp_LoadedSound: case pp_Type_sglp_SoundOutputBuffer: case pp_Type_sglp_AudioState: case pp_Type_sglp_WAVEHeader: case pp_Type_sglp_WavChunk: case pp_Type_sglp_WavFormat: case pp_Type_sglp_RiffIter: case pp_Type_SGLP_XINPUT_GAMEPAD: case pp_Type_SGLP_XINPUT_STATE: case pp_Type_SGLP_XINPUT_VIBRATION: case pp_Type_sglp_Win32SoundOutput: case pp_Type_WorkQueueEntry: case pp_Type_WorkQueue: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_Player: case pp_Type_Game_State: {
             return(pp_StructureType_struct);
         } break;
     }
@@ -1270,7 +1387,28 @@ PP_CONSTEXPR PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_wglCreateContextAttribsArb_t: { return("wglCreateContextAttribsArb_t"); } break;
         case pp_Type_wglSwapIntervalExt_t: { return("wglSwapIntervalExt_t"); } break;
         case pp_Type_TimeBeginPeriod_t: { return("TimeBeginPeriod_t"); } break;
+        case pp_Type_sglp_XOpenDisplay_t: { return("sglp_XOpenDisplay_t"); } break;
+        case pp_Type_sglp_XCreateColorMap_t: { return("sglp_XCreateColorMap_t"); } break;
+        case pp_Type_sglp_XCreateWindow_t: { return("sglp_XCreateWindow_t"); } break;
+        case pp_Type_sglp_XMapWindow_t: { return("sglp_XMapWindow_t"); } break;
+        case pp_Type_sglp_XStoreName_t: { return("sglp_XStoreName_t"); } break;
+        case pp_Type_sglp_XSelectInput_t: { return("sglp_XSelectInput_t"); } break;
+        case pp_Type_sglp_XPending_t: { return("sglp_XPending_t"); } break;
+        case pp_Type_sglp_XNextEvent_t: { return("sglp_XNextEvent_t"); } break;
+        case pp_Type_sglp_XKeycodeToKeysym_t: { return("sglp_XKeycodeToKeysym_t"); } break;
+        case pp_Type_sglp_XGetWindowAttributes_t: { return("sglp_XGetWindowAttributes_t"); } break;
+        case pp_Type_sglp_XQueryPointer_t: { return("sglp_XQueryPointer_t"); } break;
+        case pp_Type_sglp_sem_open_t: { return("sglp_sem_open_t"); } break;
+        case pp_Type_sglp_sem_close_t: { return("sglp_sem_close_t"); } break;
+        case pp_Type_sglp_pthread_create_t: { return("sglp_pthread_create_t"); } break;
+        case pp_Type_sglp_glXGetProcAddressArb_t: { return("sglp_glXGetProcAddressArb_t"); } break;
+        case pp_Type_sglp_glXChooseVisual_t: { return("sglp_glXChooseVisual_t"); } break;
+        case pp_Type_sglp_glXCreateContext_t: { return("sglp_glXCreateContext_t"); } break;
+        case pp_Type_sglp_glXMakeCurrent_t: { return("sglp_glXMakeCurrent_t"); } break;
+        case pp_Type_sglp_glXSwapBuffers_t: { return("sglp_glXSwapBuffers_t"); } break;
+        case pp_Type_sglm_Bool: { return("sglm_Bool"); } break;
         case pp_Type_sglp_Key: { return("sglp_Key"); } break;
+        case pp_Type_ID: { return("ID"); } break;
         case pp_Type_sglp_Sprite: { return("sglp_Sprite"); } break;
         case pp_Type_sglp_PlayingSound: { return("sglp_PlayingSound"); } break;
         case pp_Type_sglp_OpenGlFunctions: { return("sglp_OpenGlFunctions"); } break;
@@ -1291,9 +1429,11 @@ PP_CONSTEXPR PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_sglp_Win32SoundOutput: { return("sglp_Win32SoundOutput"); } break;
         case pp_Type_WorkQueueEntry: { return("WorkQueueEntry"); } break;
         case pp_Type_WorkQueue: { return("WorkQueue"); } break;
-        case pp_Type_Vector2: { return("Vector2"); } break;
-        case pp_Type_GameState: { return("GameState"); } break;
+        case pp_Type_sglm_V2: { return("sglm_V2"); } break;
+        case pp_Type_sglm_Mat4x4: { return("sglm_Mat4x4"); } break;
         case pp_Type___m128: { return("__m128"); } break;
+        case pp_Type_Player: { return("Player"); } break;
+        case pp_Type_Game_State: { return("Game_State"); } break;
         case pp_Type___m128i: { return("__m128i"); } break;
     }
     
@@ -1606,7 +1746,70 @@ PP_CONSTEXPR PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
         case pp_Type_TimeBeginPeriod_t:
             return sizeof(pp_TimeBeginPeriod_t);
             break;
+        case pp_Type_sglp_XOpenDisplay_t:
+            return sizeof(pp_sglp_XOpenDisplay_t);
+            break;
+        case pp_Type_sglp_XCreateColorMap_t:
+            return sizeof(pp_sglp_XCreateColorMap_t);
+            break;
+        case pp_Type_sglp_XCreateWindow_t:
+            return sizeof(pp_sglp_XCreateWindow_t);
+            break;
+        case pp_Type_sglp_XMapWindow_t:
+            return sizeof(pp_sglp_XMapWindow_t);
+            break;
+        case pp_Type_sglp_XStoreName_t:
+            return sizeof(pp_sglp_XStoreName_t);
+            break;
+        case pp_Type_sglp_XSelectInput_t:
+            return sizeof(pp_sglp_XSelectInput_t);
+            break;
+        case pp_Type_sglp_XPending_t:
+            return sizeof(pp_sglp_XPending_t);
+            break;
+        case pp_Type_sglp_XNextEvent_t:
+            return sizeof(pp_sglp_XNextEvent_t);
+            break;
+        case pp_Type_sglp_XKeycodeToKeysym_t:
+            return sizeof(pp_sglp_XKeycodeToKeysym_t);
+            break;
+        case pp_Type_sglp_XGetWindowAttributes_t:
+            return sizeof(pp_sglp_XGetWindowAttributes_t);
+            break;
+        case pp_Type_sglp_XQueryPointer_t:
+            return sizeof(pp_sglp_XQueryPointer_t);
+            break;
+        case pp_Type_sglp_sem_open_t:
+            return sizeof(pp_sglp_sem_open_t);
+            break;
+        case pp_Type_sglp_sem_close_t:
+            return sizeof(pp_sglp_sem_close_t);
+            break;
+        case pp_Type_sglp_pthread_create_t:
+            return sizeof(pp_sglp_pthread_create_t);
+            break;
+        case pp_Type_sglp_glXGetProcAddressArb_t:
+            return sizeof(pp_sglp_glXGetProcAddressArb_t);
+            break;
+        case pp_Type_sglp_glXChooseVisual_t:
+            return sizeof(pp_sglp_glXChooseVisual_t);
+            break;
+        case pp_Type_sglp_glXCreateContext_t:
+            return sizeof(pp_sglp_glXCreateContext_t);
+            break;
+        case pp_Type_sglp_glXMakeCurrent_t:
+            return sizeof(pp_sglp_glXMakeCurrent_t);
+            break;
+        case pp_Type_sglp_glXSwapBuffers_t:
+            return sizeof(pp_sglp_glXSwapBuffers_t);
+            break;
+        case pp_Type_sglm_Bool:
+            return sizeof(pp_sglm_Bool);
+            break;
         case pp_Type_sglp_Key:
+            return sizeof(pp_int);
+            break;
+        case pp_Type_ID:
             return sizeof(pp_int);
             break;
         case pp_Type_sglp_Sprite:
@@ -1666,14 +1869,20 @@ PP_CONSTEXPR PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
         case pp_Type_WorkQueue:
             return sizeof(pp_WorkQueue);
             break;
-        case pp_Type_Vector2:
-            return sizeof(pp_Vector2);
+        case pp_Type_sglm_V2:
+            return sizeof(pp_sglm_V2);
             break;
-        case pp_Type_GameState:
-            return sizeof(pp_GameState);
+        case pp_Type_sglm_Mat4x4:
+            return sizeof(pp_sglm_Mat4x4);
             break;
         case pp_Type___m128:
             return sizeof(pp___m128);
+            break;
+        case pp_Type_Player:
+            return sizeof(pp_Player);
+            break;
+        case pp_Type_Game_State:
+            return sizeof(pp_Game_State);
             break;
         case pp_Type___m128i:
             return sizeof(pp___m128i);
@@ -1726,8 +1935,8 @@ pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent
                         else if(original_type == pp_Type_uint8_t) { print_prim_arr("%u", uint8_t, *); }
                         else if(original_type == pp_Type_int8_t)  { print_prim_arr("%d", int8_t, *);  }
 
-                        else if(original_type == pp_Type_intptr_t)  { print_prim_arr("%ld", intptr_t, *);  }
-                        else if(original_type == pp_Type_uintptr_t) { print_prim_arr("%lu", uintptr_t, *); }
+                        //else if(original_type == pp_Type_intptr_t)  { print_prim_arr("%ld", intptr_t, *);  }
+                        //else if(original_type == pp_Type_uintptr_t) { print_prim_arr("%lu", uintptr_t, *); }
                         else if(original_type == pp_Type_size_t)    { print_prim_arr("%zu", size_t, *);    }
 
                         else if(original_type == pp_Type_char) {
@@ -1771,8 +1980,8 @@ pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent
                     else if(original_type == pp_Type_uint8_t)   { print_prim("%u", uint8_t, *);  }
                     else if(original_type == pp_Type_int8_t)    { print_prim("%d", int8_t, *);   }
 
-                    else if(original_type == pp_Type_intptr_t)  { print_prim("%ld", intptr_t, *);  }
-                    else if(original_type == pp_Type_uintptr_t) { print_prim("%lu", uintptr_t, *); }
+                    //else if(original_type == pp_Type_intptr_t)  { print_prim("%ld", intptr_t, *);  }
+                    //else if(original_type == pp_Type_uintptr_t) { print_prim("%lu", uintptr_t, *); }
                     else if(original_type == pp_Type_size_t)    { print_prim("%zu", size_t, *);    }
 
                     else if(original_type == pp_Type_char) {
@@ -1847,6 +2056,7 @@ pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent
 PP_CONSTEXPR PP_STATIC uintptr_t pp_get_enum_size_from_type(pp_Type type) {
     switch(pp_typedef_to_original(type)) {
         case pp_Type_sglp_Key: { return(55); } break;
+        case pp_Type_ID: { return(5); } break;
     }
 
     PP_ASSERT(0);
@@ -1914,6 +2124,13 @@ PP_CONSTEXPR PP_STATIC intptr_t pp_string_to_enum(pp_Type type, char const *str)
             else if(pp_string_compare(str, "sglp_key_y")) { return(89); }
             else if(pp_string_compare(str, "sglp_key_z")) { return(90); }
             else if(pp_string_compare(str, "sglp_key_cnt")) { return(128); }
+        } break;
+        case pp_Type_ID: {
+            if(pp_string_compare(str, "ID_unknown")) { return(0); }
+            else if(pp_string_compare(str, "ID_sprite_player")) { return(1); }
+            else if(pp_string_compare(str, "ID_sound_background")) { return(2); }
+            else if(pp_string_compare(str, "ID_sound_bloop")) { return(3); }
+            else if(pp_string_compare(str, "ID_count")) { return(4); }
         } break;
     }
 
@@ -1983,6 +2200,15 @@ PP_CONSTEXPR PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t ind
                 case 89: { return("sglp_key_y"); } break;
                 case 90: { return("sglp_key_z"); } break;
                 case 128: { return("sglp_key_cnt"); } break;
+            }
+        } break;
+        case pp_Type_ID: {
+            switch(index) {
+                case 0: { return("ID_unknown"); } break;
+                case 1: { return("ID_sprite_player"); } break;
+                case 2: { return("ID_sound_background"); } break;
+                case 3: { return("ID_sound_bloop"); } break;
+                case 4: { return("ID_count"); } break;
             }
         } break;
     }
