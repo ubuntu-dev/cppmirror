@@ -42,15 +42,15 @@ SwitchType get_switch_type(Char *str) {
     if(len >= 2) {
         if(str[0] == '-') {
             switch(str[1]) {
-                case 'e': case 'E': res = SwitchType_log_errors;               break;
-                case 'h': case 'H': res = SwitchType_print_help;               break;
-                case 'p': case 'P': res = SwitchType_output_preprocessed_file; break;
-                case 'd': case 'D': res = SwitchType_macro;                    break;
+                case 'e': case 'E': {res = SwitchType_log_errors;}               break;
+                case 'h': case 'H': {res = SwitchType_print_help;}               break;
+                case 'p': case 'P': {res = SwitchType_output_preprocessed_file;} break;
+                case 'd': case 'D': {res = SwitchType_macro;}                    break;
 #if INTERNAL
-                case 's': case 'S': res = SwitchType_silent;                   break;
-                case 't': case 'T': res = SwitchType_run_tests;                break;
+                case 's': case 'S': {res = SwitchType_silent;}                   break;
+                case 't': case 'T': {res = SwitchType_run_tests;}                break;
 #endif
-                default: assert(0); break;
+                default: {assert(0);} break;
             }
         }
         else {
@@ -117,11 +117,11 @@ Void my_main(Int argc, Char **argv) {
 
                 SwitchType type = get_switch_type(switch_name);
                 switch(type) {
-                    case SwitchType_silent:                   should_write_to_file = false;         break;
-                    case SwitchType_log_errors:               should_log_errors = true;             break;
-                    case SwitchType_run_tests:                should_run_tests = true;              break;
-                    case SwitchType_print_help:               print_help();                         break;
-                    case SwitchType_output_preprocessed_file: only_output_preprocessed_file = true; break;
+                    case SwitchType_silent:                   {should_write_to_file = false;}         break;
+                    case SwitchType_log_errors:               {should_log_errors = true;}             break;
+                    case SwitchType_run_tests:                {should_run_tests = true;}              break;
+                    case SwitchType_print_help:               {print_help();}                         break;
+                    case SwitchType_output_preprocessed_file: {only_output_preprocessed_file = true;} break;
 
                     case SwitchType_macro:
                         passed_in_macro_data[macro_cnt++] = parse_passed_in_macro(argv[i] + 2); // Skip "-D".

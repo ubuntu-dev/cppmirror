@@ -179,7 +179,7 @@ Bool print_errors(void) {
         system_write_to_console(buffer2);
 
         for(Int i = 0; (i < global_error_count); ++i) {
-            Char buffer[256] = {0};
+            Char buffer[256] = {};
             stbsp_snprintf(buffer, array_count(buffer), "%s %s\n",
                            global_errors[i].guid, ErrorTypeToString(global_errors[i].type));
             system_write_to_console(buffer);

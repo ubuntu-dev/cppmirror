@@ -8,6 +8,7 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
+
 PP_IGNORE
 #include "stb_image.h"
 
@@ -28,8 +29,6 @@ enum ID {
     ID_sprite_player,
     ID_sound_background,
     ID_sound_bloop,
-
-    ID_count
 };
 
 void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
