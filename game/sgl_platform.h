@@ -80,8 +80,8 @@ struct sglp_API;
 sglp_Sprite sglp_load_image(sglp_API *api, uint8_t *img_data, int32_t frame_cnt, int32_t id,
                             int32_t width, int32_t height, int32_t no_components);
 void sglp_clear_screen_for_frame(void);
-void sglp_draw_sprite(sglp_Sprite sprite, int32_t cur_frame, float *tform);
-void sglp_draw_black_box(float *tform);
+void sglp_draw_sprite(sglp_Sprite sprite, int32_t cur_frame, float const *tform);
+void sglp_draw_black_box(float const *tform);
 uint32_t sglp_load_and_compile_shaders(char const *fvertex, char const *ffragment);
 
 //
@@ -425,6 +425,23 @@ static uint32_t sglp_global_uniform_pos;
 static uint32_t sglp_global_uniform_colour;
 static uint32_t sglp_global_uniform_no_texture;
 
+static void sglp_memcpy(void *dest, void *src, uintptr_t cnt) {
+    int i;
+    uint8_t *dest8 = (uint8_t *)dest;
+    uint8_t *src8  = (uint8_t *)src;
+    for(i = 0; (i < cnt); ++i) {
+        dest8[i] = src8[i];
+    }
+}
+
+static void sglp_memset(void *dest, uint8_t x, uintptr_t size) {
+    int i;
+    uint8_t *dest8 = (uint8_t *)dest;
+    for(i = 0; (i < size); ++i) {
+        dest8[i] = x;
+    }
+}
+
 int32_t sglp_gl_coord_to_screen_pixel_x(float glx, int32_t win_width) {
     int32_t res = ((glx + 1) * win_width) / 2;
 
@@ -719,10 +736,13 @@ void sglp_clear_screen_for_frame() {
     sglp_global_opengl->glUniform4f(sglp_global_uniform_colour, 1.0f, 1.0f, 1.0f, 1.0f);
 }
 
-void sglp_draw_sprite(sglp_Sprite sprite, int32_t cur_frame, float *tform) {
+void sglp_draw_sprite(sglp_Sprite sprite, int32_t cur_frame, float const *tform) {
     // Convert the x and y into opengl x and y.
-    float *x = &tform[12];
-    float *y = &tform[13];
+    float my_tform[16] = {};
+    sglp_memcpy(my_tform, (void *)tform, sizeof(float) * 16);
+
+    float *x = &my_tform[12];
+    float *y = &my_tform[13];
 
     float glx = sglp_screen_to_gl_x(*x);
     float gly = sglp_screen_to_gl_y(*y);
@@ -735,14 +755,17 @@ void sglp_draw_sprite(sglp_Sprite sprite, int32_t cur_frame, float *tform) {
 
     sglp_global_opengl->glUniform2f(sglp_global_uniform_sprite_offset, ((1.0f / sprite.frame_cnt) * cur_frame) * -1.0f, 0.0f);
 
-    sglp_pass_mat4x4_to_shader(tform, sglp_global_uniform_pos);
+    sglp_pass_mat4x4_to_shader(my_tform, sglp_global_uniform_pos);
     sglp_global_opengl->glDrawArrays(SGLP_GL_TRIANGLE_STRIP, 0, 4);
 }
 
-void sglp_draw_black_box(float *tform) {
+void sglp_draw_black_box(float const *tform) {
     // Convert the x and y into opengl x and y.
-    float *x = &tform[12];
-    float *y = &tform[13];
+    float my_tform[16] = {};
+    sglp_memcpy(my_tform, (void *)tform, sizeof(float) * 16);
+
+    float *x = &my_tform[12];
+    float *y = &my_tform[13];
 
     float glx = sglp_screen_to_gl_x(*x);
     float gly = sglp_screen_to_gl_y(*y);
@@ -755,7 +778,7 @@ void sglp_draw_black_box(float *tform) {
 
     sglp_global_opengl->glUniform2f(sglp_global_uniform_sprite_offset, 0.0f, 0.0f);
 
-    sglp_pass_mat4x4_to_shader(tform, sglp_global_uniform_pos);
+    sglp_pass_mat4x4_to_shader(my_tform, sglp_global_uniform_pos);
     sglp_global_opengl->glDrawArrays(SGLP_GL_TRIANGLE_STRIP, 0, 4);
 }
 
@@ -1109,23 +1132,6 @@ static uint32_t sglp_get_chunk_data_size(sglp_RiffIter iter) {
     uint32_t res = chunk->size;
 
     return(res);
-}
-
-static void sglp_memcpy(void *dest, void *src, uintptr_t cnt) {
-    int i;
-    uint8_t *dest8 = (uint8_t *)dest;
-    uint8_t *src8  = (uint8_t *)src;
-    for(i = 0; (i < cnt); ++i) {
-        dest8[i] = src8[i];
-    }
-}
-
-static void sglp_memset(void *dest, uint8_t x, uintptr_t size) {
-    int i;
-    uint8_t *dest8 = (uint8_t *)dest;
-    for(i = 0; (i < size); ++i) {
-        dest8[i] = x;
-    }
 }
 
 sglp_Bool sglp_load_wav(sglp_API *api, int32_t id, void *data, uintptr_t size) {
