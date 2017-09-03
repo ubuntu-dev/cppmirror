@@ -142,7 +142,7 @@ Bool system_write_to_file(Char *fname, File file) {
         }
     }
 
-    return res;
+    return(res);
 }
 
 Uintptr system_get_file_size(Char *fname) {
@@ -235,9 +235,7 @@ Bool is_valid_cpp_file(Char *fname) {
 }
 
 Bool system_create_folder(Char *name) {
-    Int create_dir_res = CreateDirectory(name, 0);
-
-    Bool res = (create_dir_res == 0);
+    Int res = CreateDirectory(name, 0);
 
     return(res);
 }

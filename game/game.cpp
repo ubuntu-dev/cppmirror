@@ -6,11 +6,14 @@
 
 #include <math.h>
 
+PP_IGNORE
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
+#include "stb_image.h"
 
 PP_IGNORE
-#include "stb_image.h"
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "stb_ttf.h"
 
 struct Player {
     sglp_Sprite sprite;
@@ -21,12 +24,15 @@ struct Player {
 
 struct Game_State {
     Player player;
+
+    sglp_Sprite text;
 };
 
 enum ID {
     ID_unknown,
 
     ID_sprite_player,
+    ID_sprite_text,
     ID_sound_background,
     ID_sound_bloop,
 };
@@ -47,10 +53,13 @@ void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
 void sglp_platform_update_and_render_callback(sglp_API *api) {
     Game_State *gs = (Game_State *)api->permanent_memory;
 
-    char buffer[1024] = {};
-    pp_serialize_struct(gs, Game_State, buffer, 1024);
-    OutputDebugStringA(buffer);
-    OutputDebugStringA("\n");
+    {
+        int buf_size = 256 * 256;
+        char *buffer = new char[buf_size];
+        pp_serialize_struct(gs, Game_State, buffer, buf_size);
+        OutputDebugStringA(buffer); OutputDebugStringA("\n\n");
+        delete buffer;
+    }
 
     if(api->init_game) {
         // Load the player.
@@ -84,6 +93,36 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
                 api->free_file(api, &bloop_wav);
             }
         }
+
+        // Text
+        {
+            sglp_File ttf_file = api->read_file(api, "c:/Windows/Fonts/LiberationMono-Bold.ttf");
+            assert(ttf_file.size);
+
+            stbtt_fontinfo font;
+            stbtt_InitFont(&font, ttf_file.e, stbtt_GetFontOffsetForIndex(ttf_file.e, 0));
+            int width, height, xoffset, yoffset;
+            uint8_t *mono_bitmap = stbtt_GetCodepointBitmap(&font, 0, stbtt_ScaleForPixelHeight(&font, 128.0f),
+                                                            'N', &width, &height, &xoffset, &yoffset);
+
+
+            uint8_t *full_colour_bitmap = (uint8_t *)api->os_malloc(width * height * 4);
+            uint8_t *source = mono_bitmap;
+
+            uint8_t *dst_row = full_colour_bitmap;
+            for(int32_t i = 0; (i < height); ++i) {
+                int32_t *dst = (int32_t *)dst_row;
+                for(int J = 0; (J < width); ++J) {
+                    uint8_t Alpha = *source++;
+                    *dst++ = ((Alpha << 24) | (Alpha << 16) | (Alpha << 8) | (Alpha << 0));
+                }
+
+                dst_row += width * 4;
+            }
+
+            gs->text = sglp_load_image(api, full_colour_bitmap, 1, ID_sprite_text, width, height, 4);
+
+        }
     }
     else {
         // Update
@@ -114,5 +153,8 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
         float tform[16] = {};
         sglm_mat4x4_as_float_arr(tform, &mat);
         sglp_draw_sprite(gs->player.sprite, 0, tform);
+
+
+        sglp_draw_sprite(gs->text, 0, tform);
     }
 }

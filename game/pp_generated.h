@@ -475,7 +475,7 @@ struct pp_Player {
     pp_sglp_Sprite sprite; float x; float y; float scale_x; float scale_y; float rot; 
 };
 struct pp_Game_State {
-    pp_Player player; 
+    pp_Player player; pp_sglp_Sprite text; 
 };
 
 // Turn a typedef'd type into it's original type.
@@ -1213,6 +1213,10 @@ PP_CONSTEXPR PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type
                 pp_MemberDefinition res = {pp_Type_Player, "player", PP_OFFSETOF(pp_Game_State, player), 0, 0};
                 return(res);
             } break; 
+            case 1: {
+                pp_MemberDefinition res = {pp_Type_sglp_Sprite, "text", PP_OFFSETOF(pp_Game_State, text), 0, 0};
+                return(res);
+            } break; 
         }
     }
 
@@ -1247,7 +1251,7 @@ PP_CONSTEXPR PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_sglm_V2: { return(3); } break;
         case pp_Type_sglm_Mat4x4: { return(1); } break;
         case pp_Type_Player: { return(6); } break;
-        case pp_Type_Game_State: { return(1); } break;
+        case pp_Type_Game_State: { return(2); } break;
     }
 
     PP_ASSERT(0);
@@ -2056,7 +2060,7 @@ pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent
 PP_CONSTEXPR PP_STATIC uintptr_t pp_get_enum_size_from_type(pp_Type type) {
     switch(pp_typedef_to_original(type)) {
         case pp_Type_sglp_Key: { return(55); } break;
-        case pp_Type_ID: { return(4); } break;
+        case pp_Type_ID: { return(5); } break;
     }
 
     PP_ASSERT(0);
@@ -2128,8 +2132,9 @@ PP_CONSTEXPR PP_STATIC intptr_t pp_string_to_enum(pp_Type type, char const *str)
         case pp_Type_ID: {
             if(pp_string_compare(str, "ID_unknown")) { return(0); }
             else if(pp_string_compare(str, "ID_sprite_player")) { return(1); }
-            else if(pp_string_compare(str, "ID_sound_background")) { return(2); }
-            else if(pp_string_compare(str, "ID_sound_bloop")) { return(3); }
+            else if(pp_string_compare(str, "ID_sprite_text")) { return(2); }
+            else if(pp_string_compare(str, "ID_sound_background")) { return(3); }
+            else if(pp_string_compare(str, "ID_sound_bloop")) { return(4); }
         } break;
     }
 
@@ -2205,8 +2210,9 @@ PP_CONSTEXPR PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t ind
             switch(index) {
                 case 0: { return("ID_unknown"); } break;
                 case 1: { return("ID_sprite_player"); } break;
-                case 2: { return("ID_sound_background"); } break;
-                case 3: { return("ID_sound_bloop"); } break;
+                case 2: { return("ID_sprite_text"); } break;
+                case 3: { return("ID_sound_background"); } break;
+                case 4: { return("ID_sound_bloop"); } break;
             }
         } break;
     }
