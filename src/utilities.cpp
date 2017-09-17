@@ -11,6 +11,9 @@
 
 Int const MAX_POINTER_SIZE = 4;
 
+#define TOKEN_CONCAT_(x, y) x##y
+#define TOKEN_CONCAT(x, y) TOKEN_CONCAT_(x, y)
+
 //
 // Memset and Memcpy
 //
@@ -27,28 +30,32 @@ Void copy(Void *dest, Void *src, Uintptr size) {
 Void set(Void *dest, Byte v, Uintptr n) {
     Byte *dest8 = (Byte *)dest;
     for(Uintptr i = 0; (i < n); ++i, ++dest8) {
-        *dest8 = cast(Byte)v;
+        *dest8 = (Byte)v;
     }
 }
 
 Void *operator new(Uintptr size) {
-    Void *res = system_malloc(size);
-
-    return(res);
+    return system_malloc(size);
 }
 
 Void *operator new[](Uintptr size) {
-    Void *res = system_malloc(size);
+    return system_malloc(size);
+}
+
+// These won't actually throw, but Clang won't shut up about them...
+void operator delete(void *ptr) throw() {
+    system_free(ptr);
+}
+
+void operator delete[](void *ptr) throw() {
+    system_free(ptr);
+}
+
+template<typename T>
+Uintptr get_alloc_count(T *ptr) {
+    Uintptr res = system_get_alloc_size(ptr) / sizeof(T);
 
     return(res);
-}
-
-Void operator delete(Void *ptr) {
-    system_free(ptr);
-}
-
-Void operator delete[](Void *ptr) {
-    system_free(ptr);
 }
 
 //
@@ -172,7 +179,7 @@ Bool print_errors(void) {
         system_write_to_console(buffer2);
 
         for(Int i = 0; (i < global_error_count); ++i) {
-            Char buffer[256] = {0};
+            Char buffer[256] = {};
             stbsp_snprintf(buffer, array_count(buffer), "%s %s\n",
                            global_errors[i].guid, ErrorTypeToString(global_errors[i].type));
             system_write_to_console(buffer);
@@ -183,12 +190,32 @@ Bool print_errors(void) {
 }
 
 //
+// Defer
+//
+template<typename F>
+struct Defer_Struct {
+    F f;
+    inline Defer_Struct(F f) : f(f) {}
+    inline ~Defer_Struct() { f(); }
+    Defer_Struct<F> operator=(Defer_Struct<F> other) {assert(0); Defer_Struct<F> r; return(r); } // Visual Studio was complaining about this... but it shouldn't be called...
+};
+
+struct {
+    template<typename F>
+    inline Defer_Struct<F> operator<<(F f) {
+        return Defer_Struct<F>(f);
+    }
+} Defer_Functor;
+
+#define defer auto TOKEN_CONCAT(defer_in_cpp_, __COUNTER__) = Defer_Functor << [&]
+
+//
 // Temp Memory.
 //
 struct TempMemory {
     Byte *e;
-    Uintptr size;
     Uintptr used;
+    Uintptr size;
 };
 
 Uintptr get_alignment(void *mem, Uintptr desired_alignment) {
@@ -196,14 +223,14 @@ Uintptr get_alignment(void *mem, Uintptr desired_alignment) {
 
     Uintptr alignment_mask = desired_alignment - 1;
     if((Uintptr)mem & alignment_mask) {
-        res = desired_alignment - (cast(Uintptr)mem & alignment_mask);
+        res = desired_alignment - ((Uintptr)mem & alignment_mask);
     }
 
     return(res);
 }
 
 TempMemory create_temp_buffer(Uintptr size) {
-    TempMemory res = {0};
+    TempMemory res = {};
 
     res.e = new Byte[size];
     if(res.e) {
@@ -220,19 +247,22 @@ Void *push_size(TempMemory *tm, Uintptr size, Int alignment = -1) {
     if(alignment == -1) {
         if(size <= 4) {
             alignment = 4;
-        } else if(size <= 8) {
+        }
+        else if(size <= 8) {
             alignment = 8;
-        } else {
+        }
+        else {
             alignment = 16;
         }
     }
 
-    Uintptr alignment_offset = get_alignment(cast(Byte *)tm->e + tm->used, alignment);
+    Uintptr alignment_offset = get_alignment((Byte *)tm->e + tm->used, alignment);
 
     if(tm->used + alignment_offset < tm->size) {
         res = tm->e + tm->used + alignment_offset;
         tm->used += size + alignment_offset;
-    } else {
+    }
+    else {
         assert(0);
     }
 
@@ -293,15 +323,17 @@ Bool string_comp_len(Char *a, Char *b, Uintptr len) {
 }
 
 Bool string_comp(Char *a, Char *b) {
+    Bool res = true;
     while((*a) && (*b)) {
         if(*a != *b) {
-            return(false);
+            res = false;
+            break;
         }
 
         ++a; ++b;
     }
 
-    return(true);
+    return(res);
 }
 
 Uintptr string_copy(Char *dest, Char *src) {
@@ -394,6 +426,7 @@ Bool string_contains(Char *str, Char target) {
 }
 
 Bool string_contains(String str, Char *target) {
+    Bool res = false;
     Int target_len = string_length(target);
 
     for(Int i = 0; (i < str.len); ++i) {
@@ -404,13 +437,16 @@ Bool string_contains(String str, Char *target) {
                 }
 
                 if(j == (target_len - 1)) {
-                    return(true);
+                    res = true;
+                    goto func_end;
                 }
             }
         }
     }
 
-    return(false);
+func_end:;
+
+    return(res);
 }
 
 Bool string_contains(Char *str, Char *target) {
@@ -478,56 +514,6 @@ ResultInt string_to_int(Char *str) {
     return(res);
 }
 
-ResultInt calculator_string_to_int(Char *str) {
-    ResultInt res = {0};
-
-    /* TODO(Jonny);
-        - Make sure each element in the string is either a number or a operator.
-        - Do the calculator in order (multiply, divide, add, subtract).
-    */
-    String *arr = new String[256]; // TODO(Jonny): Random size.
-    if(arr) {
-        Char *at = str;
-        arr[0].e = at;
-        Int cnt = 0;
-        for(; (*at); ++at, ++arr[cnt].len) {
-            if(*at == ' ') {
-                ++at;
-                arr[++cnt].e = at;
-            }
-        }
-        ++cnt;
-
-        Int *nums = new Int[cnt];
-        Char *ops = new Char[cnt];
-        if((nums) && (ops)) {
-            for(Int i = 0, j = 0; (j < cnt); ++i, j += 2) {
-                ResultInt r = string_to_int(arr[j]);
-                if(r.success) {
-                    nums[i] = r.e;
-                } else          {
-                    goto clean_up;
-                }
-            }
-
-            for(Int i = 0, j = 1; (j < cnt); ++i, j += 2) {
-                assert(arr[j].len == 1);
-                ops[i] = *arr[j].e;
-            }
-
-            // At this point, I have all the numbers and ops in seperate arrays.
-
-clean_up:;
-            delete[] ops;
-            delete[] nums;
-        }
-
-        delete[] arr;
-    }
-
-    return(res);
-}
-
 Bool is_in_string_array(String target, String *arr, Int arr_cnt) {
     Bool res = false;
     for(int i = 0; (i < arr_cnt); ++i) {
@@ -542,7 +528,7 @@ Bool is_in_string_array(String target, String *arr, Int arr_cnt) {
 
 Uint32 safe_truncate_size_64(Uint64 v) {
     assert(v <= 0xFFFFFFFF);
-    Uint32 res = cast(Uint32)v;
+    Uint32 res = (Uint32)v;
 
     return(res);
 }
@@ -596,19 +582,20 @@ Bool variable_comp(Variable a, Variable b) {
 }
 
 Bool compare_variable_array(Variable *a, Variable *b, Int count) {
+    Bool res = true;
     for(Int i = 0; (i < count); ++i) {
         if(!variable_comp(a[i], b[i])) {
-            return(false);
+            res = false;
+            break;
         }
     }
 
-    return(true);
+    return(res);
 }
 
 //
 // Utils.
 //
-
 Char to_caps(Char c) {
     Char res = c;
     if((c >= 'a') && (c <= 'z')) {

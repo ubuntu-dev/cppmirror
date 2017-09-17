@@ -11,8 +11,9 @@
 
 
 Void *system_malloc(Uintptr size) {
-    Void *res = malloc(size);
+    Uintptr *res = (Uintptr *)malloc(size + sizeof(Uintptr));
     if(res) {
+        *res++ = size;
         zero(res, size);
     }
 
@@ -22,15 +23,35 @@ Void *system_malloc(Uintptr size) {
 Bool system_free(Void *ptr) {
     Bool res = false;
     if(ptr) {
-        free(ptr);
+        Void *raw = (Uintptr *)ptr - 1;
+        free(raw);
         res = true;
     }
 
     return(res);
 }
 
-Void *system_realloc(Void *ptr, Uintptr new_size) {
-    Void *res = realloc(ptr, new_size);
+Void *system_realloc(Void *ptr, Uintptr size) {
+    Void *res = 0;
+    if(ptr) {
+        Void *original_raw = (Uintptr *)ptr - 1;
+        Uintptr *new_raw = (Uintptr *)realloc(ptr, size + sizeof(Uintptr));
+        *new_raw++ = size;
+        res = new_raw;
+    }
+    else {
+        res = system_malloc(size);
+    }
+
+    return(res);
+}
+
+Uintptr system_get_alloc_size(Void *ptr) {
+    Uintptr res = 0;
+    assert(ptr);
+    if(ptr) {
+        res = *((Uintptr *)ptr - 1);
+    }
 
     return(res);
 }
@@ -44,7 +65,7 @@ File system_read_entire_file_and_null_terminate(Char *fname) {
         res.size = ftell(file);
         fseek(file, 0, SEEK_SET);
 
-        res.e = system_malloc(res.size + 1);
+        res.e = (Char *)system_malloc(res.size + 1);
         fread(res.e, 1, res.size, file);
         res.e[res.size] = 0;
         fclose(file);
@@ -74,16 +95,48 @@ Bool system_create_folder(Char *name) {
 
     if(stat(name, &st) == -1) {
         res = (mkdir(name, 0700) == 0);
-    } else {
+    }
+    else {
         res = true;
     }
 
     return(res);
 }
 
+Uintptr system_get_total_size_of_directory(Char *dir_name) {
+    DIR *d = opendir(".");
+    if (d == NULL) {
+        perror("prsize");
+        exit(1);
+    }
+
+    Uintptr total_size = 0;
+
+    struct stat buf = {};
+    Bool exists = true;
+    for (dirent *de = readdir(d); de != NULL; de = readdir(d)) {
+        exists = stat(de->d_name, &buf);
+        if (exists < 0) {
+            fprintf(stderr, "Couldn't stat %s\n", de->d_name);
+        }
+        else {
+            total_size += buf.st_size;
+        }
+    }
+
+    return(total_size);
+}
+
+Uintptr get_current_directory(Char *buffer, Uintptr size) {
+    buffer = getcwd(buffer, size);
+    Uintptr result_size = string_length(buffer);
+
+    return(result_size);
+}
+
 Void system_write_to_console(Char *format, ...) {
     Uintptr alloc_size = 1024;
-    Char *buf = system_malloc(alloc_size);
+    Char *buf = (Char *)system_malloc(alloc_size);
     if(buf) {
         va_list args;
         va_start(args, format);
@@ -97,3 +150,10 @@ Void system_write_to_console(Char *format, ...) {
     }
 
 }
+
+int main(int argc, char **argv) {
+    my_main(argc, argv);
+
+    return(0);
+}
+

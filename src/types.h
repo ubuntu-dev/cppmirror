@@ -39,10 +39,6 @@ typedef float Float32;
 typedef double Float64;
 typedef Float32 Float;
 
-#define true 1
-#define false 0
-
-#define cast(type) (type)
 #define array_count(arr) (sizeof(arr) / (sizeof(*(arr))))
 #define preprocessor_concat(a, b) a##b
 
@@ -109,7 +105,7 @@ typedef Float32 Float;
         if(!ignore) { \
             if(!(Expression)) { \
                 push_error(ErrorType_assert_failed); \
-                *cast(Uintptr volatile *)0 = 0; \
+                *(Uintptr volatile *)0 = 0; \
             } \
         } \
     } while(0)

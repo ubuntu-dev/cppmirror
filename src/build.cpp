@@ -37,6 +37,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <dirent.h>
 
 #include "platform_linux.cpp"
 #endif

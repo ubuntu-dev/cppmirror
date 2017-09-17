@@ -15,6 +15,7 @@
 Void *system_malloc(Uintptr size);
 Bool system_free(Void *ptr);
 Void *system_realloc(Void *ptr, Uintptr size);
+Uintptr system_get_alloc_size(Void *ptr);
 
 // File IO.
 struct File {
@@ -24,6 +25,10 @@ struct File {
 
 Bool system_write_to_file(Char *fname, File file);
 File system_read_entire_file_and_null_terminate(Char *fname);
+
+Uintptr system_get_total_size_of_directory(Char *dir_name);
+Uintptr get_current_directory(Char *buffer, Uintptr size);
+
 
 // Utility stuff.
 Void system_write_to_console(Char *str, ...);
