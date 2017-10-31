@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CLANG_VERSION=3.8
+CLANG_VERSION=5.0
 RELEASE=false
 BUILD_GAME=true
 
@@ -9,9 +9,9 @@ WARNINGS="-Wno-unused-function -Wno-unused-variable -Wno-switch -Wno-sign-compar
 
 echo "Building mirror"
 if [ "$RELEASE" = "true" ]; then
-    clang++-"$CLANG_VERSION" -Wall -Wextra src/build.cpp -std=c++1y -fno-exceptions -fno-rtti -o mirror_exe -DINTERNAL=0 $WARNINGS -ldl
+    clang++-"$CLANG_VERSION" -Wall -Wextra src/build.cpp -std=c++1z -fno-exceptions -fno-rtti -o mirror_exe -DINTERNAL=0 $WARNINGS -ldl -lstdc++
 else
-    clang++-"$CLANG_VERSION" -Wall -Wextra src/build.cpp -std=c++1y -fno-exceptions -fno-rtti -o mirror_exe -DINTERNAL=1 $WARNINGS -g -ldl 
+    clang++-"$CLANG_VERSION" -Wall -Wextra src/build.cpp -std=c++1z -fno-exceptions -fno-rtti -o mirror_exe -DINTERNAL=1 $WARNINGS -g -ldl 
 fi
 mv "./mirror_exe" "build/mirror"
 
@@ -26,6 +26,6 @@ if [ "$BUILD_GAME" = "true" ]; then
     "../build/mirror" game.cpp
     popd
 
-    clang-"$CLANG_VERSION" -Wall -Wextra "game/game.cpp" -std=c++1y -o game_exe -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable -Wno-switch -Wno-sign-compare -Wno-unused-private-field -Wno-unused-parameter -Wno-char-subscripts -g -ldl -lstdc++ -lm
+    clang++-"$CLANG_VERSION" -Wall -Wextra "game/game.cpp" -std=c++1z -o game_exe -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable -Wno-switch -Wno-sign-compare -Wno-unused-private-field -Wno-unused-parameter -Wno-char-subscripts -g -ldl
     mv "./game_exe" "build/game"
 fi
