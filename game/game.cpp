@@ -78,7 +78,7 @@ void my_memset(void *dest, uint8_t x, uintptr_t size) {
 }
 
 void load_all_letters(sglp_API *api, Game_State *gs) {
-    sglp_File ttf_file = api->read_file(api, "c:/Windows/Fonts/LiberationMono-Bold.ttf");
+    sglp_File ttf_file = api->read_file(api, "arial.ttf");
     assert(ttf_file.size);
 
     stbtt_fontinfo font;
@@ -162,8 +162,8 @@ void draw_word(char const *str, Game_State *gs, float x, float y, float scalex, 
 }
 
 bool overlap(Entity a, Entity b) {
-    if((a.x >= b.x) && (a.x <= b.x + b.scale_x) || (b.x >= a.x) && (b.x <= a.x + a.scale_x)) {
-        if((a.y >= b.y) && (a.y <= b.y + b.scale_y) || (b.y >= a.y) && (b.y <= a.y + a.scale_y)) {
+    if((a.x >= b.x && a.x <= b.x + b.scale_x) || (b.x >= a.x && b.x <= a.x + a.scale_x)) {
+        if((a.y >= b.y && a.y <= b.y + b.scale_y) || (b.y >= a.y && b.y <= a.y + a.scale_y)) {
             return(true);
         }
     }
@@ -178,8 +178,8 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
         int buf_size = 256 * 256;
         char *buffer = new char[buf_size];
         pp_serialize_struct(gs, Game_State, buffer, buf_size);
-        OutputDebugStringA(buffer); OutputDebugStringA("\n\n");
-        delete buffer;
+        //OutputDebugStringA(buffer); OutputDebugStringA("\n\n");
+        delete[] buffer;
     }
 
     if(api->init_game) {
@@ -309,6 +309,6 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
             sglp_draw_sprite(gs->enemy_one_sprite, 0, tform);
         }
 
-        draw_word("Penis\nVag", gs, 0.1f, 0.1f, 0.1f, 0.1f);
+        draw_word("abcdefghi\njklmnopq\nrstuvwxyz", gs, 0.1f, 0.1f, 0.1f, 0.1f);
     }
 }
