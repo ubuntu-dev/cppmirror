@@ -168,7 +168,7 @@ Char *ErrorTypeToString(ErrorType e) {
     return(res);
 }
 
-Bool print_errors(void) {
+Bool print_errors() {
     Bool res = false;
 
     if(global_error_count) {
@@ -241,7 +241,7 @@ TempMemory create_temp_buffer(Uintptr size) {
 }
 
 Void *push_size(TempMemory *tm, Uintptr size, Int alignment = -1) {
-    Void *res = 0;
+    Void *res = {};
 
     // TODO(Jonny): These alignments were setup for x64. Should I have different ones for x86?
     if(alignment == -1) {
@@ -303,8 +303,8 @@ Bool string_concat(Char *dest, Int len, Char *a, Int a_len, Char *b, Int b_len) 
     Bool res = false;
 
     if(len > a_len + b_len) {
-        for(Int i = 0; (i < a_len); ++i) { *dest++ = *a++; }
-        for(Int i = 0; (i < b_len); ++i) { *dest++ = *b++; }
+        for(Int i = 0; (i < a_len); ++i) *dest++ = *a++;
+        for(Int i = 0; (i < b_len); ++i) *dest++ = *b++;
 
         res = true;
     }
@@ -342,7 +342,7 @@ Uintptr string_copy(Char *dest, Char *src) {
         *dest = *src;
         ++dest;
         ++src;
-        ++res; // TODO(Jonny): Could work out at end, rather than increment every time through the loop?
+        ++res; // TODO(Jonny): Could calculate at end, rather than increment every time through the loop?
     }
 
     return(res);

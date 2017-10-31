@@ -2007,7 +2007,7 @@ File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int 
 // Start point.
 //
 Parse_Result parse_streams(Int cnt, Char **fnames, MacroData *md, Int macro_cnt, Uintptr max_file_size) {
-    Parse_Result res = {0};
+    Parse_Result res = {};
 
     res.enum_max = 8;
     res.enums.e = new Enum_Data[res.enum_max];
