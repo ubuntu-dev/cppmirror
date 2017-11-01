@@ -241,7 +241,7 @@ TempMemory create_temp_buffer(Uintptr size) {
 }
 
 Void *push_size(TempMemory *tm, Uintptr size, Int alignment = -1) {
-    Void *res = {};
+    Void *res = {0};
 
     // TODO(Jonny): These alignments were setup for x64. Should I have different ones for x86?
     if(alignment == -1) {

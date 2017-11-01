@@ -484,7 +484,7 @@ struct pp_Player {
     pp_Entity trans; float start_x; float start_y; pp_Player_Direction dir; float current_frame; 
 };
 struct pp_Game_State {
-    pp_sglp_Sprite player_sprite; pp_sglp_Sprite enemy_one_sprite; pp_Player player; pp_Entity enemy[4]; pp_sglp_Sprite text[26]; 
+    pp_sglp_Sprite player_sprite; pp_sglp_Sprite enemy_one_sprite; pp_Player player; pp_Entity enemy[4]; pp_sglp_Sprite text[127]; pp_sglp_Sprite letter; 
 };
 
 // Turn a typedef'd type into it's original type.
@@ -1255,7 +1255,11 @@ PP_CONSTEXPR PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type
                 return(res);
             } break; 
             case 4: {
-                pp_MemberDefinition res = {pp_Type_sglp_Sprite, "text", PP_OFFSETOF(pp_Game_State, text), 0, 26};
+                pp_MemberDefinition res = {pp_Type_sglp_Sprite, "text", PP_OFFSETOF(pp_Game_State, text), 0, 127};
+                return(res);
+            } break; 
+            case 5: {
+                pp_MemberDefinition res = {pp_Type_sglp_Sprite, "letter", PP_OFFSETOF(pp_Game_State, letter), 0, 0};
                 return(res);
             } break; 
         }
@@ -1293,7 +1297,7 @@ PP_CONSTEXPR PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_sglm_Mat4x4: { return(1); } break;
         case pp_Type_Entity: { return(5); } break;
         case pp_Type_Player: { return(5); } break;
-        case pp_Type_Game_State: { return(5); } break;
+        case pp_Type_Game_State: { return(6); } break;
     }
 
     PP_ASSERT(0);
