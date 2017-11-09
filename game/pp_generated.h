@@ -30,14 +30,11 @@
     #define PP_STATIC
 #endif
 
-#define PP_CONSTEXPR
-//#if (THE_RIGHT_VERSION)
-    #undef PP_CONSTEXPR
-    #define PP_CONSTEXPR constexpr
-//#endif
+#define PP_TRUE 1
+#define PP_FALSE 0
 
-struct pp___m128 { float e[4]; };
-struct pp___m128i { int e[4]; };
+typedef struct pp___m128 { float e[4]; } pp___m128;
+typedef struct pp___m128i { int e[4]; } pp___m128i;
 
 // Primitive types.
 typedef void pp_void;
@@ -47,7 +44,6 @@ typedef int pp_int;
 typedef long pp_long;
 typedef float pp_float;
 typedef double pp_double;
-typedef bool pp_bool;
 typedef uint64_t pp_uint64_t;
 typedef uint32_t pp_uint32_t;
 typedef uint16_t pp_uint16_t;
@@ -60,14 +56,14 @@ typedef uintptr_t pp_uintptr_t;
 typedef intptr_t pp_intptr_t;
 typedef size_t pp_size_t;
 
-PP_CONSTEXPR PP_STATIC pp_MyBool pp_string_compare(char const *a, char const *b) {
+PP_STATIC pp_MyBool pp_string_compare(char const *a, char const *b) {
     for(; (*a != *b); ++a, ++b) {
         if(!(*a) && !(*b)) {
-            return(true);
+            return(PP_TRUE);
         }
     }
 
-    return(false);
+    return(PP_TRUE);
 }
 
 #if !defined(PP_MEMSET)
@@ -83,36 +79,38 @@ PP_STATIC void *PP_MEMSET(void *dst, uint8_t v, uintptr_t size) {
 //
 // Forward declared structs, enums, and functions
 //
-enum Player_Direction : int;
-struct sglp_Sprite;
-struct sglp_PlayingSound;
-struct sglp_OpenGlFunctions;
-struct sglp_Settings;
-struct sglp_File;
-struct sglp_API;
-struct sglp_LoadedSound;
-struct sglp_SoundOutputBuffer;
-struct sglp_AudioState;
-struct sglp_WAVEHeader;
-struct sglp_WavChunk;
-struct sglp_WavFormat;
-struct sglp_RiffIter;
-struct SGLP_XINPUT_GAMEPAD;
-struct SGLP_XINPUT_STATE;
-struct SGLP_XINPUT_VIBRATION;
-struct sglp_Win32SoundOutput;
-struct WorkQueueEntry;
-struct WorkQueue;
-union sglm_V2;
-struct sglm_Mat4x4;
-struct Entity;
-struct Player;
-struct Game_State;
+typedef enum sglp_Key sglp_Key;
+typedef enum Player_Direction Player_Direction;
+typedef enum ID ID;
+typedef struct sglp_Sprite sglp_Sprite;
+typedef struct sglp_PlayingSound sglp_PlayingSound;
+typedef struct sglp_OpenGlFunctions sglp_OpenGlFunctions;
+typedef struct sglp_Settings sglp_Settings;
+typedef struct sglp_File sglp_File;
+typedef struct sglp_API sglp_API;
+typedef struct sglp_LoadedSound sglp_LoadedSound;
+typedef struct sglp_SoundOutputBuffer sglp_SoundOutputBuffer;
+typedef struct sglp_AudioState sglp_AudioState;
+typedef struct sglp_WAVEHeader sglp_WAVEHeader;
+typedef struct sglp_WavChunk sglp_WavChunk;
+typedef struct sglp_WavFormat sglp_WavFormat;
+typedef struct sglp_RiffIter sglp_RiffIter;
+typedef struct SGLP_XINPUT_GAMEPAD SGLP_XINPUT_GAMEPAD;
+typedef struct SGLP_XINPUT_STATE SGLP_XINPUT_STATE;
+typedef struct SGLP_XINPUT_VIBRATION SGLP_XINPUT_VIBRATION;
+typedef struct sglp_Win32SoundOutput sglp_Win32SoundOutput;
+typedef struct WorkQueueEntry WorkQueueEntry;
+typedef struct WorkQueue WorkQueue;
+typedef union sglm_V2 sglm_V2;
+typedef struct sglm_Mat4x4 sglm_Mat4x4;
+typedef struct Entity Entity;
+typedef struct Player Player;
+typedef struct Game_State Game_State;
 
 //
 // An enum, with an index for each type in the codebase.
 //
-enum pp_Type {
+typedef enum pp_Type {
     pp_Type_unknown,
     pp_Type_char,
     pp_Type_short,
@@ -120,7 +118,6 @@ enum pp_Type {
     pp_Type_long,
     pp_Type_float,
     pp_Type_double,
-    pp_Type_bool,
     pp_Type_uint64_t,
     pp_Type_uint32_t,
     pp_Type_uint16_t,
@@ -268,7 +265,7 @@ enum pp_Type {
     pp_Type___m128i,
 
     pp_Type_count
-};
+} pp_Type;
 
 //
 // Forward declared recreated stuff.
@@ -301,7 +298,9 @@ typedef struct pp_Player pp_Player;    typedef struct pp_Player pp_pp_Player;
 typedef struct pp_Game_State pp_Game_State;    typedef struct pp_Game_State pp_pp_Game_State;
 
 // Forward declared enums
-enum pp_Player_Direction : int;
+typedef int pp_sglp_Key;
+typedef int pp_Player_Direction;
+typedef int pp_ID;
 
 //
 // Create typedefs.
@@ -488,7 +487,7 @@ struct pp_Game_State {
 };
 
 // Turn a typedef'd type into it's original type.
-PP_CONSTEXPR PP_STATIC pp_Type pp_typedef_to_original(pp_Type type) {
+PP_STATIC pp_Type pp_typedef_to_original(pp_Type type) {
     switch(type) {
         case pp_Type_sglp_Bool: { return(pp_Type_int); } break;
         case pp_Type_sglp_GLenum: { return(pp_Type_uint32_t); } break;
@@ -598,15 +597,15 @@ PP_CONSTEXPR PP_STATIC pp_Type pp_typedef_to_original(pp_Type type) {
 
     return(type);
 }
-struct pp_MemberDefinition {
+typedef struct pp_MemberDefinition {
     pp_Type type;
     char const *name;
     uintptr_t offset;
     uintptr_t ptr;
     uintptr_t arr_size;
-};
+} pp_MemberDefinition;
 
-PP_CONSTEXPR PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t index) {
+PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t index) {
     pp_Type real_type = pp_typedef_to_original(type);
     if(real_type == pp_Type___m128) {
         switch(index) {
@@ -1271,7 +1270,7 @@ PP_CONSTEXPR PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type
     return(failres);
 }
 
-PP_CONSTEXPR PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
+PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
     switch(pp_typedef_to_original(type)) {
         case pp_Type___m128: case pp_Type___m128i: { return(1); }
         case pp_Type_sglp_Sprite: { return(6); } break;
@@ -1304,7 +1303,7 @@ PP_CONSTEXPR PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
     return(0);
 }
 
-enum pp_StructureType {
+typedef enum pp_StructureType {
     pp_StructureType_unknown,
 
     pp_StructureType_primitive,
@@ -1312,11 +1311,11 @@ enum pp_StructureType {
     pp_StructureType_enum,
 
     pp_StructureType_count
-};
+} pp_StructureType;
 
-PP_CONSTEXPR PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {
+PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {
     switch(pp_typedef_to_original(type)) {
-        case pp_Type_char: case pp_Type_short: case pp_Type_int: case pp_Type_long: case pp_Type_float: case pp_Type_double: case pp_Type_bool: case pp_Type_uint64_t: case pp_Type_uint32_t: case pp_Type_uint16_t: case pp_Type_uint8_t: case pp_Type_int64_t: case pp_Type_int32_t: case pp_Type_int16_t: case pp_Type_int8_t: case pp_Type_uintptr_t: case pp_Type_intptr_t: case pp_Type_size_t: {
+        case pp_Type_char: case pp_Type_short: case pp_Type_int: case pp_Type_long: case pp_Type_float: case pp_Type_double: case pp_Type_uint64_t: case pp_Type_uint32_t: case pp_Type_uint16_t: case pp_Type_uint8_t: case pp_Type_int64_t: case pp_Type_int32_t: case pp_Type_int16_t: case pp_Type_int8_t: case pp_Type_uintptr_t: case pp_Type_intptr_t: case pp_Type_size_t: {
             return(pp_StructureType_primitive);
         } break;
 
@@ -1333,7 +1332,7 @@ PP_CONSTEXPR PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {
     return(pp_StructureType_unknown);
 }
 
-PP_CONSTEXPR PP_STATIC char const * pp_type_to_string(pp_Type type) {
+PP_STATIC char const * pp_type_to_string(pp_Type type) {
     switch(type) {
         case pp_Type_char: { return("char"); } break;
         case pp_Type_short: { return("short"); } break;
@@ -1341,7 +1340,6 @@ PP_CONSTEXPR PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_long: { return("long"); } break;
         case pp_Type_float: { return("float"); } break;
         case pp_Type_double: { return("double"); } break;
-        case pp_Type_bool: { return("bool"); } break;
         case pp_Type_uint64_t: { return("uint64_t"); } break;
         case pp_Type_uint32_t: { return("uint32_t"); } break;
         case pp_Type_uint16_t: { return("uint16_t"); } break;
@@ -1493,7 +1491,7 @@ PP_CONSTEXPR PP_STATIC char const * pp_type_to_string(pp_Type type) {
     return(0);
 }
 
-PP_CONSTEXPR PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
+PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
     switch(pp_typedef_to_original(type)) {
         case pp_Type_char:
             return sizeof(pp_char);
@@ -1512,9 +1510,6 @@ PP_CONSTEXPR PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
             break;
         case pp_Type_double:
             return sizeof(pp_double);
-            break;
-        case pp_Type_bool:
-            return sizeof(pp_bool);
             break;
         case pp_Type_uint64_t:
             return sizeof(pp_uint64_t);
@@ -1862,7 +1857,7 @@ PP_CONSTEXPR PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
             return sizeof(pp_int);
             break;
         case pp_Type_Player_Direction:
-            return sizeof(pp_Player_Direction);
+            return sizeof(pp_int);
             break;
         case pp_Type_ID:
             return sizeof(pp_int);
@@ -1950,10 +1945,10 @@ PP_CONSTEXPR PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
     PP_ASSERT(0);
     return(0);
 }
-PP_CONSTEXPR PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t index);
+PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t index);
 // uintptr_t pp_serialize_struct(TYPE *var, TYPE, buffer, buffer_size);
 #define pp_serialize_struct(var, Type, buf, size) pp_serialize_struct_(var, PP_CONCAT(pp_Type_, Type), PP_TO_STRING(var), 0, buf, size, 0)
-PP_CONSTEXPR PP_STATIC uintptr_t
+PP_STATIC uintptr_t
 pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent, char *buffer, uintptr_t buf_size, uintptr_t bytes_written) {
     char indent_buf[256] = {0};
     PP_ASSERT((buffer) && (buf_size > 0)); // Check params.
@@ -1972,7 +1967,7 @@ pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent
             if(member.arr_size > 1) {
                 for(int j = 0; (j < member.arr_size); ++j) {
                     uintptr_t *member_ptr_as_uintptr = (uintptr_t *)member_ptr; // For arrays of pointers.
-                    pp_MyBool is_null = (member.ptr) ? member_ptr_as_uintptr[j] == 0 : false;
+                    pp_MyBool is_null = (member.ptr) ? member_ptr_as_uintptr[j] == 0 : PP_FALSE;
                     if(!is_null) {
 
 #define print_prim_arr(m, Type, p) Type *v = (member.ptr) ? *(Type **)((char unsigned *)member_ptr + (sizeof(uintptr_t) * j)) : &((Type *)member_ptr)[j]; bytes_written += PP_SPRINTF((char *)buffer + bytes_written, buf_size - bytes_written, "\n%s " #Type " %s%s[%d] = " m "", indent_buf, (member.ptr) ? "*" : "", member.name, j, p (Type *)v)
@@ -1982,7 +1977,6 @@ pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent
                         else if(original_type == pp_Type_int)   { print_prim_arr("%d",  int, *);    }
                         else if(original_type == pp_Type_long)  { print_prim_arr("%ld", long, *);   }
                         else if(original_type == pp_Type_short) { print_prim_arr("%d",  short, *);  }
-                        else if(original_type == pp_Type_bool)  { print_prim_arr("%d",  int, *);    }
 
                         else if(original_type == pp_Type_uint64_t) { print_prim_arr("%lu", uint64_t, *); }
                         else if(original_type == pp_Type_int64_t)  { print_prim_arr("%ld", int64_t, *);  }
@@ -2027,7 +2021,6 @@ pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent
                     else if(original_type == pp_Type_int)   { print_prim("%d",  int, *);    }
                     else if(original_type == pp_Type_long)  { print_prim("%ld", long, *);   }
                     else if(original_type == pp_Type_short) { print_prim("%d",  short, *);  }
-                    else if(original_type == pp_Type_bool)  { print_prim("%d",  int, *);    }
 
                     else if(original_type == pp_Type_uint64_t)  { print_prim("%lu", uint64_t, *); }
                     else if(original_type == pp_Type_int64_t)   { print_prim("%ld", int64_t, *);  }
@@ -2111,7 +2104,7 @@ pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent
 //
 // Number of members in an enum.
 //
-PP_CONSTEXPR PP_STATIC uintptr_t pp_get_enum_size_from_type(pp_Type type) {
+PP_STATIC uintptr_t pp_get_enum_size_from_type(pp_Type type) {
     switch(pp_typedef_to_original(type)) {
         case pp_Type_sglp_Key: { return(55); } break;
         case pp_Type_Player_Direction: { return(4); } break;
@@ -2125,7 +2118,7 @@ PP_CONSTEXPR PP_STATIC uintptr_t pp_get_enum_size_from_type(pp_Type type) {
 //
 // String to enum.
 //
-PP_CONSTEXPR PP_STATIC intptr_t pp_string_to_enum(pp_Type type, char const *str) {
+PP_STATIC intptr_t pp_string_to_enum(pp_Type type, char const *str) {
     switch(pp_typedef_to_original(type)) {
         case pp_Type_sglp_Key: {
             if(pp_string_compare(str, "sglp_key_unknown")) { return(0); }
@@ -2207,7 +2200,7 @@ PP_CONSTEXPR PP_STATIC intptr_t pp_string_to_enum(pp_Type type, char const *str)
 //
 // Enum to string.
 //
-PP_CONSTEXPR PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t index) {
+PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t index) {
     switch(pp_typedef_to_original(type)) {
         case pp_Type_sglp_Key: {
             switch(index) {

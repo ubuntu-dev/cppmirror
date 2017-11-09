@@ -90,10 +90,10 @@ __m128 sglm_vec_sine(__m128 vec_num);
 //
 // Vec.
 //
-typedef union sglm_V2 {
+union sglm_V2 {
     float e[2];
     struct { float x, y; };
-} sglm_V2;
+};
 
 sglm_V2 sglm_v2(float x, float y);
 sglm_Bool sglm_v2_compare(sglm_V2 a, sglm_V2 b);

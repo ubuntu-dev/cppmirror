@@ -9,7 +9,7 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-Int const MAX_POINTER_SIZE = 4;
+#define MAX_POINTER_SIZE 4
 
 #define TOKEN_CONCAT_(x, y) x##y
 #define TOKEN_CONCAT(x, y) TOKEN_CONCAT_(x, y)
@@ -34,29 +34,7 @@ Void set(Void *dest, Byte v, Uintptr n) {
     }
 }
 
-Void *operator new(Uintptr size) {
-    return system_malloc(size);
-}
-
-Void *operator new[](Uintptr size) {
-    return system_malloc(size);
-}
-
-// These won't actually throw, but Clang won't shut up about them...
-void operator delete(void *ptr) throw() {
-    system_free(ptr);
-}
-
-void operator delete[](void *ptr) throw() {
-    system_free(ptr);
-}
-
-template<typename T>
-Uintptr get_alloc_count(T *ptr) {
-    Uintptr res = system_get_alloc_size(ptr) / sizeof(T);
-
-    return(res);
-}
+#define get_alloc_count(ptr) (system_get_alloc_size(ptr) / sizeof(*(ptr)))
 
 //
 // Error stuff.
@@ -73,7 +51,7 @@ Uintptr get_alloc_count(T *ptr) {
     #define MAKE_GUID GUID(__FILE__, __LINE__)
 #endif
 
-enum ErrorType {
+typedef enum ErrorType {
     ErrorType_unknown,
 
     ErrorType_ran_out_of_memory,
@@ -102,15 +80,15 @@ enum ErrorType {
     ErrorType_incorrect_data_structure_type,
 
     ErrorType_count
-};
+}  ErrorType;
 
 #define push_error(type) push_error_(type, MAKE_GUID)
 
 
-struct Error {
+typedef struct Error {
     ErrorType type;
     Char *guid;
-};
+} Error;
 
 global Error global_errors[32];
 global Int global_error_count;
@@ -192,6 +170,7 @@ Bool print_errors() {
 //
 // Defer
 //
+#if 0
 template<typename F>
 struct Defer_Struct {
     F f;
@@ -208,15 +187,16 @@ struct {
 } Defer_Functor;
 
 #define defer auto TOKEN_CONCAT(defer_in_cpp_, __COUNTER__) = Defer_Functor << [&]
+#endif
 
 //
 // Temp Memory.
 //
-struct TempMemory {
+typedef struct TempMemory {
     Byte *e;
     Uintptr used;
     Uintptr size;
-};
+} TempMemory;
 
 Uintptr get_alignment(void *mem, Uintptr desired_alignment) {
     Uintptr res = 0;
@@ -232,7 +212,7 @@ Uintptr get_alignment(void *mem, Uintptr desired_alignment) {
 TempMemory create_temp_buffer(Uintptr size) {
     TempMemory res = {};
 
-    res.e = new Byte[size];
+    res.e = system_malloc(sizeof *res.e * size);
     if(res.e) {
         res.size = size;
     }
@@ -240,7 +220,8 @@ TempMemory create_temp_buffer(Uintptr size) {
     return(res);
 }
 
-Void *push_size(TempMemory *tm, Uintptr size, Int alignment = -1) {
+#define push_size(tm, size) push_size_with_alignment(tm, size, -1)
+Void *push_size_with_alignment(TempMemory *tm, Uintptr size, Int alignment) {
     Void *res = {0};
 
     // TODO(Jonny): These alignments were setup for x64. Should I have different ones for x86?
@@ -276,10 +257,10 @@ Void free_temp_buffer(TempMemory *temp_memory) {
 //
 // Strings.
 //
-struct String {
+typedef struct {
     Char *e;
     Uintptr len;
-};
+} String;
 
 Int string_length(Char *str) {
     Int res = 0;
@@ -291,7 +272,8 @@ Int string_length(Char *str) {
     return(res);
 }
 
-String create_string(Char *str, Int len = 0) {
+#define create_string(str) create_string_with_len(str, 0)
+String create_string_with_len(Char *str, Int len) {
     String res;
     res.e = str;
     res.len = (len) ? len : string_length(str);
@@ -322,7 +304,7 @@ Bool string_comp_len(Char *a, Char *b, Uintptr len) {
     return(true);
 }
 
-Bool string_comp(Char *a, Char *b) {
+Bool cstring_comp(Char *a, Char *b) {
     Bool res = true;
     while((*a) && (*b)) {
         if(*a != *b) {
@@ -365,7 +347,7 @@ Bool string_comp(String a, String b) {
     return(res);
 }
 
-Bool string_comp(String a, Char *b) {
+Bool string_cstring_comp(String a, Char *b) {
     Bool res = true;
 
     for(Int i = 0; (i < a.len); ++i) {
@@ -378,8 +360,8 @@ Bool string_comp(String a, Char *b) {
     return(res);
 }
 
-Bool string_comp(Char *a, String b) {
-    Bool res = string_comp(b, a);
+Bool cstring_string_comp(Char *a, String b) {
+    Bool res = string_cstring_comp(b, a);
 
     return(res);
 }
@@ -410,7 +392,7 @@ Bool string_contains(String str, Char target) {
     return(res);
 }
 
-Bool string_contains(Char *str, Char target) {
+Bool cstring_contains(Char *str, Char target) {
     Bool res = false;
 
     while(*str) {
@@ -425,7 +407,7 @@ Bool string_contains(Char *str, Char target) {
     return(res);
 }
 
-Bool string_contains(String str, Char *target) {
+Bool string_contains_cstring(String str, Char *target) {
     Bool res = false;
     Int target_len = string_length(target);
 
@@ -449,9 +431,9 @@ func_end:;
     return(res);
 }
 
-Bool string_contains(Char *str, Char *target) {
-    String s = create_string(str, string_length(str));
-    Bool res = string_contains(s, target);
+Bool cstring_contains_cstring(Char *str, Char *target) {
+    String s = create_string_with_len(str, string_length(str));
+    Bool res = string_contains_cstring(s, target);
 
     return(res);
 }
@@ -463,10 +445,10 @@ Bool string_contains(Char *str, Char *target) {
 #define megabytes(v) ((kilobytes(v)) * (1024LL))
 #define gigabytes(v) ((megabytes(v)) * (1024LL))
 
-struct ResultInt {
+typedef struct {
     Int e;
     Bool success;
-};
+} ResultInt;
 ResultInt char_to_int(Char c) {
     ResultInt res = {0};
     switch(c) {
@@ -505,7 +487,7 @@ ResultInt string_to_int(String str) {
     return(res);
 }
 
-ResultInt string_to_int(Char *str) {
+ResultInt cstring_to_int(Char *str) {
     String string;
     string.e = str;
     string.len = string_length(str);
@@ -536,16 +518,16 @@ Uint32 safe_truncate_size_64(Uint64 v) {
 //
 // Variable.
 //
-enum Access {
+typedef enum {
     Access_unknown,
     Access_public,
     Access_private,
     Access_protected,
 
     Access_count
-};
+} Access;
 
-struct Variable {
+typedef struct {
     String type;
     String name;
 
@@ -557,8 +539,7 @@ struct Variable {
     Uint32 modifier;
 
     Bool is_inside_anonymous_struct;
-};
-
+} Variable;
 
 Variable create_variable(Char *type, Char *name, Int ptr, Int array_count ) {
     Variable res;

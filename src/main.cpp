@@ -20,7 +20,7 @@
       Visual Studio 2017 is the first one to support long long types correctly, and I don't think GCC supports llu.
 */
 
-enum SwitchType {
+typedef enum {
     SwitchType_unknown,
 
     SwitchType_silent,
@@ -33,7 +33,7 @@ enum SwitchType {
     SwitchType_source_file,
 
     SwitchType_count
-};
+} SwitchType;
 
 SwitchType get_switch_type(Char *str) {
     SwitchType res = SwitchType_unknown;
@@ -103,7 +103,8 @@ Void my_main(Int argc, Char **argv) {
         Bool only_output_preprocessed_file = false;
 
         Int fnames_max_cnt = 16;
-        Char **fnames = new Char *[fnames_max_cnt];
+        //Char **fnames = new Char *[fnames_max_cnt];
+        Char **fnames = system_malloc_arr(sizeof *fnames, fnames_max_cnt);
         Uintptr size = system_get_alloc_size(fnames);
         if(fnames) {
             Uintptr total_file_size = 0;
@@ -164,27 +165,23 @@ Void my_main(Int argc, Char **argv) {
 
                     Parse_Result parse_res = parse_streams(number_of_files, fnames, passed_in_macro_data,
                                                            macro_cnt, size_of_all_files);
-#if INTERNAL
-                    defer {
-                        delete[] parse_res.enums.e;
-                        delete[] parse_res.structs.e;
-                        delete[] parse_res.funcs.e;
-                        delete[] parse_res.typedefs.e;
-                    };
-#endif
 
                     File file_to_write = write_data(parse_res);
-#if INTERNAL
-                    defer {
-                        delete[] file_to_write.e;
-                    };
-#endif
+
                     Bool write_success = system_write_to_file("pp_generated.h", file_to_write);
                     assert(write_success);
+
+#if INTERNAL
+                    system_free(file_to_write.e);
+                    system_free(parse_res.enums.e);
+                    system_free(parse_res.structs.e);
+                    system_free(parse_res.funcs.e);
+                    system_free(parse_res.typedefs.e);
+#endif
                 }
             }
 
-            delete[] fnames;
+            system_free(fnames);
         }
     }
 

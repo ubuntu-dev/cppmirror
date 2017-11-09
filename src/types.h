@@ -44,6 +44,9 @@ typedef Float32 Float;
 
 #define global static
 
+#define true 1
+#define false 0
+
 //
 // Detect compiler/platform.
 //

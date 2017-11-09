@@ -8,6 +8,7 @@
 
 #include <math.h>
 
+#define PP_IGNORE
 PP_IGNORE
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
@@ -17,13 +18,17 @@ PP_IGNORE
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_ttf.h"
 
+#define true 1
+#define false 0
+#define Bool int
+
 struct Entity {
     float x, y;
     float scale_x, scale_y;
     float rot;
 };
 
-enum Player_Direction : int {
+enum Player_Direction {
     Player_Direction_left = 0,
     Player_Direction_right = 2,
     Player_Direction_up = 4,
@@ -79,9 +84,12 @@ void my_memset(void *dest, uint8_t x, uintptr_t size) {
     }
 }
 
-bool load_letter(sglp_API *api, Game_State *gs, char letter_index) {
-    bool res = false;
-    static sglp_File ttf_file = api->read_file(api, "LiberationMono-Regular.ttf");
+static sglp_File ttf_file;
+Bool load_letter(sglp_API *api, Game_State *gs, char letter_index) {
+    Bool res = false;
+    if(ttf_file.size == 0) {
+        ttf_file = api->read_file(api, "LiberationMono-Regular.ttf");
+    }
     assert(ttf_file.size);
 
     stbtt_fontinfo font;
@@ -185,7 +193,7 @@ char to_upper(char c) {
     return(c);
 }
 
-bool is_letter(char c) {
+Bool is_letter(char c) {
     if((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
         return true;
     }
@@ -194,7 +202,7 @@ bool is_letter(char c) {
     }
 }
 
-bool is_number(char c) {
+Bool is_number(char c) {
     if(c >= '0' && c <= '9') {
         return true;
     }
@@ -235,7 +243,7 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, float x, float y,
     }
 }
 
-bool overlap(Entity a, Entity b) {
+Bool overlap(Entity a, Entity b) {
     if((a.x >= b.x && a.x <= b.x + b.scale_x) || (b.x >= a.x && b.x <= a.x + a.scale_x)) {
         if((a.y >= b.y && a.y <= b.y + b.scale_y) || (b.y >= a.y && b.y <= a.y + a.scale_y)) {
             return(true);
@@ -288,7 +296,7 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
         // Load background music.
         {
             sglp_File background_wav = api->read_file(api, "music_test.wav");
-            bool success = sglp_load_wav(api, ID_sound_background, background_wav.e, background_wav.size);
+            Bool success = sglp_load_wav(api, ID_sound_background, background_wav.e, background_wav.size);
             if(success) {
                 api->free_file(api, &background_wav);
                 sglp_play_audio(api, ID_sound_background);
@@ -298,7 +306,7 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
         // Load bloop.
         {
             sglp_File bloop_wav = api->read_file(api, "bloop_00.wav");
-            bool success = sglp_load_wav(api, ID_sound_bloop, bloop_wav.e, bloop_wav.size);
+            Bool success = sglp_load_wav(api, ID_sound_bloop, bloop_wav.e, bloop_wav.size);
             if(success) {
                 api->free_file(api, &bloop_wav);
             }
@@ -377,12 +385,12 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
 
         {
             int buf_size = 256 * 256;
-            char *buffer = new char[buf_size];
+            char *buffer = malloc(sizeof *buffer * buf_size);
             pp_serialize_struct(&gs->player, Player, buffer, buf_size);
             float size = 0.02f;
             //draw_word(buffer, api, gs, 0.1f, 0.1f, size, size);
             //OutputDebugStringA(buffer); OutputDebugStringA("\n\n");
-            delete[] buffer;
+            free(buffer);
         }
 
         draw_word("__i : I ab_c10", api, gs, 0.1f, 0.1f, 0.1f, 0.1f);

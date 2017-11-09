@@ -9,7 +9,7 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-enum Modifier {
+typedef enum {
     Modifier_unknown  = 0x00,
 
     Modifier_unsigned = 0x01,
@@ -17,18 +17,18 @@ enum Modifier {
     Modifier_volatile = 0x04,
     Modifier_mutable  = 0x08,
     Modifier_signed   = 0x10,
-};
+} Modifier;
 
-enum Struct_Type {
+typedef enum {
     StructType_unknown,
     StructType_struct,
     StructType_class,
     StructType_union,
 
     StructType_count
-};
+} Struct_Type;
 
-struct Struct_Data {
+typedef struct {
     String template_header;
     String name;
     Int member_count;
@@ -38,33 +38,33 @@ struct Struct_Data {
     String *inherited;
 
     Struct_Type struct_type;
-};
+} Struct_Data;
 
-struct Structs {
+typedef struct {
     Struct_Data *e;
     Int cnt;
-};
+} Structs;
 
-struct Enum_Value {
+typedef struct {
     String name;
     Int value;
-};
+} Enum_Value;
 
-struct Enum_Data {
+typedef struct {
     String name;
     String type;
     Bool is_struct;
 
     Enum_Value *values;
     Int no_of_values;
-};
+} Enum_Data;
 
-struct Enums {
+typedef struct {
     Enum_Data *e;
     Int cnt;
-};
+} Enums;
 
-struct Function_Data {
+typedef struct {
     String linkage;
     String return_type;
     Int return_type_ptr;
@@ -72,24 +72,24 @@ struct Function_Data {
 
     Variable *params;
     Int param_cnt;
-};
+} Function_Data;
 
-struct Typedef_Data {
+typedef struct {
     String original;
     String fresh;
-};
+} Typedef_Data;
 
-struct Functions {
+typedef struct {
     Function_Data *e;
     Int cnt;
-};
+} Functions;
 
-struct Typedefs {
+typedef struct {
     Typedef_Data *e;
     Int cnt;
-};
+} Typedefs;
 
-struct Parse_Result {
+typedef struct {
     Structs structs;
     Enums enums;
     Functions funcs;
@@ -99,9 +99,9 @@ struct Parse_Result {
     Int enum_max;
     Int func_max;
     Int typedef_max;
-};
+} Parse_Result;
 
-enum Token_Type {
+typedef enum {
     Token_Type_unknown,
 
     Token_Type_open_paren,
@@ -144,18 +144,18 @@ enum Token_Type {
     Token_Type_end_of_stream,
 
     Token_Type_count
-};
+} Token_Type;
 
-struct Token {
+typedef struct {
     Char *e;
     Uintptr len;
 
     Token_Type type;
-};
+} Token;
 
-struct Tokenizer {
+typedef struct {
     Char *at;
-};
+} Tokenizer;
 
 Bool is_end_of_line(Char c) {
     Bool res = ((c == '\n') || (c == '\r'));
@@ -214,7 +214,7 @@ Bool token_compare(Token a, Token b) {
     return(res);
 }
 
-Bool token_compare(Token a, String b) {
+Bool token_string_compare(Token a, String b) {
     Bool res = false;
 
     if(a.len == b.len) {
@@ -231,7 +231,8 @@ Bool token_compare(Token a, String b) {
     return(res);
 }
 
-Bool token_compare(Token a, Char *b, Uintptr string_len = 0) {
+#define token_cstring_compare(a, b) token_cstring_compare_with_len(a, b, 0)
+Bool token_cstring_compare_with_len(Token a, Char *b, Uintptr string_len) {
     Bool res = true;
 
     if(string_len == 0) {
@@ -249,7 +250,7 @@ Bool token_compare(Token a, Char *b, Uintptr string_len = 0) {
 }
 
 Bool is_token_struct(Token token) {
-    if((token_compare(token, "struct")) || (token_compare(token, "class")) || (token_compare(token, "union"))) {
+    if((token_cstring_compare(token, "struct")) || (token_cstring_compare(token, "class")) || (token_cstring_compare(token, "union"))) {
         return true;
     }
     else {
@@ -257,13 +258,13 @@ Bool is_token_struct(Token token) {
     }
 }
 
+typedef struct {
+    String str;
+    Modifier mod;
+} ModifierWithString;
 Modifier is_modifier(Token token) {
     Modifier res = Modifier_unknown;
 
-    struct ModifierWithString {
-        String str;
-        Modifier mod;
-    };
 
 #define CREATE_MODIFIER(name) { create_string(#name), Modifier_##name }
 
@@ -278,7 +279,7 @@ Modifier is_modifier(Token token) {
     for(Int i = 0; (i < array_count(modifiers)); ++i) {
         ModifierWithString *mod = modifiers + i;
 
-        if(token_compare(token, mod->str)) {
+        if(token_string_compare(token, mod->str)) {
             res = mod->mod;
         }
     }
@@ -402,7 +403,7 @@ Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
                     char buf[32] = {0};
 
                     token_to_cstring(size_token, buf, array_count(buf));
-                    ResultInt arr_count = string_to_int(buf);
+                    ResultInt arr_count = cstring_to_int(buf);
                     if(arr_count.success) {
                         res.array_count = arr_count.e;
                     }
@@ -450,7 +451,7 @@ Void eat_whitespace(Tokenizer *tokenizer) {
             String hash_if_zero = create_string("#if 0");
             String hash_if_one = create_string("#if 1");
 
-            if(string_comp(hash_if_zero, tokenizer->at)) {
+            if(string_cstring_comp(hash_if_zero, tokenizer->at)) {
                 tokenizer->at += hash_if_zero.len;
 
                 String hash_end_if = create_string("#endif");
@@ -462,7 +463,7 @@ Void eat_whitespace(Tokenizer *tokenizer) {
                             ++level;
 
                         }
-                        else if(string_comp(hash_end_if, tokenizer->at)) {
+                        else if(string_cstring_comp(hash_end_if, tokenizer->at)) {
                             if(level) {
                                 --level;
                             }
@@ -479,7 +480,7 @@ Void eat_whitespace(Tokenizer *tokenizer) {
                 // For #if 1 #else blocks, write everything between #else and #endif into whitespace, then
                 // jump back to the beginning of the beginning of the #if 1 block to parse stuff in it.
             }
-            else if(string_comp(hash_if_one, tokenizer->at)) {   // #if 1 #else blocks.
+            else if(string_cstring_comp(hash_if_one, tokenizer->at)) {   // #if 1 #else blocks.
                 tokenizer->at += hash_if_one.len;
                 Tokenizer cpy = *tokenizer;
 
@@ -493,7 +494,7 @@ Void eat_whitespace(Tokenizer *tokenizer) {
                         if((tokenizer->at[1] == 'i') && (tokenizer->at[2] == 'f')) {
                             ++level;
                         }
-                        else if(string_comp(hash_end_if, tokenizer->at)) {
+                        else if(string_cstring_comp(hash_end_if, tokenizer->at)) {
                             if(level != 0) {
                                 --level;
                             }
@@ -502,7 +503,7 @@ Void eat_whitespace(Tokenizer *tokenizer) {
                                 break; // for
                             }
                         }
-                        else if(string_comp(hash_else, tokenizer->at)) {
+                        else if(string_cstring_comp(hash_else, tokenizer->at)) {
                             if(level == 0) {
                                 tokenizer->at += hash_else.len;
                                 Int Level2 = 0;
@@ -513,7 +514,7 @@ Void eat_whitespace(Tokenizer *tokenizer) {
                                             ++Level2;
 
                                         }
-                                        else if(string_comp(hash_end_if, tokenizer->at)) {
+                                        else if(string_cstring_comp(hash_end_if, tokenizer->at)) {
                                             if(Level2 != 0) {
                                                 --Level2;
                                             }
@@ -657,10 +658,10 @@ String parse_template(Tokenizer *tokenizer) {
     return(res);
 }
 
-struct Parse_Variable_Result {
+typedef struct {
     Variable var;
     Bool success;
-};
+} Parse_Variable_Result;
 Parse_Variable_Result parse_variable(Tokenizer *tokenizer, Token_Type end_token_type_1,
                                      Token_Type end_token_type_2) {
 #if INTERNAL
@@ -750,10 +751,10 @@ Bool is_forward_declared(Tokenizer *tokenizer) {
     return(res);
 }
 
-struct Parse_Struct_Result {
+typedef struct {
     Struct_Data sd;
     Bool success;
-};
+} Parse_Struct_Result;
 Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) {
     Parse_Struct_Result res = {0};
 
@@ -774,7 +775,8 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
 
         Token peaked_token = peak_token(tokenizer);
         if(peaked_token.type == Token_Type_colon) {
-            res.sd.inherited = new String[8];
+            //res.sd.inherited = new String[8];
+            res.sd.inherited = system_malloc(sizeof *res.sd.inherited * 8);
 
             eat_token(tokenizer);
 
@@ -803,17 +805,19 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
             res.sd.member_count = 0;
             Int member_cnt = 0;
 
-            struct MemberInfo {
+            typedef struct {
                 Char *pos;
                 Access access;
                 Bool is_inside_anonymous_struct;
-            };
+            } MemberInfo;
 
             Uintptr member_info_mem_cnt = 256;
-            MemberInfo *member_info = new MemberInfo[member_info_mem_cnt];
+            /*MemberInfo *member_info = new MemberInfo[member_info_mem_cnt];
             defer {
                 delete[] member_info;
-            };
+            };*/
+            MemberInfo *member_info = system_malloc(sizeof *member_info * member_info_mem_cnt);
+
             if(member_info) {
                 Bool inside_anonymous_struct = false;
                 for(;;) {
@@ -944,7 +948,8 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
                     }
 
                     // Now actually parse the member variables.
-                    res.sd.members = new Variable[real_member_cnt];
+                    //res.sd.members = new Variable[real_member_cnt];
+                    res.sd.members = system_malloc_arr(sizeof *res.sd.members, real_member_cnt);
                     if(res.sd.members) {
                         Int member_index = 0;
                         for(Int i = 0; (i < member_cnt); ++i) {
@@ -984,10 +989,10 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
     return(res);
 }
 
-struct ParseEnumResult {
+typedef struct {
     Enum_Data ed;
     Bool success;
-};
+} ParseEnumResult;
 ParseEnumResult parse_enum(Tokenizer *tokenizer) {
     ParseEnumResult res = {0};
 
@@ -1042,7 +1047,8 @@ ParseEnumResult parse_enum(Tokenizer *tokenizer) {
                     token = get_token(&copy);
                 }
 
-                res.ed.values = new Enum_Value[res.ed.no_of_values];
+                //res.ed.values = new Enum_Value[res.ed.no_of_values];
+                res.ed.values = system_malloc_arr(sizeof *res.ed.values, res.ed.no_of_values);
                 if(res.ed.values) {
                     for(Int i = 0, count = 0; (i < res.ed.no_of_values); ++i, ++count) {
                         Enum_Value *ev = res.ed.values + i;
@@ -1304,10 +1310,10 @@ Bool is_control_keyword(Token token) {
     }
 }
 
-struct AttemptFunctionResult {
+typedef struct {
     Bool success;
     Function_Data fd;
-};
+} AttemptFunctionResult;
 AttemptFunctionResult attempt_to_parse_function(Token token, Tokenizer *tokenizer) {
 #if INTERNAL
     Tokenizer debug_copy_tokenizer = *tokenizer;
@@ -1353,7 +1359,8 @@ AttemptFunctionResult attempt_to_parse_function(Token token, Tokenizer *tokenize
 
                 Token ob = get_token(tokenizer);
                 if(ob.type == Token_Type_open_paren) {
-                    Variable *params = new Variable[8];
+                    //Variable *params = new Variable[8];
+                    Variable *params = system_malloc_arr(sizeof *params, 8);
                     Int param_cnt = 0;
 
                     Token t = peak_token(tokenizer);
@@ -1395,7 +1402,8 @@ AttemptFunctionResult attempt_to_parse_function(Token token, Tokenizer *tokenize
                         res.fd.return_type_ptr = return_pointer_cnt;
                     }
                     else {
-                        delete[] params;
+                        //delete[] params;
+                        system_free(params);
                     }
                 }
             }
@@ -1408,16 +1416,16 @@ AttemptFunctionResult attempt_to_parse_function(Token token, Tokenizer *tokenize
 Bool is_token_storage_keyword(Token token) {
     Bool res = false;
 
-    if(token_compare(token, "struct")) {
+    if(token_cstring_compare(token, "struct")) {
         res = true;
     }
-    else if(token_compare(token, "enum")) {
+    else if(token_cstring_compare(token, "enum")) {
         res = true;
     }
-    else if(token_compare(token, "union")) {
+    else if(token_cstring_compare(token, "union")) {
         res = true;
     }
-    else if(token_compare(token, "class")) {
+    else if(token_cstring_compare(token, "class")) {
         res = true;
     }
 
@@ -1567,19 +1575,19 @@ Void parse_stream(Char *stream, Parse_Result *res) {
 //
 // Preprocessor.
 //
-struct MacroData {
+typedef struct {
     String iden;
     String res;
 
     String *params;
     Int param_cnt;
-};
+} MacroData;
 
-struct File_With_Extra_Space {
+typedef struct {
     Char *e;
     Uintptr size;
     Uintptr memory_size;
-};
+} File_With_Extra_Space;
 
 void move_bytes_forward(Void *ptr, Uintptr num_bytes_to_move, Uintptr move_pos) {
     Byte *ptr8 = (Byte *)ptr;
@@ -1638,10 +1646,10 @@ Void move_stream(File_With_Extra_Space *file, Char *offset_ptr, Intptr amount_to
     assert(file->e[0]);
 }
 
-struct ParseMacroResult {
+typedef struct {
     MacroData md;
     Bool success;
-};
+} ParseMacroResult;
 ParseMacroResult parse_macro(Tokenizer *tokenizer, TempMemory *param_memory) {
     ParseMacroResult res = {0};
 
@@ -1747,7 +1755,7 @@ top:;
         do {
             for(Int i = 0; (i < md.param_cnt); ++i) {
                 assert(file->e[0]);
-                if(token_compare(token, md.params[i])) {
+                if(token_string_compare(token, md.params[i])) {
                     // TODO(Jonny): After the breakpoint in the if is hit, the paramters for md are invalidated after move_stream.
                     //              I check the memory and that seems to be fine, it's just the actual pointer that's getting fucked...
                     //              somehow.
@@ -1785,7 +1793,7 @@ Void add_include_file(Tokenizer *tokenizer, File_With_Extra_Space *file) {
 
     ++tokenizer->at;
 
-    if(!string_comp(name_buf, "pp_generated.h")) {
+    if(!cstring_comp(name_buf, "pp_generated.h")) {
         File include_file = system_read_entire_file_and_null_terminate(name_buf);
 
         if(include_file.size) {
@@ -1815,20 +1823,20 @@ Void handle_hash_if_statement(Tokenizer *tokenizer, MacroData *macro_data, Int m
         token = get_token(tokenizer);
     }
 
-    if(token_compare(token, "defined")) {
+    if(token_cstring_compare(token, "defined")) {
         defined_macro = true;
         Token should_be_open_paren = get_token(tokenizer);
         assert(should_be_open_paren.type == Token_Type_open_paren);
         token = get_token(tokenizer);
     }
 
-    if(token_compare(token, "SGLP_OS_LINUX")) {
+    if(token_cstring_compare(token, "SGLP_OS_LINUX")) {
         int i = 0;
     }
 
     Bool should_replace = false;
     for(Int i = 0; (i < macro_cnt); ++i) {
-        if(token_compare(token, macro_data[i].iden)) {
+        if(token_string_compare(token, macro_data[i].iden)) {
             if(defined_macro) {
                 // If this is a #if defined(xxx) macro, then just break out when we find xxx.
                 should_replace = true;
@@ -1862,7 +1870,7 @@ Void handle_hash_if_statement(Tokenizer *tokenizer, MacroData *macro_data, Int m
         while(should_loop) {
             if(t.type == Token_Type_hash) {
                 t = get_token(tokenizer);
-                if(token_compare(t, "endif")) {
+                if(token_cstring_compare(t, "endif")) {
                     if(number_of_ifs == 0) {
                         should_loop = false;
                     }
@@ -1870,7 +1878,7 @@ Void handle_hash_if_statement(Tokenizer *tokenizer, MacroData *macro_data, Int m
                         --number_of_ifs;
                     }
                 }
-                else if(token_compare(t, "if")) {
+                else if(token_cstring_compare(t, "if")) {
                     ++number_of_ifs;
                 }
             }
@@ -1900,16 +1908,11 @@ File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int 
         system_free(original_file.e);
 
         TempMemory param_memory = create_temp_buffer(sizeof(String) * 128); // TODO(Jonny): If this.
-        defer {
-            free_temp_buffer(&param_memory);
-        };
 
         Int macro_cnt = 0, macro_max = 512;
-        MacroData *macro_data = new MacroData[macro_max];
+        //MacroData *macro_data = new MacroData[macro_max];
+        MacroData *macro_data = system_malloc_arr(sizeof *macro_data, macro_max);
         if(macro_data) {
-            defer {
-                delete[] macro_data;
-            };
 
             for(Int i = 0; (i < passed_in_macro_cnt); ++i) {
                 macro_data[macro_cnt++] = passed_in_macro_data[i];
@@ -1926,7 +1929,7 @@ File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int 
                     case Token_Type_hash: {
                         Token preprocessor_dir = get_token(&tokenizer);
 
-                        if(token_compare(preprocessor_dir, "include")) { // #include files.
+                        if(token_cstring_compare(preprocessor_dir, "include")) { // #include files.
                             if(!ignore_next_file) {
                                 add_include_file(&tokenizer, &file);
                             }
@@ -1934,7 +1937,7 @@ File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int 
                                 ignore_next_file = false;
                             }
                         }
-                        else if(token_compare(preprocessor_dir, "define")) {   // #define
+                        else if(token_cstring_compare(preprocessor_dir, "define")) {   // #define
 
                             ParseMacroResult pmr = parse_macro(&tokenizer, &param_memory);
                             if(pmr.success) {
@@ -1942,19 +1945,19 @@ File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int 
                                 macro_data[macro_cnt++] = pmr.md;
                             }
                         }
-                        else if(token_compare(preprocessor_dir, "undef")) {   // #undef
+                        else if(token_cstring_compare(preprocessor_dir, "undef")) {   // #undef
                             // TODO(Jonny): Hacky as fuck... I literally just turn whatever the macro identifier was into
                             //              a series of spaces... instead, could I maybe just set the length of the string to 0?
                             Token undef_macro = get_token(&tokenizer);
                             for(Int i = 0; (i < macro_cnt); ++i) {
-                                if(token_compare(undef_macro, macro_data[i].iden)) {
+                                if(token_string_compare(undef_macro, macro_data[i].iden)) {
                                     for(Int j = 0; (j < macro_data[i].iden.len); ++j) {
                                         macro_data[i].iden.e[j] = ' ';
                                     }
                                 }
                             }
                         }
-                        else if(token_compare(preprocessor_dir, "if")) {
+                        else if(token_cstring_compare(preprocessor_dir, "if")) {
                             Char *before = tokenizer.at;
                             handle_hash_if_statement(&tokenizer, macro_data, macro_cnt);
                             int i = 0;
@@ -1969,12 +1972,12 @@ File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int 
                     } break;
 
                     case Token_Type_identifier: {
-                        if(token_compare(token, "PP_IGNORE")) {
+                        if(token_cstring_compare(token, "PP_IGNORE")) {
                             ignore_next_file = true;
                         }
                         else {
                             for(Int i = 0; (i < macro_cnt); ++i) {
-                                if(token_compare(token, macro_data[i].iden)) {
+                                if(token_string_compare(token, macro_data[i].iden)) {
                                     if(macro_data[i].res.len) {
                                         Char *start = token.e;
                                         macro_replace(token.e, &file, macro_data[i]);
@@ -1993,11 +1996,14 @@ File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int 
                 prev_token = token;
             }
 
+            system_free(macro_data);
             assert(file.size < file.memory_size);
 
             res.e = file.e;
             res.size = file.size;
         }
+
+        free_temp_buffer(&param_memory);
     }
 
     return(res);
@@ -2010,16 +2016,20 @@ Parse_Result parse_streams(Int cnt, Char **fnames, MacroData *md, Int macro_cnt,
     Parse_Result res = {};
 
     res.enum_max = 8;
-    res.enums.e = new Enum_Data[res.enum_max];
+    //res.enums.e = new Enum_Data[res.enum_max];
+    res.enums.e = system_malloc_arr(sizeof *res.enums.e, res.enum_max);
 
     res.struct_max = 32;
-    res.structs.e = new Struct_Data[res.struct_max];
+    //res.structs.e = new Struct_Data[res.struct_max];
+    res.structs.e = system_malloc_arr(sizeof *res.structs.e, res.struct_max);
 
     res.func_max = 128;
-    res.funcs.e = new Function_Data[res.func_max];
+    //res.funcs.e = new Function_Data[res.func_max];
+    res.funcs.e = system_malloc_arr(sizeof *res.funcs.e, res.func_max);
 
     res.typedef_max = 128;
-    res.typedefs.e = new Typedef_Data[res.typedef_max];
+    //res.typedefs.e = new Typedef_Data[res.typedef_max];
+    res.typedefs.e = system_malloc_arr(sizeof *res.typedefs.e, res.typedef_max);
 
     for(Int i = 0; (i < cnt); ++i) {
         File file = system_read_entire_file_and_null_terminate(fnames[i]); // TODO(Jonny): Leak.

@@ -114,7 +114,7 @@ Uintptr system_get_total_size_of_directory(Char *dir_name) {
 
     struct stat buf = {};
     Bool exists = true;
-    for (dirent *de = readdir(d); de != NULL; de = readdir(d)) {
+    for (struct dirent *de = readdir(d); de != NULL; de = readdir(d)) {
         exists = stat(de->d_name, &buf);
         if (exists < 0) {
             fprintf(stderr, "Couldn't stat %s\n", de->d_name);
