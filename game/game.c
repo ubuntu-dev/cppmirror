@@ -45,6 +45,7 @@ struct Player {
 struct Game_State {
     sglp_Sprite player_sprite;
     sglp_Sprite enemy_one_sprite;
+    sglp_Sprite bitmap_sprite;
 
     Player player;
     Entity enemy[number_of_enemies];
@@ -61,7 +62,7 @@ enum ID {
 
     ID_sprite_player,
     ID_sprite_enemy_one,
-    ID_sprite_letter,
+    ID_sprite_bitmap_font,
 };
 
 void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
@@ -84,7 +85,19 @@ void my_memset(void *dest, uint8_t x, uintptr_t size) {
     }
 }
 
+struct V2 {
+    float x, y;
+};
+
+V2 v2(float x, float y) {
+    V2 res = { .x = x, .y = y };
+    return(res);
+}
+
+V2 GetLetterPosition(char Letter);
+
 static sglp_File ttf_file;
+static stbtt_fontinfo font;
 Bool load_letter(sglp_API *api, Game_State *gs, char letter_index) {
     Bool res = false;
     if(ttf_file.size == 0) {
@@ -92,8 +105,9 @@ Bool load_letter(sglp_API *api, Game_State *gs, char letter_index) {
     }
     assert(ttf_file.size);
 
-    stbtt_fontinfo font;
-    stbtt_InitFont(&font, ttf_file.e, stbtt_GetFontOffsetForIndex(ttf_file.e, 0));
+    if(font.userdata == 0) {
+        stbtt_InitFont(&font, ttf_file.e, stbtt_GetFontOffsetForIndex(ttf_file.e, 0));
+    }
 
     uint8_t *full_colour_bitmap = 0;
     uintptr_t size = 0;
@@ -104,6 +118,7 @@ Bool load_letter(sglp_API *api, Game_State *gs, char letter_index) {
                                                     letter_index, &width, &height, &xoffset, &yoffset);
     if(mono_bitmap) {
         res = true;
+#if 0
         uintptr_t new_size = width * height * 4;
         if(size < new_size) {
             size = new_size * new_size;
@@ -111,7 +126,6 @@ Bool load_letter(sglp_API *api, Game_State *gs, char letter_index) {
         }
 
         uint8_t *source = mono_bitmap;
-
         uint8_t *dst_row = full_colour_bitmap;
         for(int32_t i = 0; (i < height); ++i) {
             int32_t *dst = (int32_t *)dst_row;
@@ -124,7 +138,8 @@ Bool load_letter(sglp_API *api, Game_State *gs, char letter_index) {
         }
 
         gs->letter =
-            sglp_load_image(api, full_colour_bitmap, 1, ID_sprite_letter, width, height, 4);
+            sglp_load_image(api, full_colour_bitmap, 1, 1, ID_sprite_letter, width, height, 4);
+#endif
     }
 
     api->os_free(full_colour_bitmap);
@@ -132,7 +147,7 @@ Bool load_letter(sglp_API *api, Game_State *gs, char letter_index) {
 
     return(res);
 }
-
+#if 0
 void load_all_letters(sglp_API *api, Game_State *gs) {
     sglp_File ttf_file = api->read_file(api, "arial.ttf");
     assert(ttf_file.size);
@@ -143,7 +158,7 @@ void load_all_letters(sglp_API *api, Game_State *gs) {
     uint8_t *full_colour_bitmap = 0;
     uintptr_t size = 0;
 
-    for(int letter_index = 0; (letter_index <= 127); ++letter_index) {
+    for(int letter_index = 0; (letter_index < 127); ++letter_index) {
         int width, height, xoffset, yoffset;
         uint8_t *mono_bitmap = stbtt_GetCodepointBitmap(&font, 0,
                                                         stbtt_ScaleForPixelHeight(&font, 128.0f),
@@ -169,7 +184,7 @@ void load_all_letters(sglp_API *api, Game_State *gs) {
             }
 
             gs->text[letter_index - 'A'] =
-                sglp_load_image(api, full_colour_bitmap, 1,
+                sglp_load_image(api, full_colour_bitmap, 1, 1,
                                 ID_sprite_letter + (letter_index - 'A'), width, height, 4);
         }
     }
@@ -177,7 +192,7 @@ void load_all_letters(sglp_API *api, Game_State *gs) {
     api->os_free(full_colour_bitmap);
     api->free_file(api, &ttf_file);
 }
-
+#endif
 int32_t string_len(char const *str) {
     int32_t res = 0;
     while(str[res++]);
@@ -226,6 +241,7 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, float x, float y,
             int letter_index = letter;
 
             if(load_letter(api, gs, letter_index)) {
+#if 0
                 sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale(running_x, running_y, scalex, scaley);
 
                 float tform[16] = {};
@@ -233,11 +249,10 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, float x, float y,
 
                 // TODO(Jonny): I don't think this is nessessary. I think I'm just scaling all letters
                 //              to the same size so they look the same.
-                if(is_letter(letter_index) || is_number(letter_index)) {
-                    sglp_draw_sprite(gs->letter, 0, tform);
-                }
+                sglp_draw_sprite(gs->letter, 0, tform);
 
                 running_x += scalex;
+#endif
             }
         }
     }
@@ -254,6 +269,7 @@ Bool overlap(Entity a, Entity b) {
 }
 
 void sglp_platform_update_and_render_callback(sglp_API *api) {
+    int i;
     Game_State *gs = (Game_State *)api->permanent_memory;
 
     if(api->init_game) {
@@ -261,8 +277,10 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
         {
             int width, height, number_of_components;
             uint8_t *img_data = stbi_load("player.png", &width, &height, &number_of_components, 0);
-            gs->player_sprite = sglp_load_image(api, img_data, 12, ID_sprite_player, width, height, number_of_components);
+            gs->player_sprite = sglp_load_image(api, img_data, 12, 1, ID_sprite_player, width, height, number_of_components);
             stbi_image_free(img_data);
+
+            int c;
 
             gs->player.trans.scale_x = 0.1f;
             gs->player.trans.scale_y = 0.1f;
@@ -278,7 +296,7 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
         {
             int width, height, number_of_components;
             uint8_t *img_data = stbi_load("enemy_one.png", &width, &height, &number_of_components, 0);
-            gs->enemy_one_sprite = sglp_load_image(api, img_data, 8, ID_sprite_enemy_one, width, height, number_of_components);
+            gs->enemy_one_sprite = sglp_load_image(api, img_data, 8, 1, ID_sprite_enemy_one, width, height, number_of_components);
             stbi_image_free(img_data);
 
             float x = 0.1f;
@@ -291,6 +309,13 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
 
                 x += 0.4f;
             }
+        }
+
+        {
+            int width, height, number_of_components;
+            uint8_t *img_data = stbi_load("freemono.png", &width, &height, &number_of_components, 0);
+            gs->bitmap_sprite = sglp_load_image(api, img_data, 16, 16, ID_sprite_bitmap_font, width, height, number_of_components);
+            stbi_image_free(img_data);
         }
 
         // Load background music.
@@ -374,7 +399,7 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
             sglp_draw_sprite(gs->player_sprite, gs->player.current_frame, tform);
         }
 
-        for(int i = 0; (i < number_of_enemies); ++i) {
+        for(i = 0; (i < number_of_enemies); ++i) {
             sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->enemy[i].x, gs->enemy[i].y,
                                                               gs->enemy[i].scale_x, gs->enemy[i].scale_y, gs->enemy[i].rot);
             float tform[16] = {};
@@ -384,6 +409,15 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
         }
 
         {
+            sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(0.5f, 0.5f, 1.0f, 1.0, 0.0f);
+            float tform[16] = {};
+            sglm_mat4x4_as_float_arr(tform, &mat);
+
+            sglp_draw_sprite(gs->bitmap_sprite, 16, tform);
+        }
+
+        {
+#if 0
             int buf_size = 256 * 256;
             char *buffer = malloc(sizeof *buffer * buf_size);
             pp_serialize_struct(&gs->player, Player, buffer, buf_size);
@@ -391,8 +425,111 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
             //draw_word(buffer, api, gs, 0.1f, 0.1f, size, size);
             //OutputDebugStringA(buffer); OutputDebugStringA("\n\n");
             free(buffer);
+#endif
         }
 
-        draw_word("__i : I ab_c10", api, gs, 0.1f, 0.1f, 0.1f, 0.1f);
+        //draw_word("__i : I ab_c10", api, gs, 0.1f, 0.1f, 0.1f, 0.1f);
     }
+}
+
+V2 GetLetterPosition(char Letter) {
+    V2 res = v2(-1.0f, -1.0f);
+    switch (Letter) {
+        case ' ': { res = v2(0.0f, 0.0f);  } break;
+        case '!': { res = v2(1.0f, 0.0f);  } break;
+        case '"': { res = v2(2.0f, 0.0f);  } break;
+        case '#': { res = v2(3.0f, 0.0f);  } break;
+        case '$': { res = v2(4.0f, 0.0f);  } break;
+        case '%': { res = v2(5.0f, 0.0f);  } break;
+        case '&': { res = v2(6.0f, 0.0f);  } break;
+        case '(': { res = v2(8.0f, 0.0f);  } break;
+        case ')': { res = v2(9.0f, 0.0f);  } break;
+        case '*': { res = v2(10.0f, 0.0f); } break;
+        case '+': { res = v2(11.0f, 0.0f); } break;
+        case '_': { res = v2(13.0f, 0.0f); } break;
+        case '/': { res = v2(15.0f, 0.0f); } break;
+        case '0': { res = v2(0.0f, 1.0f);  } break;
+        case '1': { res = v2(1.0f, 1.0f);  } break;
+        case '2': { res = v2(2.0f, 1.0f);  } break;
+        case '3': { res = v2(3.0f, 1.0f);  } break;
+        case '4': { res = v2(4.0f, 1.0f);  } break;
+        case '5': { res = v2(5.0f, 1.0f);  } break;
+        case '6': { res = v2(6.0f, 1.0f);  } break;
+        case '7': { res = v2(7.0f, 1.0f);  } break;
+        case '8': { res = v2(8.0f, 1.0f);  } break;
+        case '9': { res = v2(9.0f, 1.0f);  } break;
+        case ':': { res = v2(10.0f, 1.0f); } break;
+        case '.': { res = v2(10.0f, 1.0f); } break; // TODO(Jonny): Hacky
+        case ',': { res = v2(10.0f, 1.0f); } break; // TODO(Jonny): Hacky
+        case ';': { res = v2(11.0f, 1.0f); } break;
+        case '<': { res = v2(12.0f, 1.0f); } break;
+        case '=': { res = v2(13.0f, 1.0f); } break;
+        case '>': { res = v2(14.0f, 1.0f); } break;
+        case '?': { res = v2(15.0f, 1.0f); } break;
+        case '@': { res = v2(0.0f, 2.0f);  } break;
+        case 'A': { res = v2(1.0f, 2.0f);  } break;
+        case 'B': { res = v2(2.0f, 2.0f);  } break;
+        case 'C': { res = v2(3.0f, 2.0f);  } break;
+        case 'D': { res = v2(4.0f, 2.0f);  } break;
+        case 'E': { res = v2(5.0f, 2.0f);  } break;
+        case 'F': { res = v2(6.0f, 2.0f);  } break;
+        case 'G': { res = v2(7.0f, 2.0f);  } break;
+        case 'H': { res = v2(8.0f, 2.0f);  } break;
+        case 'I': { res = v2(9.0f, 2.0f);  } break;
+        case 'J': { res = v2(10.0f, 2.0f); } break;
+        case 'K': { res = v2(11.0f, 2.0f); } break;
+        case 'L': { res = v2(12.0f, 2.0f); } break;
+        case 'M': { res = v2(13.0f, 2.0f); } break;
+        case 'N': { res = v2(14.0f, 2.0f); } break;
+        case 'O': { res = v2(15.0f, 2.0f); } break;
+        case 'P': { res = v2(0.0f, 3.0f);  } break;
+        case 'Q': { res = v2(1.0f, 3.0f);  } break;
+        case 'R': { res = v2(2.0f, 3.0f);  } break;
+        case 'S': { res = v2(3.0f, 3.0f);  } break;
+        case 'T': { res = v2(4.0f, 3.0f);  } break;
+        case 'U': { res = v2(5.0f, 3.0f);  } break;
+        case 'V': { res = v2(6.0f, 3.0f);  } break;
+        case 'W': { res = v2(7.0f, 3.0f);  } break;
+        case 'X': { res = v2(8.0f, 3.0f);  } break;
+        case 'Y': { res = v2(9.0f, 3.0f);  } break;
+        case 'Z': { res = v2(10.0f, 3.0f); } break;
+        case '[': { res = v2(11.0f, 3.0f); } break;
+        case ']': { res = v2(13.0f, 3.0f); } break;
+        case '^': { res = v2(14.0f, 3.0f); } break;
+        case '-': { res = v2(15.0f, 3.0f); } break;
+        case 'a': { res = v2(1.0f, 4.0f);  } break;
+        case 'b': { res = v2(2.0f, 4.0f);  } break;
+        case 'c': { res = v2(3.0f, 4.0f);  } break;
+        case 'd': { res = v2(4.0f, 4.0f);  } break;
+        case 'e': { res = v2(5.0f, 4.0f);  } break;
+        case 'f': { res = v2(6.0f, 4.0f);  } break;
+        case 'g': { res = v2(7.0f, 4.0f);  } break;
+        case 'h': { res = v2(8.0f, 4.0f);  } break;
+        case 'i': { res = v2(9.0f, 4.0f);  } break;
+        case 'j': { res = v2(10.0f, 4.0f); } break;
+        case 'k': { res = v2(11.0f, 4.0f); } break;
+        case 'l': { res = v2(12.0f, 4.0f); } break;
+        case 'm': { res = v2(13.0f, 4.0f); } break;
+        case 'n': { res = v2(14.0f, 4.0f); } break;
+        case 'o': { res = v2(15.0f, 4.0f); } break;
+        case 'p': { res = v2(0.0f, 5.0f);  } break;
+        case 'q': { res = v2(1.0f, 5.0f);  } break;
+        case 'r': { res = v2(2.0f, 5.0f);  } break;
+        case 's': { res = v2(3.0f, 5.0f);  } break;
+        case 't': { res = v2(4.0f, 5.0f);  } break;
+        case 'u': { res = v2(5.0f, 5.0f);  } break;
+        case 'v': { res = v2(6.0f, 5.0f);  } break;
+        case 'w': { res = v2(7.0f, 5.0f);  } break;
+        case 'x': { res = v2(8.0f, 5.0f);  } break;
+        case 'y': { res = v2(9.0f, 5.0f);  } break;
+        case 'z': { res = v2(10.0f, 5.0f); } break;
+        case '{': { res = v2(11.0f, 5.0f); } break;
+        case '|': { res = v2(12.0f, 5.0f); } break;
+        case '}': { res = v2(13.0f, 5.0f); } break;
+        case '~': { res = v2(14.0f, 5.0f); } break;
+
+        default: { assert(false); } break;
+    }
+
+    return(res);
 }

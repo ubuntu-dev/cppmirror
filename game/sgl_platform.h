@@ -71,13 +71,13 @@ typedef int sglp_Bool;
 struct sglp_Sprite {
     int32_t w, h;
     int32_t id;
-    int32_t frame_cnt;
+    int32_t frame_cnt_x, frame_cnt_y;
     uint32_t vbo_arr[2];
     uint32_t mesh;
 };
 
 struct sglp_API;
-sglp_Sprite sglp_load_image(sglp_API *api, uint8_t *img_data, int32_t frame_cnt, int32_t id,
+sglp_Sprite sglp_load_image(sglp_API *api, uint8_t *img_data, int32_t frame_cnt_x, int32_t frame_cnt_y, int32_t id,
                             int32_t width, int32_t height, int32_t no_components);
 void sglp_clear_screen_for_frame(void);
 void sglp_draw_sprite(sglp_Sprite sprite, int32_t cur_frame, float const *tform);
@@ -600,14 +600,15 @@ static void sglp_generate_2d_mesh(sglp_Sprite *sprite, float no_frames_x, float 
     sglp_global_opengl->glEnableVertexAttribArray(tex_coor_buf_index);
 }
 
-sglp_Sprite sglp_load_image(sglp_API *api, uint8_t *img_data, int32_t frame_cnt, int32_t id,
-                            int32_t width, int32_t height, int32_t no_components) {
+sglp_Sprite sglp_load_image(sglp_API *api, uint8_t *img_data, int32_t frame_cnt_x, int32_t frame_cnt_y,
+                            int32_t id, int32_t width, int32_t height, int32_t no_components) {
     int i, j;
     sglp_Sprite res = {};
     res.id = id;
     res.w = width;
     res.h = height;
-    res.frame_cnt = frame_cnt;
+    res.frame_cnt_x = frame_cnt_x;
+    res.frame_cnt_y = frame_cnt_y;
 
     sglp_global_opengl->glBindTexture(SGLP_GL_TEXTURE_2D, id);
 
@@ -663,7 +664,7 @@ sglp_Sprite sglp_load_image(sglp_API *api, uint8_t *img_data, int32_t frame_cnt,
     sglp_global_opengl->glTexParameteri(SGLP_GL_TEXTURE_2D, SGLP_GL_TEXTURE_WRAP_R, SGLP_GL_CLAMP);
 
     sglp_global_opengl->glBindTexture(SGLP_GL_TEXTURE_2D, 0);
-    sglp_generate_2d_mesh(&res, frame_cnt, 1.0f);
+    sglp_generate_2d_mesh(&res, frame_cnt_x, frame_cnt_y);
 
 load_image_exit:;
 
@@ -753,7 +754,18 @@ void sglp_draw_sprite(sglp_Sprite sprite, int32_t cur_frame, float const *tform)
     sglp_global_opengl->glBindVertexArray(sprite.mesh);
     sglp_global_opengl->glBindTexture(SGLP_GL_TEXTURE_2D, sprite.id);
 
-    sglp_global_opengl->glUniform2f(sglp_global_uniform_sprite_offset, ((1.0f / sprite.frame_cnt) * cur_frame) * -1.0f, 0.0f);
+    int x_increment = cur_frame;
+    int y_increment = 0;
+
+    while(x_increment >= sprite.frame_cnt_x) {
+        x_increment -= sprite.frame_cnt_x;
+        ++y_increment;
+    }
+
+    float frame_pos_x = ((1.0f / sprite.frame_cnt_x) * x_increment) * -1.0f;
+    float frame_pos_y = ((1.0f / sprite.frame_cnt_y) * y_increment) * -1.0f;
+
+    sglp_global_opengl->glUniform2f(sglp_global_uniform_sprite_offset, frame_pos_x, frame_pos_y);
 
     sglp_pass_mat4x4_to_shader(my_tform, sglp_global_uniform_pos);
     sglp_global_opengl->glDrawArrays(SGLP_GL_TRIANGLE_STRIP, 0, 4);
@@ -1206,7 +1218,7 @@ sglp_Bool sglp_load_wav(sglp_API *api, int32_t id, void *data, uintptr_t size) {
 
 static void sglp_setup(sglp_API *api, int32_t max_no_of_sounds) {
     uint8_t img_data[] = {0, 0, 0, 0xFF};
-    sglp_global_black_sprite = sglp_load_image(api, img_data, 1, 0xFFFF/*Do properly*/, 1, 1, 4);
+    sglp_global_black_sprite = sglp_load_image(api, img_data, 1, 1, 0xFFFF/*Do properly*/, 1, 1, 4);
 
     sglp_setup_default_shader();
     sglp_set_max_no_of_sounds(api, max_no_of_sounds);

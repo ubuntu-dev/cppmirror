@@ -106,6 +106,7 @@ typedef struct sglm_Mat4x4 sglm_Mat4x4;
 typedef struct Entity Entity;
 typedef struct Player Player;
 typedef struct Game_State Game_State;
+typedef struct V2 V2;
 
 //
 // An enum, with an index for each type in the codebase.
@@ -262,6 +263,7 @@ typedef enum pp_Type {
     pp_Type_Entity,
     pp_Type_Player,
     pp_Type_Game_State,
+    pp_Type_V2,
     pp_Type___m128i,
 
     pp_Type_count
@@ -296,6 +298,7 @@ typedef struct pp_sglm_Mat4x4 pp_sglm_Mat4x4;    typedef struct pp_sglm_Mat4x4 p
 typedef struct pp_Entity pp_Entity;    typedef struct pp_Entity pp_pp_Entity;
 typedef struct pp_Player pp_Player;    typedef struct pp_Player pp_pp_Player;
 typedef struct pp_Game_State pp_Game_State;    typedef struct pp_Game_State pp_pp_Game_State;
+typedef struct pp_V2 pp_V2;    typedef struct pp_V2 pp_pp_V2;
 
 // Forward declared enums
 typedef int pp_sglp_Key;
@@ -414,7 +417,7 @@ typedef pp_int pp_sglm_Bool;
 // Recreated structs.
 //
 struct pp_sglp_Sprite {
-    int32_t w; int32_t h; int32_t id; int32_t frame_cnt; uint32_t vbo_arr[2]; uint32_t mesh; 
+    int32_t w; int32_t h; int32_t id; int32_t frame_cnt_x; int32_t frame_cnt_y; uint32_t vbo_arr[2]; uint32_t mesh; 
 };
 struct pp_sglp_PlayingSound {
     pp_sglp_PlayingSound *next; float cur_volume0; float cur_volume1; float target_volume0; float target_volume1; float dcur_volume0; float dcur_volume1; float dsample; int32_t id; float samples_played; 
@@ -483,7 +486,10 @@ struct pp_Player {
     pp_Entity trans; float start_x; float start_y; pp_Player_Direction dir; float current_frame; 
 };
 struct pp_Game_State {
-    pp_sglp_Sprite player_sprite; pp_sglp_Sprite enemy_one_sprite; pp_Player player; pp_Entity enemy[4]; pp_sglp_Sprite text[127]; pp_sglp_Sprite letter; 
+    pp_sglp_Sprite player_sprite; pp_sglp_Sprite enemy_one_sprite; pp_sglp_Sprite bitmap_sprite; pp_Player player; pp_Entity enemy[4]; pp_sglp_Sprite text[127]; pp_sglp_Sprite letter; 
+};
+struct pp_V2 {
+    float x; float y; 
 };
 
 // Turn a typedef'd type into it's original type.
@@ -638,14 +644,18 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 return(res);
             } break; 
             case 3: {
-                pp_MemberDefinition res = {pp_Type_int32_t, "frame_cnt", PP_OFFSETOF(pp_sglp_Sprite, frame_cnt), 0, 0};
+                pp_MemberDefinition res = {pp_Type_int32_t, "frame_cnt_x", PP_OFFSETOF(pp_sglp_Sprite, frame_cnt_x), 0, 0};
                 return(res);
             } break; 
             case 4: {
-                pp_MemberDefinition res = {pp_Type_uint32_t, "vbo_arr", PP_OFFSETOF(pp_sglp_Sprite, vbo_arr), 0, 2};
+                pp_MemberDefinition res = {pp_Type_int32_t, "frame_cnt_y", PP_OFFSETOF(pp_sglp_Sprite, frame_cnt_y), 0, 0};
                 return(res);
             } break; 
             case 5: {
+                pp_MemberDefinition res = {pp_Type_uint32_t, "vbo_arr", PP_OFFSETOF(pp_sglp_Sprite, vbo_arr), 0, 2};
+                return(res);
+            } break; 
+            case 6: {
                 pp_MemberDefinition res = {pp_Type_uint32_t, "mesh", PP_OFFSETOF(pp_sglp_Sprite, mesh), 0, 0};
                 return(res);
             } break; 
@@ -1246,19 +1256,35 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 return(res);
             } break; 
             case 2: {
-                pp_MemberDefinition res = {pp_Type_Player, "player", PP_OFFSETOF(pp_Game_State, player), 0, 0};
+                pp_MemberDefinition res = {pp_Type_sglp_Sprite, "bitmap_sprite", PP_OFFSETOF(pp_Game_State, bitmap_sprite), 0, 0};
                 return(res);
             } break; 
             case 3: {
-                pp_MemberDefinition res = {pp_Type_Entity, "enemy", PP_OFFSETOF(pp_Game_State, enemy), 0, 4};
+                pp_MemberDefinition res = {pp_Type_Player, "player", PP_OFFSETOF(pp_Game_State, player), 0, 0};
                 return(res);
             } break; 
             case 4: {
-                pp_MemberDefinition res = {pp_Type_sglp_Sprite, "text", PP_OFFSETOF(pp_Game_State, text), 0, 127};
+                pp_MemberDefinition res = {pp_Type_Entity, "enemy", PP_OFFSETOF(pp_Game_State, enemy), 0, 4};
                 return(res);
             } break; 
             case 5: {
+                pp_MemberDefinition res = {pp_Type_sglp_Sprite, "text", PP_OFFSETOF(pp_Game_State, text), 0, 127};
+                return(res);
+            } break; 
+            case 6: {
                 pp_MemberDefinition res = {pp_Type_sglp_Sprite, "letter", PP_OFFSETOF(pp_Game_State, letter), 0, 0};
+                return(res);
+            } break; 
+        }
+    }
+    else if(real_type == pp_Type_V2) {
+        switch(index) {
+            case 0: {
+                pp_MemberDefinition res = {pp_Type_float, "x", PP_OFFSETOF(pp_V2, x), 0, 0};
+                return(res);
+            } break; 
+            case 1: {
+                pp_MemberDefinition res = {pp_Type_float, "y", PP_OFFSETOF(pp_V2, y), 0, 0};
                 return(res);
             } break; 
         }
@@ -1273,7 +1299,7 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
 PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
     switch(pp_typedef_to_original(type)) {
         case pp_Type___m128: case pp_Type___m128i: { return(1); }
-        case pp_Type_sglp_Sprite: { return(6); } break;
+        case pp_Type_sglp_Sprite: { return(7); } break;
         case pp_Type_sglp_PlayingSound: { return(10); } break;
         case pp_Type_sglp_OpenGlFunctions: { return(34); } break;
         case pp_Type_sglp_Settings: { return(8); } break;
@@ -1296,7 +1322,8 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_sglm_Mat4x4: { return(1); } break;
         case pp_Type_Entity: { return(5); } break;
         case pp_Type_Player: { return(5); } break;
-        case pp_Type_Game_State: { return(6); } break;
+        case pp_Type_Game_State: { return(7); } break;
+        case pp_Type_V2: { return(2); } break;
     }
 
     PP_ASSERT(0);
@@ -1323,7 +1350,7 @@ PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {
             return(pp_StructureType_enum);
         } break;
 
-        case pp_Type___m128: case pp_Type___m128i: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_Settings: case pp_Type_sglp_File: case pp_Type_sglp_API: case pp_Type_sglp_LoadedSound: case pp_Type_sglp_SoundOutputBuffer: case pp_Type_sglp_AudioState: case pp_Type_sglp_WAVEHeader: case pp_Type_sglp_WavChunk: case pp_Type_sglp_WavFormat: case pp_Type_sglp_RiffIter: case pp_Type_SGLP_XINPUT_GAMEPAD: case pp_Type_SGLP_XINPUT_STATE: case pp_Type_SGLP_XINPUT_VIBRATION: case pp_Type_sglp_Win32SoundOutput: case pp_Type_WorkQueueEntry: case pp_Type_WorkQueue: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_Entity: case pp_Type_Player: case pp_Type_Game_State: {
+        case pp_Type___m128: case pp_Type___m128i: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_Settings: case pp_Type_sglp_File: case pp_Type_sglp_API: case pp_Type_sglp_LoadedSound: case pp_Type_sglp_SoundOutputBuffer: case pp_Type_sglp_AudioState: case pp_Type_sglp_WAVEHeader: case pp_Type_sglp_WavChunk: case pp_Type_sglp_WavFormat: case pp_Type_sglp_RiffIter: case pp_Type_SGLP_XINPUT_GAMEPAD: case pp_Type_SGLP_XINPUT_STATE: case pp_Type_SGLP_XINPUT_VIBRATION: case pp_Type_sglp_Win32SoundOutput: case pp_Type_WorkQueueEntry: case pp_Type_WorkQueue: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_Entity: case pp_Type_Player: case pp_Type_Game_State: case pp_Type_V2: {
             return(pp_StructureType_struct);
         } break;
     }
@@ -1484,6 +1511,7 @@ PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_Entity: { return("Entity"); } break;
         case pp_Type_Player: { return("Player"); } break;
         case pp_Type_Game_State: { return("Game_State"); } break;
+        case pp_Type_V2: { return("V2"); } break;
         case pp_Type___m128i: { return("__m128i"); } break;
     }
     
@@ -1937,6 +1965,9 @@ PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
         case pp_Type_Game_State:
             return sizeof(pp_Game_State);
             break;
+        case pp_Type_V2:
+            return sizeof(pp_V2);
+            break;
         case pp_Type___m128i:
             return sizeof(pp___m128i);
             break;
@@ -1951,14 +1982,16 @@ PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t index);
 PP_STATIC uintptr_t
 pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent, char *buffer, uintptr_t buf_size, uintptr_t bytes_written) {
     char indent_buf[256] = {0};
+    uintptr_t i, num_members;
+
     PP_ASSERT((buffer) && (buf_size > 0)); // Check params.
 
     // Setup the indent buffer.
     indent += 4;
-    for(uintptr_t i = 0; (i < indent); ++i) {indent_buf[i] = ' ';}
+    for(i = 0; (i < indent); ++i) {indent_buf[i] = ' ';}
 
-    uintptr_t num_members = pp_get_number_of_members(type); PP_ASSERT(num_members != -1); // Get the number of members for the for loop.
-    for(uintptr_t i = 0; (i < num_members); ++i) {
+    num_members = pp_get_number_of_members(type); PP_ASSERT(num_members != -1); // Get the number of members for the for loop.
+    for(i = 0; (i < num_members); ++i) {
         pp_MemberDefinition member = pp_get_members_from_type(type, i);
         uintptr_t *member_ptr = (uintptr_t *)((char *)var + member.offset); // Get the actual pointer to the memory address.
         pp_StructureType struct_type = pp_get_structure_type(member.type);
@@ -2189,7 +2222,7 @@ PP_STATIC intptr_t pp_string_to_enum(pp_Type type, char const *str) {
             else if(pp_string_compare(str, "ID_sound_background")) { return(2); }
             else if(pp_string_compare(str, "ID_sprite_player")) { return(3); }
             else if(pp_string_compare(str, "ID_sprite_enemy_one")) { return(4); }
-            else if(pp_string_compare(str, "ID_sprite_letter")) { return(5); }
+            else if(pp_string_compare(str, "ID_sprite_bitmap_font")) { return(5); }
         } break;
     }
 
@@ -2276,7 +2309,7 @@ PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t index) {
                 case 2: { return("ID_sound_background"); } break;
                 case 3: { return("ID_sprite_player"); } break;
                 case 4: { return("ID_sprite_enemy_one"); } break;
-                case 5: { return("ID_sprite_letter"); } break;
+                case 5: { return("ID_sprite_bitmap_font"); } break;
             }
         } break;
     }
