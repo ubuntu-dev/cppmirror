@@ -5,7 +5,7 @@ RELEASE=false
 BUILD_GAME=true
 
 # Mirror
-WARNINGS="-Wno-unused-function -Wno-unused-variable -Wno-switch -Wno-sign-compare -Wno-unused-parameter -Wno-writable-strings -Wno-unknown-escape-sequence -Wno-missing-field-initializers -Wno-missing-braces -Wno-char-subscripts" 
+WARNINGS="-Wno-unused-function -Wno-unused-variable -Wno-switch -Wno-sign-compare -Wno-unused-parameter -Wno-writable-strings -Wno-unknown-escape-sequence -Wno-missing-field-initializers -Wno-missing-braces -Wno-char-subscripts"  
 
 echo "Building mirror"
 if [ "$RELEASE" = "true" ]; then
@@ -26,6 +26,6 @@ if [ "$BUILD_GAME" = "true" ]; then
     "../build/mirror" game.c
     popd
 
-    clang-"$CLANG_VERSION" -Wall -Wextra "game/game.c" -std=c99 -o game_exe -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable -Wno-switch -Wno-sign-compare -Wno-unused-private-field -Wno-unused-parameter -Wno-char-subscripts -g -ldl -lm
+    clang-"$CLANG_VERSION" -Wall -Wextra "game/game.c" -std=c99 -o game_exe -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable -Wno-switch -Wno-sign-compare -Wno-unused-private-field -Wno-unused-parameter -Wno-char-subscripts -Wno-comment -g -ldl -lm
     mv "./game_exe" "build/game"
 fi
