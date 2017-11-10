@@ -81,6 +81,7 @@ sglp_Sprite sglp_load_image(sglp_API *api, uint8_t *img_data, int32_t frame_cnt_
                             int32_t width, int32_t height, int32_t no_components);
 void sglp_clear_screen_for_frame(void);
 void sglp_draw_sprite(sglp_Sprite sprite, int32_t cur_frame, float const *tform);
+void sglp_draw_sprite_frame_matrix(sglp_Sprite sprite, int32_t cur_frame_x, int32_t cur_frame_y, float const *tform);
 void sglp_draw_black_box(float const *tform);
 uint32_t sglp_load_and_compile_shaders(char const *fvertex, char const *ffragment);
 
@@ -737,6 +738,7 @@ void sglp_clear_screen_for_frame() {
     sglp_global_opengl->glUniform4f(sglp_global_uniform_colour, 1.0f, 1.0f, 1.0f, 1.0f);
 }
 
+// TODO - The two sglp_sprite_sprite calls can probably be refactored down to one.
 void sglp_draw_sprite(sglp_Sprite sprite, int32_t cur_frame, float const *tform) {
     // Convert the x and y into opengl x and y.
     float my_tform[16] = {};
@@ -764,6 +766,32 @@ void sglp_draw_sprite(sglp_Sprite sprite, int32_t cur_frame, float const *tform)
 
     float frame_pos_x = ((1.0f / sprite.frame_cnt_x) * x_increment) * -1.0f;
     float frame_pos_y = ((1.0f / sprite.frame_cnt_y) * y_increment) * -1.0f;
+
+    sglp_global_opengl->glUniform2f(sglp_global_uniform_sprite_offset, frame_pos_x, frame_pos_y);
+
+    sglp_pass_mat4x4_to_shader(my_tform, sglp_global_uniform_pos);
+    sglp_global_opengl->glDrawArrays(SGLP_GL_TRIANGLE_STRIP, 0, 4);
+}
+
+void sglp_draw_sprite_frame_matrix(sglp_Sprite sprite, int32_t cur_frame_x, int32_t cur_frame_y, float const *tform) {
+    // Convert the x and y into opengl x and y.
+    float my_tform[16] = {};
+    sglp_memcpy(my_tform, (void *)tform, sizeof(float) * 16);
+
+    float *x = &my_tform[12];
+    float *y = &my_tform[13];
+
+    float glx = sglp_screen_to_gl_x(*x);
+    float gly = sglp_screen_to_gl_y(*y);
+
+    *x = glx;
+    *y = -gly;
+
+    sglp_global_opengl->glBindVertexArray(sprite.mesh);
+    sglp_global_opengl->glBindTexture(SGLP_GL_TEXTURE_2D, sprite.id);
+
+    float frame_pos_x = ((1.0f / sprite.frame_cnt_x) * cur_frame_x) * -1.0f;
+    float frame_pos_y = ((1.0f / sprite.frame_cnt_y) * cur_frame_y) * -1.0f;
 
     sglp_global_opengl->glUniform2f(sglp_global_uniform_sprite_offset, frame_pos_x, frame_pos_y);
 

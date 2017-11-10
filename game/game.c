@@ -49,9 +49,6 @@ struct Game_State {
 
     Player player;
     Entity enemy[number_of_enemies];
-
-    sglp_Sprite text[127];
-    sglp_Sprite letter;
 };
 
 enum ID {
@@ -94,105 +91,8 @@ V2 v2(float x, float y) {
     return(res);
 }
 
-V2 GetLetterPosition(char Letter);
+V2 get_letter_position(char Letter);
 
-static sglp_File ttf_file;
-static stbtt_fontinfo font;
-Bool load_letter(sglp_API *api, Game_State *gs, char letter_index) {
-    Bool res = false;
-    if(ttf_file.size == 0) {
-        ttf_file = api->read_file(api, "LiberationMono-Regular.ttf");
-    }
-    assert(ttf_file.size);
-
-    if(font.userdata == 0) {
-        stbtt_InitFont(&font, ttf_file.e, stbtt_GetFontOffsetForIndex(ttf_file.e, 0));
-    }
-
-    uint8_t *full_colour_bitmap = 0;
-    uintptr_t size = 0;
-
-    int width, height, xoffset, yoffset;
-    uint8_t *mono_bitmap = stbtt_GetCodepointBitmap(&font, 0,
-                                                    stbtt_ScaleForPixelHeight(&font, 128.0f),
-                                                    letter_index, &width, &height, &xoffset, &yoffset);
-    if(mono_bitmap) {
-        res = true;
-#if 0
-        uintptr_t new_size = width * height * 4;
-        if(size < new_size) {
-            size = new_size * new_size;
-            full_colour_bitmap = (uint8_t *)api->os_realloc(full_colour_bitmap, size);
-        }
-
-        uint8_t *source = mono_bitmap;
-        uint8_t *dst_row = full_colour_bitmap;
-        for(int32_t i = 0; (i < height); ++i) {
-            int32_t *dst = (int32_t *)dst_row;
-            for(int j = 0; (j < width); ++j) {
-                uint8_t alpha = *source++;
-                *dst++ = ((alpha << 24) | (alpha << 16) | (alpha << 8) | (alpha << 0));
-            }
-
-            dst_row += width * 4;
-        }
-
-        gs->letter =
-            sglp_load_image(api, full_colour_bitmap, 1, 1, ID_sprite_letter, width, height, 4);
-#endif
-    }
-
-    api->os_free(full_colour_bitmap);
-    //api->free_file(api, &ttf_file);
-
-    return(res);
-}
-#if 0
-void load_all_letters(sglp_API *api, Game_State *gs) {
-    sglp_File ttf_file = api->read_file(api, "arial.ttf");
-    assert(ttf_file.size);
-
-    stbtt_fontinfo font;
-    stbtt_InitFont(&font, ttf_file.e, stbtt_GetFontOffsetForIndex(ttf_file.e, 0));
-
-    uint8_t *full_colour_bitmap = 0;
-    uintptr_t size = 0;
-
-    for(int letter_index = 0; (letter_index < 127); ++letter_index) {
-        int width, height, xoffset, yoffset;
-        uint8_t *mono_bitmap = stbtt_GetCodepointBitmap(&font, 0,
-                                                        stbtt_ScaleForPixelHeight(&font, 128.0f),
-                                                        letter_index, &width, &height, &xoffset, &yoffset);
-        if(mono_bitmap) {
-            uintptr_t new_size = width * height * 4;
-            if(size < new_size) {
-                size = new_size * new_size;
-                full_colour_bitmap = (uint8_t *)api->os_realloc(full_colour_bitmap, size);
-            }
-
-            uint8_t *source = mono_bitmap;
-
-            uint8_t *dst_row = full_colour_bitmap;
-            for(int32_t i = 0; (i < height); ++i) {
-                int32_t *dst = (int32_t *)dst_row;
-                for(int j = 0; (j < width); ++j) {
-                    uint8_t alpha = *source++;
-                    *dst++ = ((alpha << 24) | (alpha << 16) | (alpha << 8) | (alpha << 0));
-                }
-
-                dst_row += width * 4;
-            }
-
-            gs->text[letter_index - 'A'] =
-                sglp_load_image(api, full_colour_bitmap, 1, 1,
-                                ID_sprite_letter + (letter_index - 'A'), width, height, 4);
-        }
-    }
-
-    api->os_free(full_colour_bitmap);
-    api->free_file(api, &ttf_file);
-}
-#endif
 int32_t string_len(char const *str) {
     int32_t res = 0;
     while(str[res++]);
@@ -226,8 +126,8 @@ Bool is_number(char c) {
     }
 }
 
-// TODO(Jonny): Super hacky/slow. Fix it?
 void draw_word(char const *str, sglp_API *api, Game_State *gs, float x, float y, float scalex, float scaley) {
+    scalex *= 0.5f;
     int string_length = string_len(str);
     float running_x = x, running_y = y;
     for(int i = 0; (i < string_length - 1); ++i) {
@@ -238,21 +138,14 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, float x, float y,
             running_x = x;
         }
         else {
-            int letter_index = letter;
-
-            if(load_letter(api, gs, letter_index)) {
-#if 0
+            V2 pos_in_table = get_letter_position(letter);
+            if(pos_in_table.x != -1 && pos_in_table.y != -1) {
                 sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale(running_x, running_y, scalex, scaley);
-
                 float tform[16] = {};
                 sglm_mat4x4_as_float_arr(tform, &mat);
-
-                // TODO(Jonny): I don't think this is nessessary. I think I'm just scaling all letters
-                //              to the same size so they look the same.
-                sglp_draw_sprite(gs->letter, 0, tform);
+                sglp_draw_sprite_frame_matrix(gs->bitmap_sprite, pos_in_table.x, pos_in_table.y, tform);
 
                 running_x += scalex;
-#endif
             }
         }
     }
@@ -269,7 +162,6 @@ Bool overlap(Entity a, Entity b) {
 }
 
 void sglp_platform_update_and_render_callback(sglp_API *api) {
-    int i;
     Game_State *gs = (Game_State *)api->permanent_memory;
 
     if(api->init_game) {
@@ -399,7 +291,7 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
             sglp_draw_sprite(gs->player_sprite, gs->player.current_frame, tform);
         }
 
-        for(i = 0; (i < number_of_enemies); ++i) {
+        for(int i = 0; (i < number_of_enemies); ++i) {
             sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->enemy[i].x, gs->enemy[i].y,
                                                               gs->enemy[i].scale_x, gs->enemy[i].scale_y, gs->enemy[i].rot);
             float tform[16] = {};
@@ -408,33 +300,23 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
             sglp_draw_sprite(gs->enemy_one_sprite, 0, tform);
         }
 
+#if 1
         {
-            sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(0.5f, 0.5f, 1.0f, 1.0, 0.0f);
-            float tform[16] = {};
-            sglm_mat4x4_as_float_arr(tform, &mat);
-
-            sglp_draw_sprite(gs->bitmap_sprite, 16, tform);
-        }
-
-        {
-#if 0
             int buf_size = 256 * 256;
             char *buffer = malloc(sizeof *buffer * buf_size);
             pp_serialize_struct(&gs->player, Player, buffer, buf_size);
-            float size = 0.02f;
-            //draw_word(buffer, api, gs, 0.1f, 0.1f, size, size);
+            float size = 0.05f;
+            draw_word(buffer, api, gs, 0.0f, 0.0f, size, size);
             //OutputDebugStringA(buffer); OutputDebugStringA("\n\n");
             free(buffer);
-#endif
         }
-
-        //draw_word("__i : I ab_c10", api, gs, 0.1f, 0.1f, 0.1f, 0.1f);
+#endif
     }
 }
 
-V2 GetLetterPosition(char Letter) {
+V2 get_letter_position(char letter) {
     V2 res = v2(-1.0f, -1.0f);
-    switch (Letter) {
+    switch (letter) {
         case ' ': { res = v2(0.0f, 0.0f);  } break;
         case '!': { res = v2(1.0f, 0.0f);  } break;
         case '"': { res = v2(2.0f, 0.0f);  } break;
