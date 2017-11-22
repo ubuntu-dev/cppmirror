@@ -168,28 +168,6 @@ Bool print_errors() {
 }
 
 //
-// Defer
-//
-#if 0
-template<typename F>
-struct Defer_Struct {
-    F f;
-    inline Defer_Struct(F f) : f(f) {}
-    inline ~Defer_Struct() { f(); }
-    Defer_Struct<F> operator=(Defer_Struct<F> other) {assert(0); Defer_Struct<F> r; return(r); } // Visual Studio was complaining about this... but it shouldn't be called...
-};
-
-struct {
-    template<typename F>
-    inline Defer_Struct<F> operator<<(F f) {
-        return Defer_Struct<F>(f);
-    }
-} Defer_Functor;
-
-#define defer auto TOKEN_CONCAT(defer_in_cpp_, __COUNTER__) = Defer_Functor << [&]
-#endif
-
-//
 // Temp Memory.
 //
 typedef struct TempMemory {
@@ -228,11 +206,9 @@ Void *push_size_with_alignment(TempMemory *tm, Uintptr size, Int alignment) {
     if(alignment == -1) {
         if(size <= 4) {
             alignment = 4;
-        }
-        else if(size <= 8) {
+        } else if(size <= 8) {
             alignment = 8;
-        }
-        else {
+        } else {
             alignment = 16;
         }
     }
@@ -242,8 +218,7 @@ Void *push_size_with_alignment(TempMemory *tm, Uintptr size, Int alignment) {
     if(tm->used + alignment_offset < tm->size) {
         res = tm->e + tm->used + alignment_offset;
         tm->used += size + alignment_offset;
-    }
-    else {
+    } else {
         assert(0);
     }
 
@@ -285,8 +260,8 @@ Bool string_concat(Char *dest, Int len, Char *a, Int a_len, Char *b, Int b_len) 
     Bool res = false;
 
     if(len > a_len + b_len) {
-        for(Int i = 0; (i < a_len); ++i) *dest++ = *a++;
-        for(Int i = 0; (i < b_len); ++i) *dest++ = *b++;
+        for(Int i = 0; (i < a_len); ++i) { *dest++ = *a++; }
+        for(Int i = 0; (i < b_len); ++i) { *dest++ = *b++; }
 
         res = true;
     }
