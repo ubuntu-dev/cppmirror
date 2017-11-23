@@ -18,6 +18,7 @@
     - Support modifiers (unnsigned, volatile, const).
     - Some of the printf formatters in pp_generated (%llu, %lld, %Id, %zu) probably aren't very cross-compiler friendly. I believe
       Visual Studio 2017 is the first one to support long long types correctly, and I don't think GCC supports llu.
+    - If I declare an enum in C style then it doesn't work.
 */
 
 typedef enum {
