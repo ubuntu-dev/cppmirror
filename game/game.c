@@ -22,36 +22,37 @@ PP_IGNORE
 #define false 0
 #define Bool int
 
-struct Entity {
+typedef struct {
     float x, y;
     float scale_x, scale_y;
     float rot;
-};
+} Entity;
 
-enum Player_Direction {
+typedef enum Player_Direction {
     Player_Direction_left = 0,
     Player_Direction_right = 2,
     Player_Direction_up = 4,
     Player_Direction_down = 6,
-};
-struct Player {
+} Player_Direction;
+
+typedef struct {
     Entity trans;
     float start_x, start_y;
     Player_Direction dir;
     float current_frame;
-};
+} Player;
 
-#define number_of_enemies 4
-struct Game_State {
+#define NUMBER_OF_ENEMIES 4
+typedef struct {
     sglp_Sprite player_sprite;
     sglp_Sprite enemy_one_sprite;
     sglp_Sprite bitmap_sprite;
 
     Player player;
-    Entity enemy[number_of_enemies];
-};
+    Entity enemy[NUMBER_OF_ENEMIES];
+} Game_State;
 
-enum ID {
+typedef enum ID {
     ID_unknown,
 
     ID_sound_bloop,
@@ -60,7 +61,7 @@ enum ID {
     ID_sprite_player,
     ID_sprite_enemy_one,
     ID_sprite_bitmap_font,
-};
+} ID;
 
 void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
     settings->fullscreen = true;
@@ -82,9 +83,9 @@ void my_memset(void *dest, uint8_t x, uintptr_t size) {
     }
 }
 
-struct V2 {
+typedef struct {
     float x, y;
-};
+} V2;
 
 V2 v2(float x, float y) {
     V2 res = { .x = x, .y = y };
@@ -111,8 +112,7 @@ char to_upper(char c) {
 Bool is_letter(char c) {
     if((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
         return true;
-    }
-    else {
+    } else {
         return false;
     }
 }
@@ -120,8 +120,7 @@ Bool is_letter(char c) {
 Bool is_number(char c) {
     if(c >= '0' && c <= '9') {
         return true;
-    }
-    else {
+    } else {
         return false;
     }
 }
@@ -136,8 +135,7 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, float x, float y,
         if(letter == '\n') {
             running_y += scaley;
             running_x = x;
-        }
-        else {
+        } else {
             V2 pos_in_table = get_letter_position(letter);
             if(pos_in_table.x != -1 && pos_in_table.y != -1) {
                 sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale(running_x, running_y, scalex, scaley);
@@ -230,8 +228,7 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
         }
 
         //load_all_letters(api, gs);
-    }
-    else {
+    } else {
         // Update
         if(api->key[sglp_key_space]) {
             sglp_play_audio(api, ID_sound_bloop);
@@ -260,15 +257,15 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
             gs->player.current_frame = Player_Direction_right;
         }
 
-        if(api->key[sglp_key_left])  gs->player.trans.rot += 5.0f;
-        if(api->key[sglp_key_right]) gs->player.trans.rot -= 5.0f;
+        if(api->key[sglp_key_left]) { gs->player.trans.rot += 5.0f; }
+        if(api->key[sglp_key_right]) { gs->player.trans.rot -= 5.0f; }
 
-        if(api->key['I']) gs->player.trans.scale_y += 0.01f;
-        if(api->key['K']) gs->player.trans.scale_y -= 0.01f;
-        if(api->key['J']) gs->player.trans.scale_x -= 0.01f;
-        if(api->key['L']) gs->player.trans.scale_x += 0.01f;
+        if(api->key['I']) { gs->player.trans.scale_y += 0.01f; }
+        if(api->key['K']) { gs->player.trans.scale_y -= 0.01f; }
+        if(api->key['J']) { gs->player.trans.scale_x -= 0.01f; }
+        if(api->key['L']) { gs->player.trans.scale_x += 0.01f; }
 
-        for(int i = 0; (i < number_of_enemies); ++i) {
+        for(int i = 0; (i < NUMBER_OF_ENEMIES); ++i) {
             if(overlap(gs->player.trans, gs->enemy[i])) {
                 gs->player.trans.x = gs->player.start_x;
                 gs->player.trans.y = gs->player.start_y;
@@ -291,7 +288,7 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
             sglp_draw_sprite(gs->player_sprite, gs->player.current_frame, tform);
         }
 
-        for(int i = 0; (i < number_of_enemies); ++i) {
+        for(int i = 0; (i < NUMBER_OF_ENEMIES); ++i) {
             sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->enemy[i].x, gs->enemy[i].y,
                                                               gs->enemy[i].scale_x, gs->enemy[i].scale_y, gs->enemy[i].rot);
             float tform[16] = {};

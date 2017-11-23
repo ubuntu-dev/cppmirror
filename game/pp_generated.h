@@ -77,38 +77,6 @@ PP_STATIC void *PP_MEMSET(void *dst, uint8_t v, uintptr_t size) {
 }
 #endif
 //
-// Forward declared structs, enums, and functions
-//
-typedef enum sglp_Key sglp_Key;
-typedef enum Player_Direction Player_Direction;
-typedef enum ID ID;
-typedef struct sglp_Sprite sglp_Sprite;
-typedef struct sglp_PlayingSound sglp_PlayingSound;
-typedef struct sglp_OpenGlFunctions sglp_OpenGlFunctions;
-typedef struct sglp_Settings sglp_Settings;
-typedef struct sglp_File sglp_File;
-typedef struct sglp_API sglp_API;
-typedef struct sglp_LoadedSound sglp_LoadedSound;
-typedef struct sglp_SoundOutputBuffer sglp_SoundOutputBuffer;
-typedef struct sglp_AudioState sglp_AudioState;
-typedef struct sglp_WAVEHeader sglp_WAVEHeader;
-typedef struct sglp_WavChunk sglp_WavChunk;
-typedef struct sglp_WavFormat sglp_WavFormat;
-typedef struct sglp_RiffIter sglp_RiffIter;
-typedef struct SGLP_XINPUT_GAMEPAD SGLP_XINPUT_GAMEPAD;
-typedef struct SGLP_XINPUT_STATE SGLP_XINPUT_STATE;
-typedef struct SGLP_XINPUT_VIBRATION SGLP_XINPUT_VIBRATION;
-typedef struct sglp_Win32SoundOutput sglp_Win32SoundOutput;
-typedef struct WorkQueueEntry WorkQueueEntry;
-typedef struct WorkQueue WorkQueue;
-typedef union sglm_V2 sglm_V2;
-typedef struct sglm_Mat4x4 sglm_Mat4x4;
-typedef struct Entity Entity;
-typedef struct Player Player;
-typedef struct Game_State Game_State;
-typedef struct V2 V2;
-
-//
 // An enum, with an index for each type in the codebase.
 //
 typedef enum pp_Type {

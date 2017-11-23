@@ -68,16 +68,16 @@ typedef int sglp_Bool;
 //
 // Sprites.
 //
-struct sglp_Sprite {
+typedef struct sglp_Sprite {
     int32_t w, h;
     int32_t id;
     int32_t frame_cnt_x, frame_cnt_y;
     uint32_t vbo_arr[2];
     uint32_t mesh;
-};
+} sglp_Sprite;
 
 struct sglp_API;
-sglp_Sprite sglp_load_image(sglp_API *api, uint8_t *img_data, int32_t frame_cnt_x, int32_t frame_cnt_y, int32_t id,
+sglp_Sprite sglp_load_image(struct sglp_API *api, uint8_t *img_data, int32_t frame_cnt_x, int32_t frame_cnt_y, int32_t id,
                             int32_t width, int32_t height, int32_t no_components);
 void sglp_clear_screen_for_frame(void);
 void sglp_draw_sprite(sglp_Sprite sprite, int32_t cur_frame, float const *tform);
@@ -88,8 +88,8 @@ uint32_t sglp_load_and_compile_shaders(char const *fvertex, char const *ffragmen
 //
 // Audio.
 //
-struct sglp_PlayingSound {
-    sglp_PlayingSound *next;
+typedef struct sglp_PlayingSound {
+    struct sglp_PlayingSound *next;
     float cur_volume0, cur_volume1;
     float target_volume0, target_volume1;
     float dcur_volume0, dcur_volume1;
@@ -98,15 +98,15 @@ struct sglp_PlayingSound {
 
     int32_t id;
     float samples_played;
-};
+} sglp_PlayingSound;
 
 sglp_PlayingSound *sglp_get_playing_sound(int32_t id);
-sglp_PlayingSound *sglp_play_new_audio(sglp_API *api, int32_t id);
-sglp_PlayingSound *sglp_play_audio(sglp_API *api, int32_t id);
+sglp_PlayingSound *sglp_play_new_audio(struct sglp_API *api, int32_t id);
+sglp_PlayingSound *sglp_play_audio(struct sglp_API *api, int32_t id);
 void sglp_change_volume(sglp_PlayingSound *snd, float fade_duration_seconds, float vol0, float vol1);
 void sglp_change_pitch(sglp_PlayingSound *snd, float dsample);
 
-sglp_Bool sglp_load_wav(sglp_API *api, int32_t id, void *e, uintptr_t size);
+sglp_Bool sglp_load_wav(struct sglp_API *api, int32_t id, void *e, uintptr_t size);
 
 //
 // Keyboard.
@@ -280,7 +280,7 @@ typedef void SGLP_STDCALL sglp_glGetShaderInfoLog_t(unsigned int shader, sglp_GL
 typedef void SGLP_STDCALL sglp_glGenVertexArrays_t(sglp_GLsizei n, unsigned int *arrays);
 typedef void SGLP_STDCALL sglp_glBindVertexArray_t(unsigned int Array);
 
-struct sglp_OpenGlFunctions {
+typedef struct sglp_OpenGlFunctions {
     sglp_glBindTexture_t             *glBindTexture;
     sglp_glClear_t                   *glClear;
     sglp_glClearColor_t              *glClearColor;
@@ -317,7 +317,7 @@ struct sglp_OpenGlFunctions {
 
     sglp_glGenVertexArrays_t         *glGenVertexArrays;
     sglp_glBindVertexArray_t         *glBindVertexArray;
-};
+} sglp_OpenGlFunctions;
 
 //
 // Screen coordinate converters.
@@ -337,7 +337,7 @@ float sglp_screen_to_gl_y(float y);
 
 //
 // Settings.
-struct sglp_Settings {
+typedef struct sglp_Settings {
     sglp_Bool fullscreen;
     int32_t win_width, win_height;
     int32_t frame_rate;
@@ -345,14 +345,14 @@ struct sglp_Settings {
     int32_t max_no_of_sounds;
     char const *window_title;
     int32_t thread_cnt;
-};
+} sglp_Settings;
 
-struct sglp_File {
+typedef struct sglp_File {
     uint8_t *e;
     uintptr_t size;
-};
+} sglp_File;
 
-struct sglp_API {
+typedef struct sglp_API {
     sglp_Settings settings;
     sglp_OpenGlFunctions gl;
     void *permanent_memory;
@@ -366,9 +366,9 @@ struct sglp_API {
     //
 
     // sglp_File IO.
-    void (*free_file)(sglp_API *, sglp_File *);                          // void sglp_free_file(sglp_API *api, sglp_File *file);
-    sglp_File (*read_file)(sglp_API *, char const *);                    // sglp_File read_file(sglp_API *api, char const *fname);
-    sglp_File (*read_file_and_null_terminate)(sglp_API *, char const *); // sglp_File read_file_and_null_terminate(sglp_API *api, char const *fname);
+    void (*free_file)(struct sglp_API *, sglp_File *);                          // void sglp_free_file(sglp_API *api, sglp_File *file);
+    sglp_File (*read_file)(struct sglp_API *, char const *);                    // sglp_File read_file(sglp_API *api, char const *fname);
+    sglp_File (*read_file_and_null_terminate)(struct sglp_API *, char const *); // sglp_File read_file_and_null_terminate(sglp_API *api, char const *fname);
 
     // Processor timestamp.
     uint64_t (*get_processor_timestamp)(void); // uint64_t get_processor_timestamp();
@@ -381,7 +381,7 @@ struct sglp_API {
     void *(*os_malloc)(uintptr_t size);             // void *platform_malloc(uintptr_t size);
     void *(*os_realloc)(void *ptr, uintptr_t size); // void *platform_realloc(void *ptr, uintptr_t size);
     void (*os_free)(void *ptr);                     // void platform_free(void *ptr);
-};
+} sglp_API;
 
 //
 // External functions that the platform requires be implemented.
@@ -715,15 +715,12 @@ uint32_t sglp_load_and_compile_shaders(char const *fvertex, char const *ffragmen
         sglp_global_opengl->glLinkProgram(res);
         sglp_global_opengl->glUseProgram(res);
 
-    }
-    else if((!vert_compiled) && (!frag_compiled)) {
+    } else if((!vert_compiled) && (!frag_compiled)) {
         sglp_print_shader_err(vert_shader);
         sglp_print_shader_err(frag_shader);
-    }
-    else if(!vert_compiled) {
+    } else if(!vert_compiled) {
         sglp_print_shader_err(vert_shader);
-    }
-    else {
+    } else {
         sglp_print_shader_err(frag_shader);
     }
 
@@ -825,27 +822,27 @@ void sglp_draw_black_box(float const *tform) {
 //
 // Audio
 //
-struct sglp_LoadedSound {
+typedef struct sglp_LoadedSound {
     uint32_t sample_cnt; // This is the sample count divide by 8
     uint32_t no_channels;
     int16_t *samples[2];
     int32_t id;
-};
+} sglp_LoadedSound;
 
-struct sglp_SoundOutputBuffer {
+typedef struct sglp_SoundOutputBuffer {
     int16_t *samples; // samples must be a multiple of 8!
     int32_t samples_per_second;
     int32_t sample_cnt;
-};
+} sglp_SoundOutputBuffer;
 
 static sglp_LoadedSound *sglp_global_loaded_sounds = 0;
 static int32_t sglp_global_loaded_sound_cnt = 0;
 static int32_t sglp_global_loaded_sound_max = 0;
 
-struct sglp_AudioState {
+typedef struct sglp_AudioState {
     sglp_PlayingSound *first_playing_snd;
     sglp_PlayingSound *first_free_playing_snd;
-};
+} sglp_AudioState;
 static sglp_AudioState sglp_global_audio_state;
 
 static void sglp_set_max_no_of_sounds(sglp_API *api, int32_t n) {
@@ -906,8 +903,7 @@ void sglp_change_volume(sglp_PlayingSound *snd, float FadeDurationSeconds, float
     if(FadeDurationSeconds <= 0.0f) {
         snd->cur_volume0 = snd->target_volume0 = vol0;
         snd->cur_volume1 = snd->target_volume1 = vol1;
-    }
-    else {
+    } else {
         snd->target_volume0 = vol0;
         snd->target_volume1 = vol1;
 
@@ -1067,8 +1063,7 @@ static void sglp_output_playing_sounds(sglp_API *api, sglp_SoundOutputBuffer *sn
                 *playing_snd_ptr = playing_snd->next;
                 playing_snd->next = sglp_global_audio_state.first_free_playing_snd;
                 sglp_global_audio_state.first_free_playing_snd = playing_snd;
-            }
-            else {
+            } else {
                 playing_snd_ptr = &playing_snd->next;
             }
         }
@@ -1095,11 +1090,11 @@ static void sglp_output_playing_sounds(sglp_API *api, sglp_SoundOutputBuffer *sn
 //
 
 #pragma pack(push, 1)
-struct sglp_WAVEHeader {
+typedef struct sglp_WAVEHeader {
     uint32_t riff_id;
     uint32_t size;
     uint32_t wav_id;
-};
+} sglp_WAVEHeader;
 
 #define SGLP_RIFF_CODE(a, b, c, d) (((uint32_t)(a) << 0) | ((uint32_t)(b) << 8) | ((uint32_t)(c) << 16) | ((uint32_t)(d) << 24))
 int const WAVE_ChunkID_fmt  = SGLP_RIFF_CODE('f', 'm', 't', ' ');
@@ -1108,12 +1103,12 @@ int const WAVE_ChunkID_RIFF = SGLP_RIFF_CODE('R', 'I', 'F', 'F');
 int const WAVE_ChunkID_WAVE = SGLP_RIFF_CODE('W', 'A', 'V', 'E');
 #undef SGLP_RIFF_CODE
 
-struct sglp_WavChunk {
+typedef struct sglp_WavChunk {
     uint32_t id;
     uint32_t size;
-};
+} sglp_WavChunk;
 
-struct sglp_WavFormat {
+typedef struct sglp_WavFormat {
     int16_t wFormatTag;
     int16_t nChannels;
     uint32_t  nSamplesPerSec;
@@ -1124,13 +1119,13 @@ struct sglp_WavFormat {
     int16_t wValidBitsPerSample;
     uint32_t  dwChannelMask;
     uint8_t SubFormat[16];
-};
+} sglp_WavFormat;
 #pragma pack(pop)
 
-struct sglp_RiffIter {
+typedef struct sglp_RiffIter {
     uint8_t *at;
     uint8_t *stop;
-};
+} sglp_RiffIter;
 
 static sglp_RiffIter sglp_parse_chunk_at(void *at, void *stop) {
     sglp_RiffIter iter;
@@ -1212,8 +1207,7 @@ sglp_Bool sglp_load_wav(sglp_API *api, int32_t id, void *data, uintptr_t size) {
         if(no_channels == 1) {
             loaded_snd->samples[0] = (int16_t *)sample_data;
             loaded_snd->samples[1] = 0;
-        }
-        else if(no_channels == 2) {
+        } else if(no_channels == 2) {
             loaded_snd->samples[0] = sample_data;
             loaded_snd->samples[1] = sample_data + sample_cnt;
 
@@ -1222,8 +1216,7 @@ sglp_Bool sglp_load_wav(sglp_API *api, int32_t id, void *data, uintptr_t size) {
                 sample_data[2 * i] = sample_data[i];
                 sample_data[i]   = Source;
             }
-        }
-        else {
+        } else {
             res = SGLP_FALSE;
             SGLP_ASSERT(SGLP_FALSE);
         }
@@ -1275,18 +1268,18 @@ static void sglp_free_file(sglp_API *api, sglp_File *file) {
 void _WriteBarrier(void);
 
 // xinput.h
-struct SGLP_XINPUT_GAMEPAD {
+typedef struct SGLP_XINPUT_GAMEPAD {
     uint16_t wButtons;
     uint8_t bLeftTrigger, bRightTrigger;
     int16_t sThumbLX, sThumbLY, sThumbRX, sThumbRY;
-};
-struct SGLP_XINPUT_STATE {
+} SGLP_XINPUT_GAMEPAD;
+typedef struct SGLP_XINPUT_STATE {
     uint32_t dwPacketNumber;
     SGLP_XINPUT_GAMEPAD Gamepad;
-};
-struct SGLP_XINPUT_VIBRATION {
+} SGLP_XINPUT_STATE;
+typedef struct SGLP_XINPUT_VIBRATION {
     uint16_t wLeftMotorSpeed, wRightMotorSpeed;
-};
+} SGLP_XINPUT_VIBRATION;
 #define SGLP_XINPUT_GAMEPAD_DPAD_UP        0x0001
 #define SGLP_XINPUT_GAMEPAD_DPAD_DOWN      0x0002
 #define SGLP_XINPUT_GAMEPAD_DPAD_LEFT      0x0004
@@ -1302,13 +1295,13 @@ struct SGLP_XINPUT_VIBRATION {
 #define SGLP_XINPUT_GAMEPAD_X              0x4000
 #define SGLP_XINPUT_GAMEPAD_Y              0x8000
 
-struct sglp_Win32SoundOutput {
+typedef struct sglp_Win32SoundOutput {
     int32_t  samples_per_second;
     int32_t  running_sample_index;
     int32_t  bytes_per_sample;
     uint32_t secondary_buf_size;
     uint32_t safety_bytes;
-};
+} sglp_Win32SoundOutput;
 
 //
 // User32
@@ -1504,8 +1497,7 @@ static sglp_Bool sglp_win32_init_opengl(HWND win) {
         HMODULE hopengl32 = LoadLibraryA("opengl32.dll");
         if(!hopengl32) {
             SGLP_ASSERT(0);
-        }
-        else {
+        } else {
             wglGetProcAddress_t *gl32_wglGetProcAddress = (wglGetProcAddress_t *)GetProcAddress(hopengl32, "wglGetProcAddress");
             wglCreateContext_t  *gl32_wglCreateContext  = (wglCreateContext_t *) GetProcAddress(hopengl32, "wglCreateContext");
             wglMakeCurrent_t    *gl32_wglMakeCurrent    = (wglMakeCurrent_t *)   GetProcAddress(hopengl32, "wglMakeCurrent");
@@ -1630,8 +1622,7 @@ static void sglp_win32_toggle_fullscreen(HWND win) {
                                      monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top,
                                      SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
         }
-    }
-    else {
+    } else {
         sglp_user32_SetWindowLongA(win, GWL_STYLE, style | WS_OVERLAPPEDWINDOW);
         sglp_user32_SetWindowPlacement(win, &sglp_global_win_pos);
         sglp_user32_SetWindowPos(win, 0, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
@@ -1673,8 +1664,7 @@ static sglp_Bool sglp_load_user32dll(void) {
 #undef SGLP_USER32_LOAD
 
         res = funcs_loaded;
-    }
-    else {
+    } else {
         SGLP_ASSERT(0);
     }
 
@@ -1699,8 +1689,7 @@ static sglp_Bool sglp_load_gdi32dll(void) {
 #undef SGLP_GDI_LOAD
 
         res = funcs_loaded;
-    }
-    else {
+    } else {
         SGLP_ASSERT(0);
     }
 
@@ -1710,12 +1699,12 @@ static sglp_Bool sglp_load_gdi32dll(void) {
 //
 // Threading
 //
-struct WorkQueueEntry {
+typedef struct WorkQueueEntry {
     void (*callback)(void *data);
     void *e;
-};
+} WorkQueueEntry;
 
-struct WorkQueue {
+typedef struct WorkQueue {
     int32_t volatile goal;
     int32_t volatile cnt;
 
@@ -1724,7 +1713,7 @@ struct WorkQueue {
 
     void *hsem;
     WorkQueueEntry entries[256]; // TODO(Jonny): Should I make this a Linked List?? Or a dynamically resizing array??
-};
+} WorkQueue;
 static WorkQueue sglp_global_work_queue;
 
 static void sglp_win32_add_work_queue_entry(void *e, void (*callback)(void *data)) {
@@ -1756,8 +1745,7 @@ static sglp_Bool sglp_do_next_work_queue_entry(WorkQueue *work_queue) {
             entry.callback(entry.e);
             InterlockedIncrement((volatile long *)&work_queue->cnt);
         }
-    }
-    else {
+    } else {
         res = SGLP_TRUE;
     }
 
@@ -1860,8 +1848,7 @@ static void *sglp_win32_realloc(void *ptr, uintptr_t size) {
 
     if(ptr) {
         res = HeapReAlloc(GetProcessHeap(), 0x00000008/*HEAP_ZERO_MEMORY*/, ptr, size);
-    }
-    else {
+    } else {
         res = HeapAlloc(GetProcessHeap(), 0x00000008/*HEAP_ZERO_MEMORY*/, size);
     }
 
@@ -2042,8 +2029,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                 if(should_play_snd) {
                     if(!secondary_buffer) {
                         should_play_snd = SGLP_FALSE;
-                    }
-                    else {
+                    } else {
                         // Clear the sound buffer.
                         void *region1, *region2;
                         DWORD region1_size, region2_size;
@@ -2087,8 +2073,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                     api.permanent_memory = sglp_win32_malloc(api.settings.permanent_memory_size);
                     if(!api.permanent_memory) {
                         SGLP_ASSERT(0);
-                    }
-                    else {
+                    } else {
                         LARGE_INTEGER last_counter = sglp_win32_get_wall_clock();
                         LARGE_INTEGER flip_wall_clock = sglp_win32_get_wall_clock();
 
@@ -2137,20 +2122,17 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 
                                             if(left_stickx > 0) {
                                                 api.key[sglp_left_stick_x] = SGLP_NORMALISE(left_stickx, 0, 0xFFFF);
-                                            }
-                                            else if (left_stickx < 0) {
+                                            } else if (left_stickx < 0) {
                                                 api.key[sglp_left_stick_x] = -SGLP_NORMALISE(left_stickx, 0, 0xFFFF);
                                             }
 
                                             if(left_stickx > 0) {
                                                 api.key[sglp_left_stick_y] = SGLP_NORMALISE(left_sticky, 0, 0xFFFF);
-                                            }
-                                            else if (left_stickx < 0) {
+                                            } else if (left_stickx < 0) {
                                                 api.key[sglp_left_stick_y] = -SGLP_NORMALISE(left_sticky, 0, 0xFFFF);
                                             }
                                         }
-                                    }
-                                    else {
+                                    } else {
                                         // Controller not available.
                                     }
                                 }
@@ -2190,8 +2172,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                                         (write_cursor + expected_snd_bytes_per_frame + snd_output.safety_bytes) % snd_output.secondary_buf_size;
                                     if(byte_to_lock > target_cursor) {
                                         bytes_to_write = (snd_output.secondary_buf_size - byte_to_lock) + target_cursor;
-                                    }
-                                    else {
+                                    } else {
                                         bytes_to_write = target_cursor - byte_to_lock;
                                     }
 
@@ -2242,8 +2223,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                                             IDirectSoundBuffer_Unlock(secondary_buffer, region1, region1_size, region2, region2_size);
                                         }
                                     }
-                                }
-                                else {
+                                } else {
                                     snd_is_valid = SGLP_FALSE;
                                 }
                             }
@@ -2272,8 +2252,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                                                                                               sglp_win32_get_wall_clock(),
                                                                                               perf_cnt_freq);
                                     }
-                                }
-                                else {
+                                } else {
                                     // Missed Frame Rate!
                                 }
 
@@ -2512,12 +2491,12 @@ static sglp_Bool sglp_linux_load_opengl_funcs(void) {
 //
 // Threading stuff
 //
-struct WorkQueueEntry {
+typedef struct WorkQueueEntry {
     void (*callback)(void *data);
     void *e;
-};
+} WorkQueueEntry;
 
-struct WorkQueue {
+typedef struct WorkQueue {
     int32_t volatile goal;
     int32_t volatile cnt;
 
@@ -2526,7 +2505,7 @@ struct WorkQueue {
 
     sem_t *hsem;
     WorkQueueEntry entries[256]; // TODO(Jonny): Should I make this a Linked List?? Or a dynamically resizing array??
-};
+} WorkQueue;
 static WorkQueue sglp_global_work_queue;
 
 static void sglp_linux_add_work_queue_entry(void *data, void (*callback)(void *data)) {
@@ -2561,8 +2540,7 @@ static sglp_Bool sglp_linux_do_next_work_queue_entry(WorkQueue *work_queue) {
             entry.callback(entry.e);
             __sync_fetch_and_add(&work_queue->cnt, 1);
         }
-    }
-    else {
+    } else {
         res = SGLP_TRUE;
     }
 
@@ -2767,8 +2745,7 @@ int main(int argc, char **argv) {
 
                                                 case XK_Escape: { api.key[sglp_key_escape] = SGLP_TRUE; } break;
                                             }
-                                        }
-                                        else if(KeyRelease == event.xkey.type) {
+                                        } else if(KeyRelease == event.xkey.type) {
                                             KeySym X11Key = sglp_x11_XKeycodeToKeysym(disp, event.xkey.keycode, 0);
                                             switch(X11Key) {
                                                 case XK_Up:    { api.key[sglp_key_up]    = SGLP_FALSE; } break;

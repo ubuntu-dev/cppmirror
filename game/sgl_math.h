@@ -90,10 +90,10 @@ __m128 sglm_vec_sine(__m128 vec_num);
 //
 // Vec.
 //
-union sglm_V2 {
+typedef union sglm_V2 {
     float e[2];
     struct { float x, y; };
-};
+} sglm_V2;
 
 sglm_V2 sglm_v2(float x, float y);
 sglm_Bool sglm_v2_compare(sglm_V2 a, sglm_V2 b);
@@ -113,9 +113,10 @@ sglm_V2 sglm_v2_midpoint(sglm_V2 a, sglm_V2 b);
 //
 // Mat4x4.
 //
-struct sglm_Mat4x4 {
+// TODO - It _may_ be stupid to store a __m128 in a struct...
+typedef struct sglm_Mat4x4 {
     __m128 e[4];
-};
+} sglm_Mat4x4;
 
 sglm_Mat4x4 sglm_mat4x4_set_trans_scale(float x, float y, float scalex, float scaley);
 sglm_Mat4x4 sglm_mat4x4_set_trans_scale_rot(float x, float y, float scalex, float scaley, float angle);
@@ -132,9 +133,9 @@ float *sglm_mat4x4_as_float_arr(float *arr, sglm_Mat4x4 *mat);
 
 #if !defined(SGLM_ASSERT)
     #if SGLM_COMPILER_MSVC
-        #define SGLM_ASSERT(x, ...) do { if(!(x)) { __debugbreak(); } } while(0)
+        #define SGLM_ASSERT(x) do { if(!(x)) { __debugbreak(); } } while(0)
     #else
-        #define SGLM_ASSERT(x, ...) do { if(!(x)) { *(int volatile *)0 = 0; } } while(0) // TODO(Jonny): Find out what debugbreak is actually on Linux.
+        #define SGLM_ASSERT(x) do { if(!(x)) { *(int volatile *)0 = 0; } } while(0) // TODO(Jonny): Find out what debugbreak is actually on Linux.
     #endif
 #endif
 
@@ -235,8 +236,7 @@ sglm_Bool sglm_v2_compare(sglm_V2 a, sglm_V2 b) {
     sglm_Bool res;
     if((a.x == b.x) && (a.y == b.y)) {
         res = 1; // true
-    }
-    else {
+    } else {
         res = 0; // false
     }
 
