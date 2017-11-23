@@ -231,8 +231,8 @@ void write_enum_size_data(OutputBuffer *ob, Enums enums) {
 }
 
 File write_data(Parse_Result pr) {
-    File res = {};
-    OutputBuffer ob = {};
+    File res = {0};
+    OutputBuffer ob = {0};
     ob.size = 1024 * 1024;
     //ob.buffer = new Char[ob.size];
     ob.buffer = system_malloc_arr(sizeof *ob.buffer, ob.size);
@@ -367,6 +367,7 @@ File write_data(Parse_Result pr) {
 #endif
         // Forward declared structs/functions.
         {
+#if 0
             write_ob(&ob,
                      "\n"
                      "//\n"
@@ -379,8 +380,7 @@ File write_data(Parse_Result pr) {
 
                 if(ed->type.len) {
                     write_ob(&ob, "enum %.*s : %.*s;\n", ed->name.len, ed->name.e, ed->type.len, ed->type.e);
-                }
-                else {
+                } else {
                     write_ob(&ob, "typedef enum %.*s %.*s;\n", ed->name.len, ed->name.e, ed->name.len, ed->name.e);
                 }
             }
@@ -407,6 +407,7 @@ File write_data(Parse_Result pr) {
                     } break;
                 }
             }
+#endif
 
             // Forward declared functions.
             for(Int i = 0; (i < pr.funcs.cnt); ++i) {
@@ -453,10 +454,6 @@ File write_data(Parse_Result pr) {
         }
 
         Int type_count = 0;
-        // String *types = new String[max_type_count + 2]; // Plus 2 because I manually add __m128 and __m128i
-        // defer {
-        //     delete[] types;
-        // };
         String *types = system_malloc_arr(sizeof *types, max_type_count + 2); // Plus 2 because I manually add __m128 and __m128i
 
         if(types) {
@@ -471,6 +468,12 @@ File write_data(Parse_Result pr) {
                 if(!is_meta_type_already_in_array(types, type_count, create_string("__m128i"))) {
                     types[type_count++] = create_string("__m128i");
                 }
+
+#if INTERNAL
+                for(Int i = 0; (i < type_count); ++i) {
+                    assert(is_valid_iden_name(types[i]));
+                }
+#endif
 
                 write_ob(&ob,
                          "\n"
@@ -540,8 +543,7 @@ File write_data(Parse_Result pr) {
                              "enum pp_%.*s : %.*s;\n",
                              ed->name.len, ed->name.e,
                              ed->type.len, ed->type.e);
-                }
-                else {
+                } else {
                     write_ob(&ob,
                              "typedef int pp_%.*s;\n",
                              ed->name.len, ed->name.e);
@@ -593,8 +595,7 @@ File write_data(Parse_Result pr) {
 
                             if(is_inside_anonymous_struct) {
                                 write_ob(&ob, " struct {");
-                            }
-                            else {
+                            } else {
                                 write_ob(&ob, "};");
                             }
                         }
@@ -1060,7 +1061,7 @@ File write_data(Parse_Result pr) {
                 for(Int j = 0; (j < sd->member_count); ++j) {
                     Variable *mem = sd->members + j;
 
-                    if(mem->array_count) continue; // TODO(Jonny): Don't support arrays yet.
+                    if(mem->array_count) { continue; } // TODO(Jonny): Don't support arrays yet.
 
                     write_ob(&ob,
                              "    if(a.%.*s != b.%.*s) { return(false); }\n",
@@ -1098,8 +1099,8 @@ File write_data(Parse_Result pr) {
                         for(Int j = 0; (j < ed->no_of_values); ++j) {
                             Enum_Value *ev = ed->values + j;
 
-                            if(!j) write_ob(&ob, "            ");
-                            else   write_ob(&ob, "            else ");
+                            if(!j) { write_ob(&ob, "            "); }
+                            else { write_ob(&ob, "            else "); }
 
                             write_ob(&ob,
                                      "if(pp_string_compare(str, \"%.*s\")) { return(%d); }\n",
