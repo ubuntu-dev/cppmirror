@@ -532,18 +532,6 @@ Void eat_whitespace(Tokenizer *tokenizer) {
     }
 }
 
-Bool is_alphabetical(Char c) {
-    Bool res = (((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z')));
-
-    return(res);
-}
-
-Bool is_num(Char c) {
-    Bool res = ((c >= '0') && (c <= '9'));
-
-    return(res);
-}
-
 Void parse_number(Tokenizer *tokenizer) {
     // TODO(Jonny): Implement.
 }
@@ -803,6 +791,7 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
                 Bool inside_anonymous_struct = false;
                 for(;;) {
                     Token token = get_token(tokenizer);
+
                     if(is_stupid_class_keyword(token)) {
                         String access_as_string = token_to_string(token);
                         if(string_comp(access_as_string, create_string("public"))) {
@@ -813,11 +802,17 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
                             current_access = Access_protected;
                         }
                     } else {
-                        // This could be the end of an anonymous struct, so ignore it.
                         if(token_equals(token, "struct")) {
-                            eat_token(tokenizer); // Eat the open brace.
+                            Token next = peak_token(tokenizer);
+
+                            // If we're in an anonymous struct, just ignore it.
+                            if(next.type == Token_Type_open_brace) {
+                                eat_token(tokenizer); // Eat the open brace.
+                                inside_anonymous_struct = true;
+                            }
+
+                            // Whether we're in an anonymous struct or not, we still want to set the token to it's next.
                             token = get_token(tokenizer);
-                            inside_anonymous_struct = true;
                         }
 
                         if((token.type != Token_Type_colon) && (token.type != Token_Type_tilde)) {
@@ -1422,6 +1417,8 @@ Void parse_stream(Char *stream, Parse_Result *res) {
                     Parse_Struct_Result r = parse_struct(&tokenizer, struct_type);
 
                     if(r.success) {
+                        assert(is_valid_iden_name(r.sd.name));
+
                         Bool already_added = false;
                         for(Int i = 0; (i < res->structs.cnt); ++i) {
                             Struct_Data *sd = res->structs.e + i;
@@ -1834,9 +1831,9 @@ Void handle_hash_if_statement(Tokenizer *tokenizer, MacroData *macro_data, Int m
 }
 
 File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int passed_in_macro_cnt, Uintptr max_file_size) {
-    File res = {};
+    File res = {0};
 
-    File_With_Extra_Space file = {};
+    File_With_Extra_Space file = {0};
     file.size = original_file.size;
     file.memory_size = max_file_size * 2;
 
@@ -1861,7 +1858,7 @@ File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int 
             Tokenizer tokenizer = { file.e };
 
             Bool parsing = true;
-            Token prev_token = {};
+            Token prev_token = {0};
             Bool ignore_next_file = false;
             while(parsing) {
                 Token token = get_token(&tokenizer);
@@ -1947,7 +1944,7 @@ File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int 
 // Start point.
 //
 Parse_Result parse_streams(Int cnt, Char **fnames, MacroData *md, Int macro_cnt, Uintptr max_file_size) {
-    Parse_Result res = {};
+    Parse_Result res = {0};
 
     res.enum_max = 8;
     //res.enums.e = new Enum_Data[res.enum_max];
