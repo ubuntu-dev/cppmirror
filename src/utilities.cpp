@@ -157,7 +157,7 @@ Bool print_errors() {
         system_write_to_console(buffer2);
 
         for(Int i = 0; (i < global_error_count); ++i) {
-            Char buffer[256] = {};
+            Char buffer[256] = {0};
             stbsp_snprintf(buffer, array_count(buffer), "%s %s\n",
                            global_errors[i].guid, ErrorTypeToString(global_errors[i].type));
             system_write_to_console(buffer);
@@ -188,7 +188,7 @@ Uintptr get_alignment(void *mem, Uintptr desired_alignment) {
 }
 
 TempMemory create_temp_buffer(Uintptr size) {
-    TempMemory res = {};
+    TempMemory res = {0};
 
     res.e = system_malloc(sizeof *res.e * size);
     if(res.e) {
@@ -419,6 +419,29 @@ Bool cstring_contains_cstring(Char *str, Char *target) {
 #define kilobytes(v) ((v)            * (1024LL))
 #define megabytes(v) ((kilobytes(v)) * (1024LL))
 #define gigabytes(v) ((megabytes(v)) * (1024LL))
+
+Bool is_alphabetical(Char c) {
+    Bool res = (((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z')));
+
+    return(res);
+}
+
+Bool is_num(Char c) {
+    Bool res = ((c >= '0') && (c <= '9'));
+
+    return(res);
+}
+
+Bool is_valid_iden_name(String name) {
+    for(Int i = 0; (i < name.len); ++i) {
+        if(!is_alphabetical(name.e[i]) && !is_num(name.e[i]) && name.e[i] != '_') {
+            assert(0);
+            return false;
+        }
+    }
+
+    return true;
+}
 
 typedef struct {
     Int e;
