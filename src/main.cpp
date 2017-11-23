@@ -81,7 +81,7 @@ MacroData parse_passed_in_macro(Char *str) {
     eat_token(&tokenizer);
     Token result = get_token(&tokenizer);
 
-    MacroData res = {};
+    MacroData res = {0};
     res.iden = token_to_string(iden);
     res.res = token_to_string(result);
 
@@ -109,7 +109,7 @@ Void my_main(Int argc, Char **argv) {
             Int number_of_files = 0;
 
             Int macro_cnt = 0;
-            MacroData passed_in_macro_data[8] = {};
+            MacroData passed_in_macro_data[8] = {0};
 
             for(Int i = 1; (i < argc); ++i) {
                 Char *switch_name = argv[i];
@@ -119,74 +119,73 @@ Void my_main(Int argc, Char **argv) {
                     case SwitchType_silent:                   should_write_to_file = false;         break;
                     case SwitchType_log_errors:               should_log_errors = true;             break;
                     case SwitchType_run_tests:                should_run_tests = true;              break;
-                    case SwitchType_print_help:               print_help();
-                }                        break;
-            case SwitchType_output_preprocessed_file: only_output_preprocessed_file = true; break;
+                    case SwitchType_print_help:               print_help();                         break;
+                    case SwitchType_output_preprocessed_file: only_output_preprocessed_file = true; break;
 
-            case SwitchType_macro:
-                passed_in_macro_data[macro_cnt++] = parse_passed_in_macro(argv[i] + 2); // Skip "-D".
-                break;
+                    case SwitchType_macro:
+                        passed_in_macro_data[macro_cnt++] = parse_passed_in_macro(argv[i] + 2); // Skip "-D".
+                        break;
 
-            case SwitchType_source_file: {
-                    if(number_of_files >= fnames_max_cnt - 1) {
-                        fnames_max_cnt *= 2;
-                        Void *p = system_realloc(fnames, sizeof(*fnames) * fnames_max_cnt);
-                        if(p) {
-                            fnames = (Char **)p;
+                    case SwitchType_source_file: {
+                        if(number_of_files >= fnames_max_cnt - 1) {
+                            fnames_max_cnt *= 2;
+                            Void *p = system_realloc(fnames, sizeof(*fnames) * fnames_max_cnt);
+                            if(p) {
+                                fnames = (Char **)p;
+                            }
                         }
-                    }
 
-                    fnames[number_of_files++] = switch_name;
-                } break;
+                        fnames[number_of_files++] = switch_name;
+                    } break;
+                }
             }
-        }
 
-        if(should_run_tests) {
+            if(should_run_tests) {
 #if INTERNAL
-            Int tests_failed = run_tests();
+                Int tests_failed = run_tests();
 
-            if(!tests_failed) {
-                system_write_to_console("all tests passed...");
-            } else {
-                system_write_to_console("%d tests failed\n", tests_failed);
-            }
+                if(!tests_failed) {
+                    system_write_to_console("all tests passed...");
+                } else {
+                    system_write_to_console("%d tests failed\n", tests_failed);
+                }
 #endif
-        } else {
-            if(!number_of_files) {
-                push_error(ErrorType_no_files_pass_in);
             } else {
-                Char directory[1024] = {};
-                get_current_directory(directory, 1024);
-                Uintptr size_of_all_files = system_get_total_size_of_directory(directory);
+                if(!number_of_files) {
+                    push_error(ErrorType_no_files_pass_in);
+                } else {
+                    Char directory[1024] = {0};
+                    get_current_directory(directory, 1024);
+                    Uintptr size_of_all_files = system_get_total_size_of_directory(directory);
 
-                Parse_Result parse_res = parse_streams(number_of_files, fnames, passed_in_macro_data,
-                                                       macro_cnt, size_of_all_files);
+                    Parse_Result parse_res = parse_streams(number_of_files, fnames, passed_in_macro_data,
+                                                           macro_cnt, size_of_all_files);
 
-                File file_to_write = write_data(parse_res);
+                    File file_to_write = write_data(parse_res);
 
-                Bool write_success = system_write_to_file("pp_generated.h", file_to_write);
-                assert(write_success);
+                    Bool write_success = system_write_to_file("pp_generated.h", file_to_write);
+                    assert(write_success);
 
 #if INTERNAL
-                system_free(file_to_write.e);
-                system_free(parse_res.enums.e);
-                system_free(parse_res.structs.e);
-                system_free(parse_res.funcs.e);
-                system_free(parse_res.typedefs.e);
+                    system_free(file_to_write.e);
+                    system_free(parse_res.enums.e);
+                    system_free(parse_res.structs.e);
+                    system_free(parse_res.funcs.e);
+                    system_free(parse_res.typedefs.e);
 #endif
+                }
             }
-        }
 
-        system_free(fnames);
+            system_free(fnames);
+        }
     }
-}
 
-system_write_to_console("Done");
+    system_write_to_console("Done");
 
-if(should_log_errors) {
-    Int err_cnt = print_errors();
-    assert(err_cnt == 0);
-}
+    if(should_log_errors) {
+        Int err_cnt = print_errors();
+        assert(err_cnt == 0);
+    }
 
-system_write_to_console("\n");
+    system_write_to_console("\n");
 }
