@@ -604,7 +604,7 @@ static void sglp_generate_2d_mesh(sglp_Sprite *sprite, float no_frames_x, float 
 sglp_Sprite sglp_load_image(sglp_API *api, uint8_t *img_data, int32_t frame_cnt_x, int32_t frame_cnt_y,
                             int32_t id, int32_t width, int32_t height, int32_t no_components) {
     int i, j;
-    sglp_Sprite res = {};
+    sglp_Sprite res = {0};
     res.id = id;
     res.w = width;
     res.h = height;
@@ -738,23 +738,18 @@ void sglp_clear_screen_for_frame() {
 // TODO - The two sglp_sprite_sprite calls can probably be refactored down to one.
 void sglp_draw_sprite(sglp_Sprite sprite, int32_t cur_frame, float const *tform) {
     // Convert the x and y into opengl x and y.
-    float my_tform[16] = {};
-    sglp_memcpy(my_tform, (void *)tform, sizeof(float) * 16);
 
-    float *x = &my_tform[12];
-    float *y = &my_tform[13];
-
-    float glx = sglp_screen_to_gl_x(*x);
-    float gly = sglp_screen_to_gl_y(*y);
-
-    *x = glx;
-    *y = -gly;
-
-    sglp_global_opengl->glBindVertexArray(sprite.mesh);
-    sglp_global_opengl->glBindTexture(SGLP_GL_TEXTURE_2D, sprite.id);
+    float my_tform[16] = { tform[0], tform[1], tform[2], tform[3],
+                           tform[4], tform[5], tform[6], tform[7],
+                           tform[8], tform[9], tform[10], tform[11],
+                           sglp_screen_to_gl_x(tform[12]), -sglp_screen_to_gl_y(tform[13]), tform[14], tform[15]
+                         };
 
     int x_increment = cur_frame;
     int y_increment = 0;
+
+    sglp_global_opengl->glBindVertexArray(sprite.mesh);
+    sglp_global_opengl->glBindTexture(SGLP_GL_TEXTURE_2D, sprite.id);
 
     while(x_increment >= sprite.frame_cnt_x) {
         x_increment -= sprite.frame_cnt_x;
@@ -771,18 +766,11 @@ void sglp_draw_sprite(sglp_Sprite sprite, int32_t cur_frame, float const *tform)
 }
 
 void sglp_draw_sprite_frame_matrix(sglp_Sprite sprite, int32_t cur_frame_x, int32_t cur_frame_y, float const *tform) {
-    // Convert the x and y into opengl x and y.
-    float my_tform[16] = {};
-    sglp_memcpy(my_tform, (void *)tform, sizeof(float) * 16);
-
-    float *x = &my_tform[12];
-    float *y = &my_tform[13];
-
-    float glx = sglp_screen_to_gl_x(*x);
-    float gly = sglp_screen_to_gl_y(*y);
-
-    *x = glx;
-    *y = -gly;
+    float my_tform[16] = { tform[0], tform[1], tform[2], tform[3],
+                           tform[4], tform[5], tform[6], tform[7],
+                           tform[8], tform[9], tform[10], tform[11],
+                           sglp_screen_to_gl_x(tform[12]), -sglp_screen_to_gl_y(tform[13]), tform[14], tform[15]
+                         };
 
     sglp_global_opengl->glBindVertexArray(sprite.mesh);
     sglp_global_opengl->glBindTexture(SGLP_GL_TEXTURE_2D, sprite.id);
@@ -797,18 +785,11 @@ void sglp_draw_sprite_frame_matrix(sglp_Sprite sprite, int32_t cur_frame_x, int3
 }
 
 void sglp_draw_black_box(float const *tform) {
-    // Convert the x and y into opengl x and y.
-    float my_tform[16] = {};
-    sglp_memcpy(my_tform, (void *)tform, sizeof(float) * 16);
-
-    float *x = &my_tform[12];
-    float *y = &my_tform[13];
-
-    float glx = sglp_screen_to_gl_x(*x);
-    float gly = sglp_screen_to_gl_y(*y);
-
-    *x = glx;
-    *y = -gly;
+    float my_tform[16] = { tform[0], tform[1], tform[2], tform[3],
+                           tform[4], tform[5], tform[6], tform[7],
+                           tform[8], tform[9], tform[10], tform[11],
+                           sglp_screen_to_gl_x(tform[12]), -sglp_screen_to_gl_y(tform[13]), tform[14], tform[15]
+                         };
 
     sglp_global_opengl->glBindVertexArray(sglp_global_black_sprite.mesh);
     sglp_global_opengl->glBindTexture(SGLP_GL_TEXTURE_2D, sglp_global_black_sprite.id);
@@ -1924,7 +1905,7 @@ static void sglp_win32_process_pending_messages(HWND wnd, float *key, sglp_Bool 
 
 int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int show_code) {
     int i;
-    sglp_API api = {};
+    sglp_API api = {0};
 
     // Setup all the .
     api.free_file = sglp_free_file;
@@ -2375,9 +2356,10 @@ static sglp_pthread_create_t *sglp_pthread_pthread_create;
 static sglp_Bool sglp_linux_load_lpthread(void) {
     sglp_Bool res = SGLP_FALSE;
     void *lpthread = 0;
+    int32_t i = 0;
 
     char const *fallbacks[] = { "libpthread.so", "libpthread.so.0", "libpthread-2.19.so" };
-    for(int32_t i = 0; (i < SGLP_ARRAY_COUNT(fallbacks)); ++i) {
+    for(i = 0; (i < SGLP_ARRAY_COUNT(fallbacks)); ++i) {
         lpthread = dlopen(fallbacks[i], RTLD_LAZY);
         if(lpthread) {
             break; // for
@@ -2510,9 +2492,10 @@ static WorkQueue sglp_global_work_queue;
 
 static void sglp_linux_add_work_queue_entry(void *data, void (*callback)(void *data)) {
     int32_t NewNextEntryToWrite = (sglp_global_work_queue.next_entry_to_write + 1) % SGLP_ARRAY_COUNT(sglp_global_work_queue.entries);
+    WorkQueueEntry *entry = sglp_global_work_queue.entries + sglp_global_work_queue.next_entry_to_write;
+
     SGLP_ASSERT(NewNextEntryToWrite != sglp_global_work_queue.next_entry_to_read);
 
-    WorkQueueEntry *entry = sglp_global_work_queue.entries + sglp_global_work_queue.next_entry_to_write;
     entry->callback = callback;
     entry->e = data;
 
@@ -2527,8 +2510,6 @@ static void sglp_linux_add_work_queue_entry(void *data, void (*callback)(void *d
 }
 
 static sglp_Bool sglp_linux_do_next_work_queue_entry(WorkQueue *work_queue) {
-    SGLP_ASSERT(work_queue);
-
     sglp_Bool res = SGLP_FALSE;
 
     int32_t original_next_entry_to_read = work_queue->next_entry_to_read;
@@ -2569,7 +2550,7 @@ static void *sglp_linux_thread_proc(void *Parameter) {
 // sglp_File IO
 //
 static sglp_File sglp_linux_read_file(sglp_API *api, char const *fname) {
-    sglp_File res = {};
+    sglp_File res = {0};
 
     int32_t file_desc = open(fname, O_RDONLY);
     if(file_desc != -1) {
@@ -2584,7 +2565,7 @@ static sglp_File sglp_linux_read_file(sglp_API *api, char const *fname) {
 }
 
 static sglp_File sglp_linux_read_file_and_null_terminate(sglp_API *api, char const *fname) {
-    sglp_File res = {};
+    sglp_File res = {0};
 
     int32_t file_desc = open(fname, O_RDONLY);
     if(file_desc != -1) {
@@ -2637,7 +2618,8 @@ static void sglp_linux_free(void *ptr) {
 }
 
 int main(int argc, char **argv) {
-    sglp_API api = {};
+    sglp_API api = {0};
+    int32_t i;
 
     api.free_file = sglp_free_file;
     api.read_file = sglp_linux_read_file;
@@ -2655,6 +2637,8 @@ int main(int argc, char **argv) {
     sglp_global_opengl = &api.gl;
 
     if((sglp_linux_load_x11()) && (sglp_linux_load_lpthread()) && (sglp_linux_load_gl())) {
+        Display *disp;
+
         // TODO(Jonny): Read from hardware!
         api.settings.frame_rate = 60;
         api.settings.thread_cnt = 8;
@@ -2664,7 +2648,7 @@ int main(int argc, char **argv) {
 
         sglp_platform_setup_settings_callback(&api.settings);
 
-        Display *disp = sglp_x11_XOpenDisplay(0);
+        disp = sglp_x11_XOpenDisplay(0);
         if(disp) {
             sglp_GLint attrib_list[] = {GLX_RGBA, GLX_DEPTH_SIZE, 24, GLX_DOUBLEBUFFER, None};
             XVisualInfo *visual_info = sglp_gl_glXChooseVisual(disp, 0, attrib_list);
@@ -2672,7 +2656,7 @@ int main(int argc, char **argv) {
                 Window win, root_window = DefaultRootWindow(disp);
                 Colormap colour_map = sglp_x11_XCreateColorMap(disp, root_window, visual_info->visual, AllocNone);
 
-                XSetWindowAttributes set_window_attributes = {};
+                XSetWindowAttributes set_window_attributes = {0};
                 set_window_attributes.colormap = colour_map;
                 set_window_attributes.event_mask = ExposureMask | KeyPressMask;
 
@@ -2688,24 +2672,25 @@ int main(int argc, char **argv) {
                                              api.settings.win_height, 0, visual_info->depth, InputOutput,
                                              visual_info->visual, CWColormap | CWEventMask, &set_window_attributes);
                 if(win) {
+                    GLXContext gl_context;
                     sglp_x11_XMapWindow(disp, win);
                     sglp_x11_XStoreName(disp, win, (char *)api.settings.window_title);
 
-                    GLXContext gl_context = sglp_gl_glXCreateContext(disp, visual_info, 0, GL_TRUE);
+                    gl_context = sglp_gl_glXCreateContext(disp, visual_info, 0, GL_TRUE);
                     sglp_x11_XSelectInput(disp, win, KeyPressMask | KeyReleaseMask);
                     if(gl_context) {
                         sglp_gl_glXMakeCurrent(disp, win, gl_context);
 
                         api.permanent_memory = api.os_malloc(api.settings.permanent_memory_size);
                         if(api.permanent_memory) {
-                            WorkQueue work_queue = {};
+                            WorkQueue work_queue = {0};
 
                             if(api.settings.thread_cnt > 0) {
                                 if(sglp_pthread_sem_open) {
                                     work_queue.hsem = sglp_pthread_sem_open("Thread", O_CREAT | O_EXCL, 0644, 1);
                                 }
 
-                                for(int32_t i = 0; (i < api.settings.thread_cnt); ++i) {
+                                for(i = 0; (i < api.settings.thread_cnt); ++i) {
                                     pthread_t Thread;
                                     if(sglp_pthread_pthread_create) {
                                         sglp_pthread_pthread_create(&Thread, 0, sglp_linux_thread_proc, (void *)&work_queue);
@@ -2716,13 +2701,16 @@ int main(int argc, char **argv) {
                             if(sglp_linux_load_opengl_funcs()) {
                                 sglp_setup(&api, api.settings.max_no_of_sounds);
 
-                                api.init_game = SGLP_TRUE;
-                                api.dt = 16.6f; // TODO(Jonny): Hacky!
-                                XWindowAttributes win_attribs = {};
+                                XWindowAttributes win_attribs = {0};
                                 sglp_Bool quit = SGLP_FALSE; // TODO(Jonny): Should quit be in sglp_API?
 
-                                int32_t last_time = 0, this_time = 0;
-                                float ms_per_frame = 16.666666f, target_seconds_per_frameTargetSecondsPerFrame = 16.666666f;
+                                int32_t last_time = 0;
+                                int32_t this_time = 0;
+                                float ms_per_frame = 16.666666f;
+                                float target_seconds_per_frameTargetSecondsPerFrame = 16.666666f;
+
+                                api.init_game = SGLP_TRUE;
+                                api.dt = 16.6f; // TODO(Jonny): Hacky!
 
                                 while(!quit) {
                                     while(sglp_x11_XPending(disp)) {

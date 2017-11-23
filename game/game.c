@@ -22,37 +22,37 @@ PP_IGNORE
 #define false 0
 #define Bool int
 
-typedef struct {
+struct Entity {
     float x, y;
     float scale_x, scale_y;
     float rot;
-} Entity;
+};
 
-typedef enum Player_Direction {
+enum Player_Direction {
     Player_Direction_left = 0,
     Player_Direction_right = 2,
     Player_Direction_up = 4,
     Player_Direction_down = 6,
-} Player_Direction;
+};
 
-typedef struct {
+struct Player {
     Entity trans;
     float start_x, start_y;
     Player_Direction dir;
     float current_frame;
-} Player;
+};
 
 #define NUMBER_OF_ENEMIES 4
-typedef struct {
+struct Game_State {
     sglp_Sprite player_sprite;
     sglp_Sprite enemy_one_sprite;
     sglp_Sprite bitmap_sprite;
 
     Player player;
     Entity enemy[NUMBER_OF_ENEMIES];
-} Game_State;
+};
 
-typedef enum ID {
+enum ID {
     ID_unknown,
 
     ID_sound_bloop,
@@ -61,7 +61,7 @@ typedef enum ID {
     ID_sprite_player,
     ID_sprite_enemy_one,
     ID_sprite_bitmap_font,
-} ID;
+};
 
 void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
     settings->fullscreen = true;
@@ -83,9 +83,9 @@ void my_memset(void *dest, uint8_t x, uintptr_t size) {
     }
 }
 
-typedef struct {
+struct V2 {
     float x, y;
-} V2;
+};
 
 V2 v2(float x, float y) {
     V2 res = { .x = x, .y = y };
