@@ -418,6 +418,8 @@ Variable parse_member(Tokenizer *tokenizer, Int var_to_parse) {
     return(res);
 }
 
+// TODO - Some of the code in here deals with #if 0 blocks. But they should be getting delt with by the macro preprocessor now.
+//        I'll need to actually check this though.
 Void eat_whitespace(Tokenizer *tokenizer) {
     for(;;) {
         if(!tokenizer->at[0]) { // Nul terminator.
