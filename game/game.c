@@ -1,10 +1,14 @@
 
-#define PP_ASSERT(x)
 #include "pp_generated.h"
+
+#define SGLP_IMPLEMENTATION
 #include "sgl_platform.h"
 
 #define SGLM_IMPLEMENTATION
 #include "sgl_math.h"
+
+#define SGL_IMPLEMENTATION
+#include "sgl.h"
 
 #include <math.h>
 
@@ -17,10 +21,6 @@ PP_IGNORE
 PP_IGNORE
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_ttf.h"
-
-#define true 1
-#define false 0
-#define Bool int
 
 struct Entity {
     float x, y;
@@ -75,14 +75,6 @@ void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
     settings->window_title = "Hello, Lauren!";
     //settings->thread_cnt;
 }
-
-void my_memset(void *dest, uint8_t x, uintptr_t size) {
-    uint8_t *dest8 = (uint8_t *)dest;
-    for(int i = 0; (i < size); ++i) {
-        dest8[i] = x;
-    }
-}
-
 struct V2 {
     float x, y;
 };
@@ -94,40 +86,9 @@ V2 v2(float x, float y) {
 
 V2 get_letter_position(char Letter);
 
-int32_t string_len(char const *str) {
-    int32_t res = 0;
-    while(str[res++]);
-
-    return(res);
-}
-
-char to_upper(char c) {
-    if((c >= 'a') && (c <= 'z')) {
-        c -= ('a' - 'A');
-    }
-
-    return(c);
-}
-
-Bool is_letter(char c) {
-    if((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-Bool is_number(char c) {
-    if(c >= '0' && c <= '9') {
-        return true;
-    } else {
-        return false;
-    }
-}
-
 void draw_word(char const *str, sglp_API *api, Game_State *gs, float x, float y, float scalex, float scaley) {
     scalex *= 0.5f;
-    int string_length = string_len(str);
+    int string_length = sgl_string_len(str);
     float running_x = x, running_y = y;
     for(int i = 0; (i < string_length - 1); ++i) {
         char letter = str[i];
@@ -412,3 +373,4 @@ V2 get_letter_position(char letter) {
 
     return(res);
 }
+
