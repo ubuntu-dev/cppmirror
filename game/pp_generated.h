@@ -236,6 +236,7 @@ typedef enum pp_Type {
     pp_Type_sglp_glXMakeCurrent_t,
     pp_Type_sglp_glXSwapBuffers_t,
     pp_Type_sglm_Bool,
+    pp_Type_sgl_Bool,
     pp_Type_sglp_Key,
     pp_Type_Player_Direction,
     pp_Type_ID,
@@ -414,6 +415,7 @@ typedef pp_uintptr_t pp_sglp_glXCreateContext_t;
 typedef pp_uintptr_t pp_sglp_glXMakeCurrent_t;
 typedef pp_uintptr_t pp_sglp_glXSwapBuffers_t;
 typedef pp_int pp_sglm_Bool;
+typedef pp_int pp_sgl_Bool;
 
 //
 // Recreated structs.
@@ -601,6 +603,7 @@ PP_STATIC pp_Type pp_typedef_to_original(pp_Type type) {
         case pp_Type_sglp_glXMakeCurrent_t: { return(pp_Type_uintptr_t); } break;
         case pp_Type_sglp_glXSwapBuffers_t: { return(pp_Type_uintptr_t); } break;
         case pp_Type_sglm_Bool: { return(pp_Type_int); } break;
+        case pp_Type_sgl_Bool: { return(pp_Type_int); } break;
     }
 
     return(type);
@@ -1477,6 +1480,7 @@ PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_sglp_glXMakeCurrent_t: { return("sglp_glXMakeCurrent_t"); } break;
         case pp_Type_sglp_glXSwapBuffers_t: { return("sglp_glXSwapBuffers_t"); } break;
         case pp_Type_sglm_Bool: { return("sglm_Bool"); } break;
+        case pp_Type_sgl_Bool: { return("sgl_Bool"); } break;
         case pp_Type_sglp_Key: { return("sglp_Key"); } break;
         case pp_Type_Player_Direction: { return("Player_Direction"); } break;
         case pp_Type_ID: { return("ID"); } break;
@@ -1636,6 +1640,7 @@ PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
         case pp_Type_sglp_glXMakeCurrent_t: { return sizeof(pp_sglp_glXMakeCurrent_t); } break;
         case pp_Type_sglp_glXSwapBuffers_t: { return sizeof(pp_sglp_glXSwapBuffers_t); } break;
         case pp_Type_sglm_Bool: { return sizeof(pp_sglm_Bool); } break;
+        case pp_Type_sgl_Bool: { return sizeof(pp_sgl_Bool); } break;
         case pp_Type_sglp_Key: { return sizeof(pp_int); } break;
         case pp_Type_Player_Direction: { return sizeof(pp_int); } break;
         case pp_Type_ID: { return sizeof(pp_int); } break;
