@@ -23,9 +23,9 @@ fi
 if [ "$BUILD_GAME" = "true" ]; then
     echo "Building Game"
     pushd "game"
-    "../build/mirror" game.c
+    #"../build/mirror" game.c
     popd
 
-    clang-"$CLANG_VERSION" -Wall -Wextra "game/game.c" -std=c99 -o game_exe $WARNINGS -g -ldl -lm
+    clang-"$CLANG_VERSION" -Wall -Wextra "game/game.c" -std=c99 -o game_exe $WARNINGS -g -ldl -lm -lasound
     mv "./game_exe" "build/game"
 fi
