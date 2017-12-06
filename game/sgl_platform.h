@@ -1,3 +1,26 @@
+/*
+    sgl_platform - v0.1 - public domain platform layer - no warranty implied; use at your own risk
+
+    Write #define SGLP_IMPLEMENTATION in ONE of the C/C++ files to create the implementation.
+
+    // It should look like this.
+    #define SGLP_IMPLEMENTATION
+    #include "sgl_platform.h"
+
+    Some of the "functions" (macros) in this file can be redefined by the user. These include
+    - SGLP_ASSERT(x)
+
+    // To do this just do the following in the file that defines SGLP_IMPLEMENTATION
+    #define SGLP_ASSERT(x) my_assert(x)
+
+    LICENSE at end of file.
+*/
+
+
+//
+// Header file
+//
+
 #if !defined(_SGL_PLATFORM_H)
 
 #define SGLP_COMPILER_MSVC 0
@@ -395,11 +418,17 @@ void sglp_platform_setup_settings_callback(sglp_Settings *settings);
 // This is the main render loop function. It is called once-per-frame.
 void sglp_platform_update_and_render_callback(sglp_API *api);
 
+
+//
+// Source file
+//
+#if defined(SGLP_IMPLEMENTATION)
+
 #if !defined(SGLP_ASSERT)
     #if SGLP_COMPILER_MSVC
-        #define SGLP_ASSERT(x, ...) do { if(!(x)) { __debugbreak(); } } while(0)
+        #define SGLP_ASSERT(x) do { if(!(x)) { __debugbreak(); } } while(0)
     #else
-        #define SGLP_ASSERT(x, ...) do { if(!(x)) { *(uintptr_t volatile *)0 = 0; } } while(0) // TODO(Jonny): Find out what debugbreak is actually on Linux.
+        #define SGLP_ASSERT(x) do { if(!(x)) { *(uintptr_t volatile *)0 = 0; } } while(0) // TODO(Jonny): Find out what debugbreak is actually on Linux.
     #endif
 #endif
 
@@ -2273,6 +2302,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 #include <sys/mman.h>
 #include <unistd.h>
 #include <dlfcn.h>
+#include <alsa/asoundlib.h>
 
 #include <stdarg.h> // Var Args
 
@@ -2619,7 +2649,7 @@ static void sglp_linux_free(void *ptr) {
 
 int main(int argc, char **argv) {
     sglp_API api = {0};
-    int32_t i;
+    int i;
 
     api.free_file = sglp_free_file;
     api.read_file = sglp_linux_read_file;
@@ -2699,6 +2729,38 @@ int main(int argc, char **argv) {
                             }
 
                             if(sglp_linux_load_opengl_funcs()) {
+
+                                int channels = 2;
+                                int sample_rate = 48000;
+                                int samples_per_second = 48000;
+                                snd_pcm_uframes_t frames;
+                                int dir;
+                                int bytes_per_sample = sizeof(int16_t) * 2;
+
+                                // Open the PCM device in playback mode.
+                                snd_pcm_t *pcm_handle = 0;
+                                snd_pcm_open(&pcm_handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
+
+                                // Allocate parameters object and fill it with default values.
+                                snd_pcm_hw_params_t *params = (snd_pcm_hw_params_t *)sglp_linux_malloc(snd_pcm_hw_params_sizeof());
+                                //snd_pcm_hw_params_alloca(&params);
+                                snd_pcm_hw_params_any(pcm_handle, params);
+
+                                // Set parameters
+                                snd_pcm_hw_params_set_access(pcm_handle, params, SND_PCM_ACCESS_RW_INTERLEAVED);
+                                snd_pcm_hw_params_set_format(pcm_handle, params, SND_PCM_FORMAT_S16_LE);
+                                snd_pcm_hw_params_set_channels(pcm_handle, params, channels);
+                                snd_pcm_hw_params_set_rate(pcm_handle, params, sample_rate, 0);
+
+                                // Write params.
+                                snd_pcm_hw_params(pcm_handle, params);
+
+                                // Allocate buffer to hold single period.
+                                snd_pcm_hw_params_get_period_size(params, &frames, &dir);
+
+                                int16_t *snd_samples =
+                                    (int16_t *)sglp_linux_malloc((samples_per_second * bytes_per_sample) + ((2 * 8) * sizeof(int16_t)));
+
                                 sglp_setup(&api, api.settings.max_no_of_sounds);
 
                                 XWindowAttributes win_attribs = {0};
@@ -2760,6 +2822,19 @@ int main(int argc, char **argv) {
 
                                     sglp_gl_glXSwapBuffers(disp, win);
 
+                                    sglp_SoundOutputBuffer snd_buf = {0};
+                                    snd_buf.samples_per_second = samples_per_second;
+                                    float sample_cnt = samples_per_second / ms_per_frame;
+                                    snd_buf.sample_cnt = SGLP_ALIGN8((int)sample_cnt);
+                                    snd_buf.samples = snd_samples;
+
+                                    sglp_output_playing_sounds(&api, &snd_buf);
+
+                                    int pcmrc = snd_pcm_writei(pcm_handle, snd_buf.samples, snd_buf.sample_cnt);
+                                    if(pcmrc == -EPIPE) {
+                                        snd_pcm_prepare(pcm_handle);
+                                    }
+
                                     // TODO(Jonny): The frame rate stuff isn't working 100%...
 #if 0
                                     struct timespec TimeSpec;
@@ -2792,5 +2867,49 @@ int main(int argc, char **argv) {
 
 #endif // SGLP_OS_LINUX
 
+#endif // #if defined(SGLP_IMPLEMENTATION)
+
 #define _SGLP_PLATFORM_H
 #endif
+
+/*
+------------------------------------------------------------------------------
+This software is available under 2 licenses -- choose whichever you prefer.
+------------------------------------------------------------------------------
+ALTERNATIVE A - Public Domain (www.unlicense.org)
+This is free and unencumbered software released into the public domain.
+Anyone is free to copy, modify, publish, use, compile, sell, or distribute this
+software, either in source code form or as a compiled binary, for any purpose,
+commercial or non-commercial, and by any means.
+In jurisdictions that recognize copyright laws, the author or authors of this
+software dedicate any and all copyright interest in the software to the public
+domain. We make this dedication for the benefit of the public at large and to
+the detriment of our heirs and successors. We intend this dedication to be an
+overt act of relinquishment in perpetuity of all present and future rights to
+this software under copyright law.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+------------------------------------------------------------------------------
+ALTERNATIVE B - MIT License
+Copyright (c) 2017 Jonathan Livingstone
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+------------------------------------------------------------------------------
+*/
