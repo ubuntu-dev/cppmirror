@@ -1,3 +1,4 @@
+#define INTERNAL 1
 
 #include "pp_generated.h"
 
@@ -118,6 +119,17 @@ Bool overlap(Entity a, Entity b) {
     }
 
     return(false);
+}
+
+void draw_debug_information(sglp_API *api, Game_State *gs, float mouse_x, float mouse_y) {
+#if INTERNAL
+    int buf_size = 256 * 256;
+    char *buffer = api->os_malloc(sizeof *buffer * buf_size);
+    pp_serialize_struct(&gs->player, Player, buffer, buf_size);
+    float size = 0.05f;
+    draw_word(buffer, api, gs, 0.0f, 0.0f, size, size);
+    api->os_free(buffer);
+#endif
 }
 
 void sglp_platform_update_and_render_callback(sglp_API *api) {
@@ -258,17 +270,8 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
             sglp_draw_sprite(gs->enemy_one_sprite, 0, tform);
         }
 
-#if 1
-        {
-            int buf_size = 256 * 256;
-            char *buffer = malloc(sizeof *buffer * buf_size);
-            pp_serialize_struct(&gs->player, Player, buffer, buf_size);
-            float size = 0.05f;
-            draw_word(buffer, api, gs, 0.0f, 0.0f, size, size);
-            //OutputDebugStringA(buffer); OutputDebugStringA("\n\n");
-            free(buffer);
-        }
-#endif
+        // TODO - Read the mouse position from sgl_platform.
+        draw_debug_information(api, gs, 0.0f, 0.0f);
     }
 }
 
