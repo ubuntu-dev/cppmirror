@@ -2830,8 +2830,10 @@ int main(int argc, char **argv) {
 
                                     sglp_output_playing_sounds(&api, &snd_buf);
 
+                                    // TODO - Is this blocking??
                                     int pcmrc = snd_pcm_writei(pcm_handle, snd_buf.samples, snd_buf.sample_cnt);
                                     if(pcmrc == -EPIPE) {
+                                        fprintf(stderr, "Oops\n");
                                         snd_pcm_prepare(pcm_handle);
                                     }
 
