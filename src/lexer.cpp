@@ -1948,20 +1948,16 @@ File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int 
 Parse_Result parse_streams(Int cnt, Char **fnames, MacroData *md, Int macro_cnt, Uintptr max_file_size) {
     Parse_Result res = {0};
 
-    res.enum_max = 8;
-    //res.enums.e = new Enum_Data[res.enum_max];
+    res.enum_max = 1024;
     res.enums.e = system_malloc_arr(sizeof *res.enums.e, res.enum_max);
 
-    res.struct_max = 32;
-    //res.structs.e = new Struct_Data[res.struct_max];
+    res.struct_max = 1024;
     res.structs.e = system_malloc_arr(sizeof *res.structs.e, res.struct_max);
 
-    res.func_max = 128;
-    //res.funcs.e = new Function_Data[res.func_max];
+    res.func_max = 1024;
     res.funcs.e = system_malloc_arr(sizeof *res.funcs.e, res.func_max);
 
-    res.typedef_max = 128;
-    //res.typedefs.e = new Typedef_Data[res.typedef_max];
+    res.typedef_max = 1024;
     res.typedefs.e = system_malloc_arr(sizeof *res.typedefs.e, res.typedef_max);
 
     for(Int i = 0; (i < cnt); ++i) {
@@ -1973,6 +1969,12 @@ Parse_Result parse_streams(Int cnt, Char **fnames, MacroData *md, Int macro_cnt,
             system_write_to_console("Mirror error: Cannot find file %s", fnames[i]);
         }
     }
+
+    // Sanity check.
+    assert(res.enums.cnt < res.enum_max);
+    assert(res.structs.cnt < res.struct_max);
+    assert(res.funcs.cnt < res.func_max);
+    assert(res.typedefs.cnt < res.typedef_max);
 
     return(res);
 }
