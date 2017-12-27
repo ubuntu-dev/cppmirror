@@ -1951,6 +1951,7 @@ Parse_Result parse_streams(Int cnt, Char **fnames, MacroData *md, Int macro_cnt,
     res.enum_max = 1024;
     res.enums.e = system_malloc_arr(sizeof *res.enums.e, res.enum_max);
 
+    // TODO - This _should_ work with a small number (and just realloc) but it doesn't properly -  investigate!
     res.struct_max = 1024;
     res.structs.e = system_malloc_arr(sizeof *res.structs.e, res.struct_max);
 
@@ -1970,7 +1971,8 @@ Parse_Result parse_streams(Int cnt, Char **fnames, MacroData *md, Int macro_cnt,
         }
     }
 
-    // Sanity check.
+    // TODO - This is a pretty crappy sanity check. I should really create some dynamically growing arrays or something. This
+    //        works for development though (right now).
     assert(res.enums.cnt < res.enum_max);
     assert(res.structs.cnt < res.struct_max);
     assert(res.funcs.cnt < res.func_max);
