@@ -35,7 +35,7 @@ Void *system_realloc(Void *ptr, Uintptr size) {
     Void *res = 0;
     if(ptr) {
         Void *original_raw = (Uintptr *)ptr - 1;
-        Uintptr *new_raw = (Uintptr *)realloc(ptr, size + sizeof(Uintptr));
+        Uintptr *new_raw = (Uintptr *)realloc(original_raw, size + sizeof(Uintptr));
         *new_raw++ = size;
         res = new_raw;
     } else {
