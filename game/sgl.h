@@ -12,6 +12,9 @@
 
 #if !defined(_SGL_H)
 
+//
+// Compiler/platform macros.
+//
 #define SGL_COMPILER_MSVC 0
 #define SGL_COMPILER_CLANG 0
 #define SGL_COMPILER_GCC 0
@@ -63,37 +66,87 @@
     #endif
 #endif
 
+//
+// Types
+//
 #include <stdint.h>
 
+typedef uint64_t sgl_Uint64;
+typedef uint32_t sgl_Uint32;
+typedef uint16_t sgl_Uint16;
+typedef uint8_t sgl_Uint8;
+
+typedef int64_t sgl_Int64;
+typedef int32_t sgl_Int32;
+typedef int16_t sgl_Int16;
+typedef int8_t sgl_Int8;
+
+typedef sgl_Int32 sgl_Int;
+typedef sgl_Uint32 sgl_Uint;
+
+
+typedef sgl_Uint8 sgl_Byte;
+typedef uintptr_t sgl_Uintptr;
+typedef intptr_t sgl_Intptr;
+
+typedef float sgl_Float32;
+typedef double sgl_Float64;
+typedef sgl_Float32 sgl_Float;
+
+typedef void sgl_Void;
+typedef char sgl_Char;
 typedef int sgl_Bool;
+
 #define SGL_TRUE 1
 #define SGL_FALSE 0
 
 // Use #define SGL_NO_BOOL to avoid create Bool typedef here.
-#if !defined(SGL_NO_BOOL)
-    #if defined(Bool)
-        #undef Bool
-    #endif
-    #define Bool sgl_Bool
+//#if !defined(SGL_NO_TYPES)
+typedef sgl_Uint64 Uint64;
+typedef sgl_Uint32 Uint32;
+typedef sgl_Uint16 Uint16;
+typedef sgl_Uint8 Uint8;
+typedef sgl_Int64 Int64;
+typedef sgl_Int32 Int32;
+typedef sgl_Int16 Int16;
+typedef sgl_Int8 Int8;
+typedef sgl_Int Int;
+typedef sgl_Uint Uint;
+typedef sgl_Byte Byte;
+typedef sgl_Uintptr Uintptr;
+typedef sgl_Intptr Intptr;
+typedef sgl_Float32 Float32;
+typedef sgl_Float64 Float64;
+typedef sgl_Float Float;
+typedef sgl_Void Void;
+typedef sgl_Char Char;
+#if defined(Bool)
+    #undef Bool
+#endif
+typedef sgl_Bool Bool;
+#define true SGL_TRUE
+#define false SGL_FALSE
+//#endif //!defined(SGL_NO_TYPES)
 
-    #if defined(true)
-        #undef true
-    #endif
+//
+// Macros
+//
+#define SGL_ARRAY_COUNT(arr) (sizeof(arr) / (sizeof(*(arr))))
+#define SGL_PREPROCESSOR_CONCAT(a, b) a##b
 
-    #define true SGL_TRUE
-
-    #if defined(false)
-        #undef false
-    #endif
-    #define false SGL_FALSE
+// A quick and useful assert
+#if SGL_INTERNAL
+    #define SGL_ASSERT(exp) do {static int ignore = 0; if(!ignore) {if(!(exp)) {*(Uintptr volatile *)0 = 0; } } } while(0)
+#else
+    #define SGL_ASSERT(exp) {}
 #endif
 
+//
+// Functions
+//
 void sgl_memset(void *dest, uint8_t x, uintptr_t size);
-
 int sgl_string_len(char const *str);
-
 char sgl_to_upper(char c);
-
 sgl_Bool sgl_is_letter(char c);
 sgl_Bool sgl_is_number(char c);
 
