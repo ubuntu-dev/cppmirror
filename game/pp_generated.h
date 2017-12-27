@@ -236,7 +236,44 @@ typedef enum pp_Type {
     pp_Type_sglp_glXMakeCurrent_t,
     pp_Type_sglp_glXSwapBuffers_t,
     pp_Type_sglm_Bool,
+    pp_Type_sgl_Uint64,
+    pp_Type_sgl_Uint32,
+    pp_Type_sgl_Uint16,
+    pp_Type_sgl_Uint8,
+    pp_Type_sgl_Int64,
+    pp_Type_sgl_Int32,
+    pp_Type_sgl_Int16,
+    pp_Type_sgl_Int8,
+    pp_Type_sgl_Int,
+    pp_Type_sgl_Uint,
+    pp_Type_sgl_Byte,
+    pp_Type_sgl_Uintptr,
+    pp_Type_sgl_Intptr,
+    pp_Type_sgl_Float32,
+    pp_Type_sgl_Float64,
+    pp_Type_sgl_Float,
+    pp_Type_sgl_Void,
+    pp_Type_sgl_Char,
     pp_Type_sgl_Bool,
+    pp_Type_Uint64,
+    pp_Type_Uint32,
+    pp_Type_Uint16,
+    pp_Type_Uint8,
+    pp_Type_Int64,
+    pp_Type_Int32,
+    pp_Type_Int16,
+    pp_Type_Int8,
+    pp_Type_Int,
+    pp_Type_Uint,
+    pp_Type_Byte,
+    pp_Type_Uintptr,
+    pp_Type_Intptr,
+    pp_Type_Float32,
+    pp_Type_Float64,
+    pp_Type_Float,
+    pp_Type_Void,
+    pp_Type_Char,
+    pp_Type_Bool,
     pp_Type_sglp_Key,
     pp_Type_Player_Direction,
     pp_Type_ID,
@@ -415,7 +452,44 @@ typedef pp_uintptr_t pp_sglp_glXCreateContext_t;
 typedef pp_uintptr_t pp_sglp_glXMakeCurrent_t;
 typedef pp_uintptr_t pp_sglp_glXSwapBuffers_t;
 typedef pp_int pp_sglm_Bool;
+typedef pp_uint64_t pp_sgl_Uint64;
+typedef pp_uint32_t pp_sgl_Uint32;
+typedef pp_uint16_t pp_sgl_Uint16;
+typedef pp_uint8_t pp_sgl_Uint8;
+typedef pp_int64_t pp_sgl_Int64;
+typedef pp_int32_t pp_sgl_Int32;
+typedef pp_int16_t pp_sgl_Int16;
+typedef pp_int8_t pp_sgl_Int8;
+typedef pp_sgl_Int32 pp_sgl_Int;
+typedef pp_sgl_Uint32 pp_sgl_Uint;
+typedef pp_sgl_Uint8 pp_sgl_Byte;
+typedef pp_uintptr_t pp_sgl_Uintptr;
+typedef pp_intptr_t pp_sgl_Intptr;
+typedef pp_float pp_sgl_Float32;
+typedef pp_double pp_sgl_Float64;
+typedef pp_sgl_Float32 pp_sgl_Float;
+typedef pp_void pp_sgl_Void;
+typedef pp_char pp_sgl_Char;
 typedef pp_int pp_sgl_Bool;
+typedef pp_sgl_Uint64 pp_Uint64;
+typedef pp_sgl_Uint32 pp_Uint32;
+typedef pp_sgl_Uint16 pp_Uint16;
+typedef pp_sgl_Uint8 pp_Uint8;
+typedef pp_sgl_Int64 pp_Int64;
+typedef pp_sgl_Int32 pp_Int32;
+typedef pp_sgl_Int16 pp_Int16;
+typedef pp_sgl_Int8 pp_Int8;
+typedef pp_sgl_Int pp_Int;
+typedef pp_sgl_Uint pp_Uint;
+typedef pp_sgl_Byte pp_Byte;
+typedef pp_sgl_Uintptr pp_Uintptr;
+typedef pp_sgl_Intptr pp_Intptr;
+typedef pp_sgl_Float32 pp_Float32;
+typedef pp_sgl_Float64 pp_Float64;
+typedef pp_sgl_Float pp_Float;
+typedef pp_sgl_Void pp_Void;
+typedef pp_sgl_Char pp_Char;
+typedef pp_sgl_Bool pp_Bool;
 
 //
 // Recreated structs.
@@ -603,7 +677,44 @@ PP_STATIC pp_Type pp_typedef_to_original(pp_Type type) {
         case pp_Type_sglp_glXMakeCurrent_t: { return(pp_Type_uintptr_t); } break;
         case pp_Type_sglp_glXSwapBuffers_t: { return(pp_Type_uintptr_t); } break;
         case pp_Type_sglm_Bool: { return(pp_Type_int); } break;
+        case pp_Type_sgl_Uint64: { return(pp_Type_uint64_t); } break;
+        case pp_Type_sgl_Uint32: { return(pp_Type_uint32_t); } break;
+        case pp_Type_sgl_Uint16: { return(pp_Type_uint16_t); } break;
+        case pp_Type_sgl_Uint8: { return(pp_Type_uint8_t); } break;
+        case pp_Type_sgl_Int64: { return(pp_Type_int64_t); } break;
+        case pp_Type_sgl_Int32: { return(pp_Type_int32_t); } break;
+        case pp_Type_sgl_Int16: { return(pp_Type_int16_t); } break;
+        case pp_Type_sgl_Int8: { return(pp_Type_int8_t); } break;
+        case pp_Type_sgl_Int: { return(pp_Type_sgl_Int32); } break;
+        case pp_Type_sgl_Uint: { return(pp_Type_sgl_Uint32); } break;
+        case pp_Type_sgl_Byte: { return(pp_Type_sgl_Uint8); } break;
+        case pp_Type_sgl_Uintptr: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sgl_Intptr: { return(pp_Type_intptr_t); } break;
+        case pp_Type_sgl_Float32: { return(pp_Type_float); } break;
+        case pp_Type_sgl_Float64: { return(pp_Type_double); } break;
+        case pp_Type_sgl_Float: { return(pp_Type_sgl_Float32); } break;
+        case pp_Type_sgl_Void: { return(pp_Type_void); } break;
+        case pp_Type_sgl_Char: { return(pp_Type_char); } break;
         case pp_Type_sgl_Bool: { return(pp_Type_int); } break;
+        case pp_Type_Uint64: { return(pp_Type_sgl_Uint64); } break;
+        case pp_Type_Uint32: { return(pp_Type_sgl_Uint32); } break;
+        case pp_Type_Uint16: { return(pp_Type_sgl_Uint16); } break;
+        case pp_Type_Uint8: { return(pp_Type_sgl_Uint8); } break;
+        case pp_Type_Int64: { return(pp_Type_sgl_Int64); } break;
+        case pp_Type_Int32: { return(pp_Type_sgl_Int32); } break;
+        case pp_Type_Int16: { return(pp_Type_sgl_Int16); } break;
+        case pp_Type_Int8: { return(pp_Type_sgl_Int8); } break;
+        case pp_Type_Int: { return(pp_Type_sgl_Int); } break;
+        case pp_Type_Uint: { return(pp_Type_sgl_Uint); } break;
+        case pp_Type_Byte: { return(pp_Type_sgl_Byte); } break;
+        case pp_Type_Uintptr: { return(pp_Type_sgl_Uintptr); } break;
+        case pp_Type_Intptr: { return(pp_Type_sgl_Intptr); } break;
+        case pp_Type_Float32: { return(pp_Type_sgl_Float32); } break;
+        case pp_Type_Float64: { return(pp_Type_sgl_Float64); } break;
+        case pp_Type_Float: { return(pp_Type_sgl_Float); } break;
+        case pp_Type_Void: { return(pp_Type_sgl_Void); } break;
+        case pp_Type_Char: { return(pp_Type_sgl_Char); } break;
+        case pp_Type_Bool: { return(pp_Type_sgl_Bool); } break;
     }
 
     return(type);
@@ -1480,7 +1591,44 @@ PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_sglp_glXMakeCurrent_t: { return("sglp_glXMakeCurrent_t"); } break;
         case pp_Type_sglp_glXSwapBuffers_t: { return("sglp_glXSwapBuffers_t"); } break;
         case pp_Type_sglm_Bool: { return("sglm_Bool"); } break;
+        case pp_Type_sgl_Uint64: { return("sgl_Uint64"); } break;
+        case pp_Type_sgl_Uint32: { return("sgl_Uint32"); } break;
+        case pp_Type_sgl_Uint16: { return("sgl_Uint16"); } break;
+        case pp_Type_sgl_Uint8: { return("sgl_Uint8"); } break;
+        case pp_Type_sgl_Int64: { return("sgl_Int64"); } break;
+        case pp_Type_sgl_Int32: { return("sgl_Int32"); } break;
+        case pp_Type_sgl_Int16: { return("sgl_Int16"); } break;
+        case pp_Type_sgl_Int8: { return("sgl_Int8"); } break;
+        case pp_Type_sgl_Int: { return("sgl_Int"); } break;
+        case pp_Type_sgl_Uint: { return("sgl_Uint"); } break;
+        case pp_Type_sgl_Byte: { return("sgl_Byte"); } break;
+        case pp_Type_sgl_Uintptr: { return("sgl_Uintptr"); } break;
+        case pp_Type_sgl_Intptr: { return("sgl_Intptr"); } break;
+        case pp_Type_sgl_Float32: { return("sgl_Float32"); } break;
+        case pp_Type_sgl_Float64: { return("sgl_Float64"); } break;
+        case pp_Type_sgl_Float: { return("sgl_Float"); } break;
+        case pp_Type_sgl_Void: { return("sgl_Void"); } break;
+        case pp_Type_sgl_Char: { return("sgl_Char"); } break;
         case pp_Type_sgl_Bool: { return("sgl_Bool"); } break;
+        case pp_Type_Uint64: { return("Uint64"); } break;
+        case pp_Type_Uint32: { return("Uint32"); } break;
+        case pp_Type_Uint16: { return("Uint16"); } break;
+        case pp_Type_Uint8: { return("Uint8"); } break;
+        case pp_Type_Int64: { return("Int64"); } break;
+        case pp_Type_Int32: { return("Int32"); } break;
+        case pp_Type_Int16: { return("Int16"); } break;
+        case pp_Type_Int8: { return("Int8"); } break;
+        case pp_Type_Int: { return("Int"); } break;
+        case pp_Type_Uint: { return("Uint"); } break;
+        case pp_Type_Byte: { return("Byte"); } break;
+        case pp_Type_Uintptr: { return("Uintptr"); } break;
+        case pp_Type_Intptr: { return("Intptr"); } break;
+        case pp_Type_Float32: { return("Float32"); } break;
+        case pp_Type_Float64: { return("Float64"); } break;
+        case pp_Type_Float: { return("Float"); } break;
+        case pp_Type_Void: { return("Void"); } break;
+        case pp_Type_Char: { return("Char"); } break;
+        case pp_Type_Bool: { return("Bool"); } break;
         case pp_Type_sglp_Key: { return("sglp_Key"); } break;
         case pp_Type_Player_Direction: { return("Player_Direction"); } break;
         case pp_Type_ID: { return("ID"); } break;
@@ -1640,7 +1788,43 @@ PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
         case pp_Type_sglp_glXMakeCurrent_t: { return sizeof(pp_sglp_glXMakeCurrent_t); } break;
         case pp_Type_sglp_glXSwapBuffers_t: { return sizeof(pp_sglp_glXSwapBuffers_t); } break;
         case pp_Type_sglm_Bool: { return sizeof(pp_sglm_Bool); } break;
+        case pp_Type_sgl_Uint64: { return sizeof(pp_sgl_Uint64); } break;
+        case pp_Type_sgl_Uint32: { return sizeof(pp_sgl_Uint32); } break;
+        case pp_Type_sgl_Uint16: { return sizeof(pp_sgl_Uint16); } break;
+        case pp_Type_sgl_Uint8: { return sizeof(pp_sgl_Uint8); } break;
+        case pp_Type_sgl_Int64: { return sizeof(pp_sgl_Int64); } break;
+        case pp_Type_sgl_Int32: { return sizeof(pp_sgl_Int32); } break;
+        case pp_Type_sgl_Int16: { return sizeof(pp_sgl_Int16); } break;
+        case pp_Type_sgl_Int8: { return sizeof(pp_sgl_Int8); } break;
+        case pp_Type_sgl_Int: { return sizeof(pp_sgl_Int); } break;
+        case pp_Type_sgl_Uint: { return sizeof(pp_sgl_Uint); } break;
+        case pp_Type_sgl_Byte: { return sizeof(pp_sgl_Byte); } break;
+        case pp_Type_sgl_Uintptr: { return sizeof(pp_sgl_Uintptr); } break;
+        case pp_Type_sgl_Intptr: { return sizeof(pp_sgl_Intptr); } break;
+        case pp_Type_sgl_Float32: { return sizeof(pp_sgl_Float32); } break;
+        case pp_Type_sgl_Float64: { return sizeof(pp_sgl_Float64); } break;
+        case pp_Type_sgl_Float: { return sizeof(pp_sgl_Float); } break;
+        case pp_Type_sgl_Char: { return sizeof(pp_sgl_Char); } break;
         case pp_Type_sgl_Bool: { return sizeof(pp_sgl_Bool); } break;
+        case pp_Type_Uint64: { return sizeof(pp_Uint64); } break;
+        case pp_Type_Uint32: { return sizeof(pp_Uint32); } break;
+        case pp_Type_Uint16: { return sizeof(pp_Uint16); } break;
+        case pp_Type_Uint8: { return sizeof(pp_Uint8); } break;
+        case pp_Type_Int64: { return sizeof(pp_Int64); } break;
+        case pp_Type_Int32: { return sizeof(pp_Int32); } break;
+        case pp_Type_Int16: { return sizeof(pp_Int16); } break;
+        case pp_Type_Int8: { return sizeof(pp_Int8); } break;
+        case pp_Type_Int: { return sizeof(pp_Int); } break;
+        case pp_Type_Uint: { return sizeof(pp_Uint); } break;
+        case pp_Type_Byte: { return sizeof(pp_Byte); } break;
+        case pp_Type_Uintptr: { return sizeof(pp_Uintptr); } break;
+        case pp_Type_Intptr: { return sizeof(pp_Intptr); } break;
+        case pp_Type_Float32: { return sizeof(pp_Float32); } break;
+        case pp_Type_Float64: { return sizeof(pp_Float64); } break;
+        case pp_Type_Float: { return sizeof(pp_Float); } break;
+        case pp_Type_Void: { return sizeof(pp_Void); } break;
+        case pp_Type_Char: { return sizeof(pp_Char); } break;
+        case pp_Type_Bool: { return sizeof(pp_Bool); } break;
         case pp_Type_sglp_Key: { return sizeof(pp_int); } break;
         case pp_Type_Player_Direction: { return sizeof(pp_int); } break;
         case pp_Type_ID: { return sizeof(pp_int); } break;
