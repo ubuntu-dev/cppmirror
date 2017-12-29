@@ -2649,7 +2649,6 @@ static void sglp_linux_free(void *ptr) {
 
 int main(int argc, char **argv) {
     sglp_API api = {0};
-    int i;
 
     api.free_file = sglp_free_file;
     api.read_file = sglp_linux_read_file;
@@ -2683,7 +2682,7 @@ int main(int argc, char **argv) {
             sglp_GLint attrib_list[] = {GLX_RGBA, GLX_DEPTH_SIZE, 24, GLX_DOUBLEBUFFER, None};
             XVisualInfo *visual_info = sglp_gl_glXChooseVisual(disp, 0, attrib_list);
             if(visual_info) {
-                Window win, root_window = DefaultRootWindow(disp);
+                Window root_window = DefaultRootWindow(disp);
                 Colormap colour_map = sglp_x11_XCreateColorMap(disp, root_window, visual_info->visual, AllocNone);
 
                 XSetWindowAttributes set_window_attributes = {0};
@@ -2698,15 +2697,14 @@ int main(int argc, char **argv) {
                     api.settings.win_height = 1080 / 2;
                 }
 
-                win = sglp_x11_XCreateWindow(disp, root_window, 0, 0, api.settings.win_width,
-                                             api.settings.win_height, 0, visual_info->depth, InputOutput,
-                                             visual_info->visual, CWColormap | CWEventMask, &set_window_attributes);
+                Window win = sglp_x11_XCreateWindow(disp, root_window, 0, 0, api.settings.win_width,
+                                                    api.settings.win_height, 0, visual_info->depth, InputOutput,
+                                                    visual_info->visual, CWColormap | CWEventMask, &set_window_attributes);
                 if(win) {
-                    GLXContext gl_context;
                     sglp_x11_XMapWindow(disp, win);
                     sglp_x11_XStoreName(disp, win, (char *)api.settings.window_title);
 
-                    gl_context = sglp_gl_glXCreateContext(disp, visual_info, 0, GL_TRUE);
+                    GLXContext gl_context = sglp_gl_glXCreateContext(disp, visual_info, 0, GL_TRUE);
                     sglp_x11_XSelectInput(disp, win, KeyPressMask | KeyReleaseMask);
                     if(gl_context) {
                         sglp_gl_glXMakeCurrent(disp, win, gl_context);
@@ -2720,7 +2718,7 @@ int main(int argc, char **argv) {
                                     work_queue.hsem = sglp_pthread_sem_open("Thread", O_CREAT | O_EXCL, 0644, 1);
                                 }
 
-                                for(i = 0; (i < api.settings.thread_cnt); ++i) {
+                                for(int i = 0; (i < api.settings.thread_cnt); ++i) {
                                     pthread_t Thread;
                                     if(sglp_pthread_pthread_create) {
                                         sglp_pthread_pthread_create(&Thread, 0, sglp_linux_thread_proc, (void *)&work_queue);
@@ -2729,12 +2727,9 @@ int main(int argc, char **argv) {
                             }
 
                             if(sglp_linux_load_opengl_funcs()) {
-
                                 int channels = 2;
-                                int sample_rate = 48000;
                                 int samples_per_second = 48000;
-                                snd_pcm_uframes_t frames;
-                                int dir;
+                                int sample_rate = samples_per_second;
                                 int bytes_per_sample = sizeof(int16_t) * 2;
 
                                 // Open the PCM device in playback mode.
@@ -2743,7 +2738,6 @@ int main(int argc, char **argv) {
 
                                 // Allocate parameters object and fill it with default values.
                                 snd_pcm_hw_params_t *params = (snd_pcm_hw_params_t *)sglp_linux_malloc(snd_pcm_hw_params_sizeof());
-                                //snd_pcm_hw_params_alloca(&params);
                                 snd_pcm_hw_params_any(pcm_handle, params);
 
                                 // Set parameters
@@ -2756,6 +2750,8 @@ int main(int argc, char **argv) {
                                 snd_pcm_hw_params(pcm_handle, params);
 
                                 // Allocate buffer to hold single period.
+                                snd_pcm_uframes_t frames;
+                                int dir;
                                 snd_pcm_hw_params_get_period_size(params, &frames, &dir);
 
                                 int16_t *snd_samples =
@@ -2768,8 +2764,8 @@ int main(int argc, char **argv) {
 
                                 int32_t last_time = 0;
                                 int32_t this_time = 0;
-                                float ms_per_frame = 16.666666f;
-                                float target_seconds_per_frameTargetSecondsPerFrame = 16.666666f;
+                                float target_ms_per_frame = 16.666666f;
+                                float actual_ms_per_frame = target_ms_per_frame;
 
                                 api.init_game = SGLP_TRUE;
                                 api.dt = 16.6f; // TODO(Jonny): Hacky!
@@ -2822,16 +2818,14 @@ int main(int argc, char **argv) {
 
                                     sglp_gl_glXSwapBuffers(disp, win);
 
-                                    sglp_SoundOutputBuffer snd_buf = {0};
-                                    snd_buf.samples_per_second = samples_per_second;
-                                    float sample_cnt = samples_per_second / ms_per_frame;
-                                    snd_buf.sample_cnt = SGLP_ALIGN8((int)sample_cnt);
-                                    snd_buf.samples = snd_samples;
+                                    sglp_SoundOutputBuffer sound_buffer = {0};
+                                    sound_buffer.samples_per_second = samples_per_second;
+                                    sound_buffer.sample_cnt = SGLP_ALIGN8((int)(samples_per_second / actual_ms_per_frame));
+                                    sound_buffer.samples = snd_samples;
 
-                                    sglp_output_playing_sounds(&api, &snd_buf);
+                                    sglp_output_playing_sounds(&api, &sound_buffer);
 
-                                    // TODO - Is this blocking??
-                                    int pcmrc = snd_pcm_writei(pcm_handle, snd_buf.samples, snd_buf.sample_cnt);
+                                    int pcmrc = snd_pcm_writei(pcm_handle, sound_buffer.samples, sound_buffer.sample_cnt);
                                     if(pcmrc == -EPIPE) {
                                         fprintf(stderr, "Oops\n");
                                         snd_pcm_prepare(pcm_handle);
@@ -2845,13 +2839,13 @@ int main(int argc, char **argv) {
                                     this_time = TimeSpec.tv_nsec;
 
                                     float SecondsElapsedForFrame = cast(float)(this_time - last_time) / 1000000.0f;
-                                    ms_per_frame = SecondsElapsedForFrame;
-                                    if(ms_per_frame < 0) {
-                                        ms_per_frame = target_seconds_per_frameTargetSecondsPerFrame;
+                                    actual_ms_per_frame = SecondsElapsedForFrame;
+                                    if(actual_ms_per_frame < 0) {
+                                        actual_ms_per_frame = target_ms_per_frame;
                                     }
 
-                                    int TimeToSleep = (target_seconds_per_frameTargetSecondsPerFrame - SecondsElapsedForFrame) * 1000;
-                                    if(TimeToSleep > 0 && TimeToSleep < target_seconds_per_frameTargetSecondsPerFrame) {
+                                    int TimeToSleep = (target_ms_per_frame - SecondsElapsedForFrame) * 1000;
+                                    if(TimeToSleep > 0 && TimeToSleep < target_ms_per_frame) {
                                         usleep(TimeToSleep);
                                     }
 #endif
