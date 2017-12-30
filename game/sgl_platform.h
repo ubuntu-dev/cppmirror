@@ -1475,6 +1475,51 @@ static SDL_GLContext sglp_sdl_init_opengl(SDL_Window *window) {
     return(res);
 }
 
+static SDL_Window *sglp_sdl_create_dummy_window(void) {
+    return SDL_CreateWindow("Temp", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 0, 0, SDL_WINDOW_HIDDEN|SDL_WINDOW_OPENGL);
+}
+
+static void sglp_sdl_set_opengl_attributes(void) {
+    SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, 1);
+
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    int context_flag = SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG;
+#if defined(SGLP_INTERNAL)
+    context_flag |= SDL_GL_CONTEXT_DEBUG_FLAG;
+#endif
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, context_flag);
+
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+
+    SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
+#if 0
+    SDL_Window *dummy_window = sglp_sdl_create_dummy_window();
+    if(!dummy_window) {
+        // NOTE: CreateWindow failed. Try again without asking for a SRGB capable framebuffer
+        SDL_GL_SetAttribute(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, 0);
+
+        dummy_window = sglp_sdl_create_dummy_window();
+    }
+
+    if(dummy_window) {
+        SDL_GLContext context = SDL_GL_CreateContext(dummy_window);
+        if(context) {
+            // NOTE: CreateContext succeeded. Good.
+            SDL_GL_DeleteContext(context);
+        } else {
+            // NOTE: CreateContext failed. Try setting OpenGL to a lower version
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+        }
+
+        SDL_DestroyWindow(dummy_window);
+    }
+#endif
+}
+
 static sglp_Key sglp_sdl_key_to_sgl_key(SDL_Keycode k) {
     sglp_Key res = sglp_key_unknown;
     if(k >= SDLK_a && k <= SDLK_z) {
@@ -1518,170 +1563,87 @@ static void sglp_sdl_process_pending_events(sglp_API *api) {
                 SDL_Keycode key_code = event.key.keysym.sym;
                 api->key[sglp_sdl_key_to_sgl_key(key_code)] = 0.0f;
             } break;
-#if 0
-            case SDL_KEYUP: {
-                SDL_Keycode KeyCode = event.key.keysym.sym;
 
-                bool AltKeyWasDown = (event.key.keysym.mod & KMOD_ALT);
-                bool ShiftKeyWasDown = (event.key.keysym.mod & KMOD_SHIFT);
-                bool IsDown = (event.key.state == SDL_PRESSED);
 
-                // NOTE: In the windows version, we used "if(IsDown != WasDown)"
-                // to detect key repeats. SDL has the 'repeat' value, though,
-                // which we'll use.
-                if(event.key.repeat == 0) {
-                    if(KeyCode == SDLK_w) {
-                        SDLProcessKeyboardEvent(&KeyboardController->MoveUp, IsDown);
-                    } else if(KeyCode == SDLK_a) {
-                        SDLProcessKeyboardEvent(&KeyboardController->MoveLeft, IsDown);
-                    } else if(KeyCode == SDLK_s) {
-                        SDLProcessKeyboardEvent(&KeyboardController->MoveDown, IsDown);
-                    } else if(KeyCode == SDLK_d) {
-                        SDLProcessKeyboardEvent(&KeyboardController->MoveRight, IsDown);
-                    } else if(KeyCode == SDLK_q) {
-                        SDLProcessKeyboardEvent(&KeyboardController->LeftShoulder, IsDown);
-                    } else if(KeyCode == SDLK_e) {
-                        SDLProcessKeyboardEvent(&KeyboardController->RightShoulder, IsDown);
-                    } else if(KeyCode == SDLK_UP) {
-                        SDLProcessKeyboardEvent(&KeyboardController->ActionUp, IsDown);
-                    } else if(KeyCode == SDLK_LEFT) {
-                        SDLProcessKeyboardEvent(&KeyboardController->ActionLeft, IsDown);
-                    } else if(KeyCode == SDLK_DOWN) {
-                        SDLProcessKeyboardEvent(&KeyboardController->ActionDown, IsDown);
-                    } else if(KeyCode == SDLK_RIGHT) {
-                        SDLProcessKeyboardEvent(&KeyboardController->ActionRight, IsDown);
-                    } else if(KeyCode == SDLK_ESCAPE) {
-                        SDLProcessKeyboardEvent(&KeyboardController->Back, IsDown);
-                    } else if(KeyCode == SDLK_SPACE) {
-                        SDLProcessKeyboardEvent(&KeyboardController->Start, IsDown);
-                    }
-#if HANDMADE_INTERNAL
-                    else if(KeyCode == SDLK_p) {
-                        if(IsDown) {
-                            GlobalPause = !GlobalPause;
-                        }
-                    } else if(KeyCode == SDLK_l) {
-                        if(IsDown) {
-                            if(AltKeyWasDown) {
-                                SDLBeginInputPlayBack(State, 1);
-                            } else {
-                                if(State->InputPlayingIndex == 0) {
-                                    if(State->InputRecordingIndex == 0) {
-                                        SDLBeginRecordingInput(State, 1);
-                                    } else {
-                                        SDLEndRecordingInput(State);
-                                        SDLBeginInputPlayBack(State, 1);
-                                    }
-                                } else {
-                                    SDLEndInputPlayBack(State);
-                                }
-                            }
-                        }
-                    }
-#endif
-                    if(IsDown) {
-                        if(KeyCode == SDLK_KP_PLUS) {
-                            if(ShiftKeyWasDown) {
-                                OpenGL.DebugLightBufferIndex += 1;
-                            } else {
-                                OpenGL.DebugLightBufferTexIndex += 1;
-                            }
-                        } else if(KeyCode == SDLK_KP_MINUS) {
-                            if(ShiftKeyWasDown) {
-                                OpenGL.DebugLightBufferIndex -= 1;
-                            } else {
-                                OpenGL.DebugLightBufferTexIndex -= 1;
-                            }
-                        } else if(KeyCode == SDLK_F4 && AltKeyWasDown) {
-                            GlobalRunning = false;
-                        } else if((KeyCode == SDLK_RETURN) && AltKeyWasDown) {
-                            SDL_Window *Window = SDL_GetWindowFromID(event.window.windowID);
-                            if(Window) {
-                                SDLToggleFullscreen(Window);
-                            }
-                        } else if((KeyCode >= SDLK_F1) && (KeyCode <= SDLK_F12)) {
-                            Input->FKeyPressed[KeyCode - SDLK_F1 + 1] = true;
-                        }
-                    }
-                }
-
-            } break;
-#endif
-#if 0
-            case SDL_WINDOWEVENT: {
-                switch(event.window.event) {
-                    case SDL_WINDOWEVENT_RESIZED: {
-                        if(SDL_GetModState() & KMOD_SHIFT) {
-                            sdl_window_dimension NewDim = {event.window.data1, event.window.data2};
-
-                            s32 RenderWidth = GlobalBackbuffer.Width;
-                            s32 RenderHeight = GlobalBackbuffer.Height;
-
-                            s32 NewWidth = (RenderWidth * NewDim.Height) / RenderHeight;
-                            s32 NewHeight = (RenderHeight * NewDim.Width) / RenderWidth;
-
-                            if(AbsoluteValue((r32)(NewDim.Width - NewWidth)) <
-                                    AbsoluteValue((r32)(NewDim.Height - NewHeight))) {
-                                NewDim.Width = NewWidth;
-                            } else {
-                                NewDim.Height = NewHeight;
-                            }
-
-                            SDL_Window *Window = SDL_GetWindowFromID(event.window.windowID);
-                            // NOTE: Some window managers will ignore this request while resizing the window
-                            SDL_SetWindowSize(Window, NewDim.Width, NewDim.Height);
-                        }
-                    } break;
-
-                    case SDL_WINDOWEVENT_SIZE_CHANGED: {
-                        printf("SDL_WINDOWEVENT_SIZE_CHANGED (%d, %d)\n", event.window.data1, event.window.data2);
-                    } break;
-
-                    case SDL_WINDOWEVENT_FOCUS_GAINED: {
-                        printf("SDL_WINDOWEVENT_FOCUS_GAINED\n");
-                    } break;
-
-                    case SDL_WINDOWEVENT_EXPOSED: {
-                        SDL_Window *Window = SDL_GetWindowFromID(event.window.windowID);
-#if 0
-                        sdl_window_dimension Dimension = SDLGetWindowDimension(Window);
-                        SDLDisplayBufferInWindow(&GlobalBackbuffer, Window, Renderer,
-                                                 Dimension.Width, Dimension.Height);
-
-#endif
-                    } break;
-                }
-            } break;
-#endif
         }
     }
 }
 
+static void sglp_sdl_get_api(sglp_API *api) {
+    api->free_file = sglp_free_file;
+    api->read_file = sglp_sdl_read_file;
+    api->read_file_and_null_terminate = sglp_sdl_read_file_and_null_terminate;
+
+    api->get_processor_timestamp = sglp_sdl_get_processor_timestamp;
+
+    api->add_work_queue_entry = sglp_sdl_add_work_queue_entry;
+    api->complete_all_work = sglp_sdl_complete_all_work;
+
+    api->os_malloc = sglp_sdl_malloc;
+    api->os_realloc = sglp_sdl_realloc;
+    api->os_free = sglp_sdl_free;
+
+    sglp_global_opengl = &api->gl;
+
+    api->settings.frame_rate = 60;
+    api->settings.thread_cnt = 8;
+
+    api->settings.win_width = 1920 / 2;
+    api->settings.win_height = 1080 / 2;
+
+    api->init_game = SGLP_TRUE;
+    api->dt = 16.6f; // TODO - Should be calculated.
+}
+
+static uint64_t sglp_sdl_global_perf_count_frequency;
+
+static float sglp_sdl_get_seconds_elapsed(uint64_t start, uint64_t end) {
+    return ((float)(end - start) / (float)sglp_sdl_global_perf_count_frequency);
+}
+
+static void sglp_sdl_handle_frame_rate_stuff(uint64_t *last_counter, uint64_t *flip_wall_clock,
+                                             float *target_seconds_per_frame, float *ms_per_frame) {
+    float seconds_elapsed_for_frame = sglp_sdl_get_seconds_elapsed(*last_counter,
+                                                                   SDL_GetPerformanceCounter());
+    if(seconds_elapsed_for_frame < *target_seconds_per_frame) {
+        float test_seconds_elapsed_for_frame;
+        uint32_t sleepms = (uint32_t)(1000.0f * (*target_seconds_per_frame - seconds_elapsed_for_frame));
+        if(sleepms > 0) {
+            SDL_Delay(sleepms);
+        }
+
+        test_seconds_elapsed_for_frame = sglp_sdl_get_seconds_elapsed(*last_counter,
+                                                                      SDL_GetPerformanceCounter());
+        if(test_seconds_elapsed_for_frame < *target_seconds_per_frame) {
+            // TODO(Jonny): Log missed Sleep here
+        }
+
+        while(seconds_elapsed_for_frame < *target_seconds_per_frame) {
+            seconds_elapsed_for_frame = sglp_sdl_get_seconds_elapsed(*last_counter,
+                                                                     SDL_GetPerformanceCounter());
+        }
+    } else {
+        // Missed Frame Rate!
+    }
+
+    {
+        uint64_t end_counter = SDL_GetPerformanceCounter();
+        *ms_per_frame = 1000.0f * sglp_sdl_get_seconds_elapsed(*last_counter, end_counter);
+        *last_counter = end_counter;
+    }
+
+    *flip_wall_clock = SDL_GetPerformanceCounter();
+}
+
 int main(int argc, char **argv) {
     if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC | SDL_INIT_AUDIO) == 0) {
+        //sglp_sdl_set_opengl_attributes();
+
         sglp_API api = {0};
-        api.free_file = sglp_free_file;
-        api.read_file = sglp_sdl_read_file;
-        api.read_file_and_null_terminate = sglp_sdl_read_file_and_null_terminate;
-
-        api.get_processor_timestamp = sglp_sdl_get_processor_timestamp;
-
-        api.add_work_queue_entry = sglp_sdl_add_work_queue_entry;
-        api.complete_all_work = sglp_sdl_complete_all_work;
-
-        api.os_malloc = sglp_sdl_malloc;
-        api.os_realloc = sglp_sdl_realloc;
-        api.os_free = sglp_sdl_free;
-
-        sglp_global_opengl = &api.gl;
-
-        api.settings.frame_rate = 60;
-        api.settings.thread_cnt = 8;
-
-        api.settings.win_width = 1920 / 2;
-        api.settings.win_height = 1080 / 2;
-
+        sglp_sdl_get_api(&api);
         sglp_platform_setup_settings_callback(&api.settings);
+
+        sglp_sdl_global_perf_count_frequency = SDL_GetPerformanceFrequency();
 
         SDL_Window *window = SDL_CreateWindow(api.settings.window_title,
                                               SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
@@ -1702,18 +1664,35 @@ int main(int argc, char **argv) {
                     }
 
                     sglp_setup(&api, api.settings.max_no_of_sounds);
+
+                    int monitor_refresh_hz = 60; // TODO - Allow user to set this.
+                    int display_index = SDL_GetWindowDisplayIndex(window);
+                    SDL_DisplayMode mode = {0};
+                    int display_mode_result = SDL_GetDesktopDisplayMode(display_index, &mode);
+                    if(display_mode_result == 0 && mode.refresh_rate > 1) {
+                        monitor_refresh_hz = mode.refresh_rate;
+                    }
+                    float game_update_hz = (float)monitor_refresh_hz;
+
+                    uint64_t last_counter = SDL_GetPerformanceCounter();
+                    uint64_t flip_wall_clock = SDL_GetPerformanceCounter();
+                    float target_seconds_per_frame = 1.0f / (float)game_update_hz;
+                    float ms_per_frame = 0.0f;
+
+                    SDL_ShowWindow(window);
                     sglp_Bool quit = SGLP_FALSE;
-
-                    api.init_game = SGLP_TRUE;
-                    api.dt = 16.6f;
-
                     while(!quit) {
+                        api.dt = ms_per_frame;
+
                         sglp_sdl_process_pending_events(&api);
 
                         sglp_platform_update_and_render_callback(&api);
                         api.init_game = SGLP_FALSE;
 
                         SDL_GL_SwapWindow(window);
+
+                        sglp_sdl_handle_frame_rate_stuff(&last_counter, &flip_wall_clock,
+                                                         &target_seconds_per_frame, &ms_per_frame);
                     }
                 }
             }
