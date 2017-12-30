@@ -1635,6 +1635,121 @@ static void sglp_sdl_handle_frame_rate_stuff(uint64_t *last_counter, uint64_t *f
     *flip_wall_clock = SDL_GetPerformanceCounter();
 }
 
+typedef struct sglp_SdlSoundOutput {
+    int samples_per_second;;
+    uint32_t running_sample_index;
+    int bytes_per_sample;
+    uint32_t secondary_buffer_size;
+    uint32_t safety_bytes;
+} sglp_SdlSoundOutput;
+
+typedef struct sglp_SdlAudioRingBuffer {
+    int size;
+    int write_cursor;
+    int play_cursor;
+    void *data;
+} sglp_SdlAudioRingBuffer;
+static sglp_SdlAudioRingBuffer sglp_sdl_global_secondary_buffer;
+
+static void sglp_sdl_audio_callback(void *user_data, uint8_t *audio_data, int length) {
+    sglp_SdlAudioRingBuffer *ring_buffer = (sglp_SdlAudioRingBuffer *)user_data;
+
+    int region1_size = length;
+    int region2_size = 0;
+    if((ring_buffer->play_cursor + length) > ring_buffer->size) {
+        region1_size = ring_buffer->size - ring_buffer->play_cursor;
+        region2_size = length - region1_size;
+    }
+
+    sglp_memcpy(audio_data, (uint8_t *)ring_buffer->data + ring_buffer->play_cursor, region1_size);
+    sglp_memcpy(audio_data + region1_size, ring_buffer->data, region2_size);
+    ring_buffer->play_cursor = (ring_buffer->play_cursor + length) % ring_buffer->size;
+    ring_buffer->write_cursor = (ring_buffer->play_cursor + length) % ring_buffer->size;
+}
+
+static void sglp_sdl_init_audio(int samples_per_second, int buffer_size) {
+    SDL_AudioSpec audio_settings = {0};
+
+    audio_settings.freq = samples_per_second;
+    audio_settings.format = AUDIO_S16LSB;
+    audio_settings.channels = 2;
+    audio_settings.samples = 512;
+    audio_settings.callback = &sglp_sdl_audio_callback;
+    audio_settings.userdata = &sglp_sdl_global_secondary_buffer;
+
+    sglp_sdl_global_secondary_buffer.size = buffer_size;
+    sglp_sdl_global_secondary_buffer.data = sglp_sdl_malloc(buffer_size);
+
+    SDL_OpenAudio(&audio_settings, 0);
+
+    if(audio_settings.format != AUDIO_S16LSB) {
+        SGLP_ASSERT(0);
+    }
+}
+
+static void sglp_sdl_fill_sound_buffer(sglp_SdlSoundOutput *sound_output, int byte_to_lock, int bytes_to_write,
+                                       sglp_SoundOutputBuffer *source_buffer) {
+    void *region1 = (uint8_t *)sglp_sdl_global_secondary_buffer.data + byte_to_lock;
+    int region1_size = bytes_to_write;
+    if(region1_size + byte_to_lock > sound_output->secondary_buffer_size) {
+        region1_size = sound_output->secondary_buffer_size - byte_to_lock;
+    }
+
+    void *region2 = sglp_sdl_global_secondary_buffer.data;
+    int region2_size = bytes_to_write - region1_size;
+
+    int region1_sample_count = region1_size / sound_output->bytes_per_sample;
+    int16_t *dest_sample = (int16_t *)region1;
+    int16_t *source_sample = source_buffer->samples;
+    for(int i = 0; (i < region1_sample_count); ++i) {
+        *dest_sample++ = *source_sample++;
+        *dest_sample++ = *source_sample++;
+        ++sound_output->running_sample_index;
+    }
+
+    int region2_sample_count = region2_size / sound_output->bytes_per_sample;
+    dest_sample = (int16_t *)region2;
+    for(int i = 0; (i < region2_sample_count); ++i) {
+        *dest_sample++ = *source_sample++;
+        *dest_sample++ = *source_sample++;
+        ++sound_output->running_sample_index;
+    }
+}
+
+static void sglp_sdl_handle_audio(sglp_API *api, sglp_SdlSoundOutput *sound_output, int16_t *samples) {
+    SDL_LockAudio();
+    int byte_to_lock = (sound_output->running_sample_index * sound_output->bytes_per_sample) % sound_output->secondary_buffer_size;
+    int target_cursor = ((sglp_sdl_global_secondary_buffer.play_cursor + (sound_output->safety_bytes * sound_output->bytes_per_sample)) % sound_output->secondary_buffer_size);
+
+    int bytes_to_write;
+    if(byte_to_lock > target_cursor) {
+        bytes_to_write = sound_output->secondary_buffer_size - byte_to_lock;
+        bytes_to_write += target_cursor;
+    } else {
+        bytes_to_write = target_cursor - byte_to_lock;
+    }
+    SDL_UnlockAudio();
+
+    sglp_SoundOutputBuffer sound_buffer = {0};
+    sound_buffer.samples_per_second = sound_output->samples_per_second;
+    sound_buffer.sample_cnt = SGLP_ALIGN8(bytes_to_write / sound_output->bytes_per_sample);
+    bytes_to_write = sound_buffer.sample_cnt * sound_output->bytes_per_sample;
+    sound_buffer.samples = samples;
+    sglp_output_playing_sounds(api, &sound_buffer);
+
+    sglp_sdl_fill_sound_buffer(sound_output, byte_to_lock, bytes_to_write, &sound_buffer);
+}
+
+static sglp_SdlSoundOutput sglp_sdl_init_sound_output(float game_update_hz) {
+    sglp_SdlSoundOutput sound_output = {0};
+    sound_output.samples_per_second = 48000;
+    sound_output.bytes_per_sample = sizeof(int16_t) * 2;
+    sound_output.secondary_buffer_size = sound_output.samples_per_second * sound_output.bytes_per_sample;
+    sound_output.safety_bytes = (int)(((float)sound_output.samples_per_second * (float)sound_output.bytes_per_sample / game_update_hz) / 2);
+
+    return(sound_output);
+}
+
 int main(int argc, char **argv) {
     if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC | SDL_INIT_AUDIO) == 0) {
         //sglp_sdl_set_opengl_attributes();
@@ -1679,6 +1794,14 @@ int main(int argc, char **argv) {
                     float target_seconds_per_frame = 1.0f / (float)game_update_hz;
                     float ms_per_frame = 0.0f;
 
+                    sglp_SdlSoundOutput sound_output = sglp_sdl_init_sound_output(game_update_hz);
+                    sglp_sdl_init_audio(sound_output.samples_per_second, sound_output.secondary_buffer_size);
+                    SDL_PauseAudio(0);
+
+                    int max_possible_overrun = 8;
+                    int16_t *samples = (int16_t *)sglp_sdl_malloc((sound_output.samples_per_second + max_possible_overrun) * sound_output.bytes_per_sample);
+                    SGLP_ASSERT(samples);
+
                     SDL_ShowWindow(window);
                     sglp_Bool quit = SGLP_FALSE;
                     while(!quit) {
@@ -1688,8 +1811,9 @@ int main(int argc, char **argv) {
 
                         sglp_platform_update_and_render_callback(&api);
                         api.init_game = SGLP_FALSE;
-
                         SDL_GL_SwapWindow(window);
+
+                        sglp_sdl_handle_audio(&api, &sound_output, samples);
 
                         sglp_sdl_handle_frame_rate_stuff(&last_counter, &flip_wall_clock,
                                                          &target_seconds_per_frame, &ms_per_frame);
