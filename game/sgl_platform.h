@@ -1262,8 +1262,474 @@ static void sglp_free_file(sglp_API *api, sglp_File *file) {
 }
 
 //
+// SDL
+//
+#if defined(SGLP_USE_SDL)
+
+// TODO - Let the user include this?
+#include <SDL2/SDL.h>
+
+static sglp_File sglp_sdl_read_file(sglp_API *api, char const *fname) {
+    sglp_File res = {0};
+
+    FILE *file = fopen(fname, "rb");
+    if(file) {
+        fseek(file, 0, SEEK_END);
+        res.size = ftell(file);
+        fseek(file, 0, SEEK_SET);
+
+        res.e = (uint8_t *)api->os_malloc(res.size);
+        fread(res.e, res.size, 1, file);
+        fclose(file);
+    }
+
+    return(res);
+}
+
+static sglp_File sglp_sdl_read_file_and_null_terminate(sglp_API *api, char const *fname) {
+    sglp_File res = {0};
+
+    FILE *file = fopen(fname, "rb");
+    if(file) {
+        fseek(file, 0, SEEK_END);
+        res.size = ftell(file);
+        fseek(file, 0, SEEK_SET);
+
+        res.e = (uint8_t *)api->os_malloc(res.size + 1);
+        fread(res.e, res.size, 1, file);
+        fclose(file);
+    }
+
+    return(res);
+}
+
+static uint64_t sglp_sdl_get_processor_timestamp(void) {
+    return(0); // TODO - Implement.
+}
+
+//
+// Threading stuff
+//
+typedef struct sglp_SdlWorkQueueEntry {
+    void (*callback)(void *data);
+    void *e;
+} sglp_SdlWorkQueueEntry;
+
+typedef struct sglp_SdlWorkQueue {
+    int volatile goal;
+    int volatile cnt;
+
+    int volatile next_entry_to_write;
+    int volatile next_entry_to_read;
+
+    SDL_sem *hsem;
+    sglp_SdlWorkQueueEntry entries[256]; // TODO(Jonny): Should I make this a Linked List?? Or a dynamically resizing array??
+} sglp_SdlWorkQueue;
+static sglp_SdlWorkQueue sglp_global_work_queue;
+
+static void sglp_sdl_add_work_queue_entry(void *data, void (*callback)(void *data)) {
+    int new_next_entry_to_write = (sglp_global_work_queue.next_entry_to_write + 1) % SGLP_ARRAY_COUNT(sglp_global_work_queue.entries);
+    sglp_SdlWorkQueueEntry *entry = sglp_global_work_queue.entries + sglp_global_work_queue.next_entry_to_write;
+
+    SGLP_ASSERT(new_next_entry_to_write != sglp_global_work_queue.next_entry_to_read);
+
+    entry->callback = callback;
+    entry->e = data;
+
+    ++sglp_global_work_queue.goal;
+
+    // TODO(Jonny): Put a full compiler/write barrier here!
+
+    sglp_global_work_queue.next_entry_to_write = new_next_entry_to_write;
+    SDL_DestroySemaphore(sglp_global_work_queue.hsem);
+    //ReleaseSemaphore(sglp_global_work_queue.hsem, 1, 0);
+    //if(sglp_pthread_sem_close) {
+    //    sglp_pthread_sem_close(sglp_global_work_queue.hsem);
+    //}
+}
+
+static sglp_Bool sglp_sdl_do_next_work_queue_entry(sglp_SdlWorkQueue *work_queue) {
+    sglp_Bool res = SGLP_FALSE;
+
+    int original_next_entry_to_read = work_queue->next_entry_to_read;
+    int new_next_entry_to_read = (original_next_entry_to_read + 1) % SGLP_ARRAY_COUNT(work_queue->entries);
+    if(original_next_entry_to_read != work_queue->next_entry_to_write) {
+        int i = __sync_val_compare_and_swap(&work_queue->next_entry_to_read, original_next_entry_to_read, new_next_entry_to_read);
+        if(i == original_next_entry_to_read) {
+            sglp_SdlWorkQueueEntry entry = work_queue->entries[i];
+            entry.callback(entry.e);
+            SDL_atomic_t x = {work_queue->cnt};
+            //__sync_fetch_and_add(&work_queue->cnt, 1);
+            SDL_AtomicIncRef(&x);
+            work_queue->cnt = x.value;
+        }
+    } else {
+        res = SGLP_TRUE;
+    }
+
+    return(res);
+}
+
+static void sglp_sdl_complete_all_work(void) {
+    while(sglp_global_work_queue.goal != sglp_global_work_queue.cnt) {
+        sglp_sdl_do_next_work_queue_entry(&sglp_global_work_queue);
+    }
+
+    sglp_global_work_queue.goal = 0;
+    sglp_global_work_queue.cnt = 0;
+}
+
+static int sglp_sdl_thread_proc(void *Parameter) {
+    sglp_SdlWorkQueue *queue = (sglp_SdlWorkQueue *)Parameter;
+    for(;;) {
+        if(sglp_sdl_do_next_work_queue_entry(queue)) {
+            // TODO(Jonny): Find a function on Linux that will wait for the thread.
+        }
+    }
+
+    return(0);
+}
+
+//
+// Memory
+//
+static void *sglp_sdl_malloc(uintptr_t size) {
+    void *res = malloc(size);
+    if(res) {
+        sglp_memset(res, 0, size);
+    }
+
+    return(res);
+}
+
+static void *sglp_sdl_realloc(void *ptr, uintptr_t size) {
+    void *res = realloc(ptr, size);
+
+    return(res);
+}
+
+static void sglp_sdl_free(void *ptr) {
+    if(ptr) {
+        free(ptr);
+    }
+}
+
+//
+// OpenGL
+//
+static SDL_GLContext sglp_sdl_init_opengl(SDL_Window *window) {
+    SDL_GLContext res = SDL_GL_CreateContext(window);
+    if(res) {
+        int context_major_version;
+        SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &context_major_version);
+        sglp_Bool modern_context = context_major_version >= 3;
+
+#define SGLP_SDL_OPENGL_LOAD_(gl_func, gl_func_t, gl_func_str) sglp_global_opengl->gl_func = (sglp_##gl_func_t *)SDL_GL_GetProcAddress(gl_func_str); if(all_gl_funcs_loaded) { all_gl_funcs_loaded = (sglp_global_opengl->gl_func) != 0; } else { SGLP_ASSERT(0); }
+#define SGLP_SDL_OPENGL_LOAD(gl_func) do { SGLP_SDL_OPENGL_LOAD_(gl_func, gl_func##_t, #gl_func) } while(0)
+
+        sglp_Bool all_gl_funcs_loaded = SGLP_TRUE;
+
+        SGLP_SDL_OPENGL_LOAD(glBindTexture);
+        SGLP_SDL_OPENGL_LOAD(glClear);
+        SGLP_SDL_OPENGL_LOAD(glClearColor);
+        SGLP_SDL_OPENGL_LOAD(glDrawArrays);
+        SGLP_SDL_OPENGL_LOAD(glGetError);
+        SGLP_SDL_OPENGL_LOAD(glTexImage2D);
+        SGLP_SDL_OPENGL_LOAD(glTexParameteri);
+        SGLP_SDL_OPENGL_LOAD(glGetString);
+        SGLP_SDL_OPENGL_LOAD(glViewport);
+
+        SGLP_SDL_OPENGL_LOAD(glCreateShader);
+        SGLP_SDL_OPENGL_LOAD(glShaderSource);
+        SGLP_SDL_OPENGL_LOAD(glCompileShader);
+        SGLP_SDL_OPENGL_LOAD(glGetShaderiv);
+        SGLP_SDL_OPENGL_LOAD(glCreateProgram);
+        SGLP_SDL_OPENGL_LOAD(glAttachShader);
+        SGLP_SDL_OPENGL_LOAD(glBindAttribLocation);
+        SGLP_SDL_OPENGL_LOAD(glLinkProgram);
+        SGLP_SDL_OPENGL_LOAD(glUseProgram);
+        SGLP_SDL_OPENGL_LOAD(glGenBuffers);
+        SGLP_SDL_OPENGL_LOAD(glBindBuffer);
+        SGLP_SDL_OPENGL_LOAD(glBufferData);
+        SGLP_SDL_OPENGL_LOAD(glVertexAttribPointer);
+        SGLP_SDL_OPENGL_LOAD(glEnableVertexAttribArray);
+        SGLP_SDL_OPENGL_LOAD(glUniform1i);
+        SGLP_SDL_OPENGL_LOAD(glUniform2f);
+        SGLP_SDL_OPENGL_LOAD(glUniform4f);
+        SGLP_SDL_OPENGL_LOAD(glUniformMatrix4fv);
+        SGLP_SDL_OPENGL_LOAD(glGetUniformLocation);
+        SGLP_SDL_OPENGL_LOAD(glIsShader);
+        SGLP_SDL_OPENGL_LOAD(glGetProgramiv);
+        SGLP_SDL_OPENGL_LOAD(glGetProgramInfoLog);
+        SGLP_SDL_OPENGL_LOAD(glGetShaderInfoLog);
+
+        SGLP_SDL_OPENGL_LOAD(glGenVertexArrays);
+        SGLP_SDL_OPENGL_LOAD(glBindVertexArray);
+
+#undef SGLP_SDL_OPENGL_LOAD
+
+
+        SDL_GL_SetSwapInterval(1);
+    }
+
+    return(res);
+}
+
+static sglp_Key sglp_sdl_key_to_sgl_key(SDL_Keycode k) {
+    sglp_Key res = sglp_key_unknown;
+    if(k >= SDLK_a && k <= SDLK_z) {
+        res = (sglp_Key)k + ('A' - 'a');
+    } else {
+        switch(k) {
+            case SDLK_RCTRL:  case SDLK_LCTRL:  { res = sglp_key_ctrl;   } break;
+            case SDLK_RSHIFT: case SDLK_LSHIFT: { res = sglp_key_shift;  } break;
+            case SDLK_SPACE:                    { res = sglp_key_space;  } break;
+            case SDLK_ESCAPE:                   { res = sglp_key_escape; } break;
+            case SDLK_LEFT:                     { res = sglp_key_left;   } break;
+            case SDLK_RIGHT:                    { res = sglp_key_right;  } break;
+            case SDLK_UP:                       { res = sglp_key_up;     } break;
+            case SDLK_DOWN:                     { res = sglp_key_down;   } break;
+        }
+    }
+
+    return(res);
+}
+
+static void sglp_sdl_process_pending_events(sglp_API *api) {
+    SDL_Event event = {0};
+    for(;;) {
+        int pending_events = SDL_PollEvent(&event);
+
+        if(!pending_events) {
+            break;
+        }
+
+        switch(event.type) {
+            case SDL_QUIT: {
+                api->quit = SGLP_TRUE;
+            } break;
+
+            case SDL_KEYDOWN: {
+                SDL_Keycode key_code = event.key.keysym.sym;
+                api->key[sglp_sdl_key_to_sgl_key(key_code)] = 1.0f;
+            } break;
+
+            case SDL_KEYUP: {
+                SDL_Keycode key_code = event.key.keysym.sym;
+                api->key[sglp_sdl_key_to_sgl_key(key_code)] = 0.0f;
+            } break;
+#if 0
+            case SDL_KEYUP: {
+                SDL_Keycode KeyCode = event.key.keysym.sym;
+
+                bool AltKeyWasDown = (event.key.keysym.mod & KMOD_ALT);
+                bool ShiftKeyWasDown = (event.key.keysym.mod & KMOD_SHIFT);
+                bool IsDown = (event.key.state == SDL_PRESSED);
+
+                // NOTE: In the windows version, we used "if(IsDown != WasDown)"
+                // to detect key repeats. SDL has the 'repeat' value, though,
+                // which we'll use.
+                if(event.key.repeat == 0) {
+                    if(KeyCode == SDLK_w) {
+                        SDLProcessKeyboardEvent(&KeyboardController->MoveUp, IsDown);
+                    } else if(KeyCode == SDLK_a) {
+                        SDLProcessKeyboardEvent(&KeyboardController->MoveLeft, IsDown);
+                    } else if(KeyCode == SDLK_s) {
+                        SDLProcessKeyboardEvent(&KeyboardController->MoveDown, IsDown);
+                    } else if(KeyCode == SDLK_d) {
+                        SDLProcessKeyboardEvent(&KeyboardController->MoveRight, IsDown);
+                    } else if(KeyCode == SDLK_q) {
+                        SDLProcessKeyboardEvent(&KeyboardController->LeftShoulder, IsDown);
+                    } else if(KeyCode == SDLK_e) {
+                        SDLProcessKeyboardEvent(&KeyboardController->RightShoulder, IsDown);
+                    } else if(KeyCode == SDLK_UP) {
+                        SDLProcessKeyboardEvent(&KeyboardController->ActionUp, IsDown);
+                    } else if(KeyCode == SDLK_LEFT) {
+                        SDLProcessKeyboardEvent(&KeyboardController->ActionLeft, IsDown);
+                    } else if(KeyCode == SDLK_DOWN) {
+                        SDLProcessKeyboardEvent(&KeyboardController->ActionDown, IsDown);
+                    } else if(KeyCode == SDLK_RIGHT) {
+                        SDLProcessKeyboardEvent(&KeyboardController->ActionRight, IsDown);
+                    } else if(KeyCode == SDLK_ESCAPE) {
+                        SDLProcessKeyboardEvent(&KeyboardController->Back, IsDown);
+                    } else if(KeyCode == SDLK_SPACE) {
+                        SDLProcessKeyboardEvent(&KeyboardController->Start, IsDown);
+                    }
+#if HANDMADE_INTERNAL
+                    else if(KeyCode == SDLK_p) {
+                        if(IsDown) {
+                            GlobalPause = !GlobalPause;
+                        }
+                    } else if(KeyCode == SDLK_l) {
+                        if(IsDown) {
+                            if(AltKeyWasDown) {
+                                SDLBeginInputPlayBack(State, 1);
+                            } else {
+                                if(State->InputPlayingIndex == 0) {
+                                    if(State->InputRecordingIndex == 0) {
+                                        SDLBeginRecordingInput(State, 1);
+                                    } else {
+                                        SDLEndRecordingInput(State);
+                                        SDLBeginInputPlayBack(State, 1);
+                                    }
+                                } else {
+                                    SDLEndInputPlayBack(State);
+                                }
+                            }
+                        }
+                    }
+#endif
+                    if(IsDown) {
+                        if(KeyCode == SDLK_KP_PLUS) {
+                            if(ShiftKeyWasDown) {
+                                OpenGL.DebugLightBufferIndex += 1;
+                            } else {
+                                OpenGL.DebugLightBufferTexIndex += 1;
+                            }
+                        } else if(KeyCode == SDLK_KP_MINUS) {
+                            if(ShiftKeyWasDown) {
+                                OpenGL.DebugLightBufferIndex -= 1;
+                            } else {
+                                OpenGL.DebugLightBufferTexIndex -= 1;
+                            }
+                        } else if(KeyCode == SDLK_F4 && AltKeyWasDown) {
+                            GlobalRunning = false;
+                        } else if((KeyCode == SDLK_RETURN) && AltKeyWasDown) {
+                            SDL_Window *Window = SDL_GetWindowFromID(event.window.windowID);
+                            if(Window) {
+                                SDLToggleFullscreen(Window);
+                            }
+                        } else if((KeyCode >= SDLK_F1) && (KeyCode <= SDLK_F12)) {
+                            Input->FKeyPressed[KeyCode - SDLK_F1 + 1] = true;
+                        }
+                    }
+                }
+
+            } break;
+#endif
+#if 0
+            case SDL_WINDOWEVENT: {
+                switch(event.window.event) {
+                    case SDL_WINDOWEVENT_RESIZED: {
+                        if(SDL_GetModState() & KMOD_SHIFT) {
+                            sdl_window_dimension NewDim = {event.window.data1, event.window.data2};
+
+                            s32 RenderWidth = GlobalBackbuffer.Width;
+                            s32 RenderHeight = GlobalBackbuffer.Height;
+
+                            s32 NewWidth = (RenderWidth * NewDim.Height) / RenderHeight;
+                            s32 NewHeight = (RenderHeight * NewDim.Width) / RenderWidth;
+
+                            if(AbsoluteValue((r32)(NewDim.Width - NewWidth)) <
+                                    AbsoluteValue((r32)(NewDim.Height - NewHeight))) {
+                                NewDim.Width = NewWidth;
+                            } else {
+                                NewDim.Height = NewHeight;
+                            }
+
+                            SDL_Window *Window = SDL_GetWindowFromID(event.window.windowID);
+                            // NOTE: Some window managers will ignore this request while resizing the window
+                            SDL_SetWindowSize(Window, NewDim.Width, NewDim.Height);
+                        }
+                    } break;
+
+                    case SDL_WINDOWEVENT_SIZE_CHANGED: {
+                        printf("SDL_WINDOWEVENT_SIZE_CHANGED (%d, %d)\n", event.window.data1, event.window.data2);
+                    } break;
+
+                    case SDL_WINDOWEVENT_FOCUS_GAINED: {
+                        printf("SDL_WINDOWEVENT_FOCUS_GAINED\n");
+                    } break;
+
+                    case SDL_WINDOWEVENT_EXPOSED: {
+                        SDL_Window *Window = SDL_GetWindowFromID(event.window.windowID);
+#if 0
+                        sdl_window_dimension Dimension = SDLGetWindowDimension(Window);
+                        SDLDisplayBufferInWindow(&GlobalBackbuffer, Window, Renderer,
+                                                 Dimension.Width, Dimension.Height);
+
+#endif
+                    } break;
+                }
+            } break;
+#endif
+        }
+    }
+}
+
+int main(int argc, char **argv) {
+    if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC | SDL_INIT_AUDIO) == 0) {
+        sglp_API api = {0};
+        api.free_file = sglp_free_file;
+        api.read_file = sglp_sdl_read_file;
+        api.read_file_and_null_terminate = sglp_sdl_read_file_and_null_terminate;
+
+        api.get_processor_timestamp = sglp_sdl_get_processor_timestamp;
+
+        api.add_work_queue_entry = sglp_sdl_add_work_queue_entry;
+        api.complete_all_work = sglp_sdl_complete_all_work;
+
+        api.os_malloc = sglp_sdl_malloc;
+        api.os_realloc = sglp_sdl_realloc;
+        api.os_free = sglp_sdl_free;
+
+        sglp_global_opengl = &api.gl;
+
+        api.settings.frame_rate = 60;
+        api.settings.thread_cnt = 8;
+
+        api.settings.win_width = 1920 / 2;
+        api.settings.win_height = 1080 / 2;
+
+        sglp_platform_setup_settings_callback(&api.settings);
+
+        SDL_Window *window = SDL_CreateWindow(api.settings.window_title,
+                                              SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+                                              api.settings.win_width, api.settings.win_height,
+                                              SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
+        if(window) {
+            SDL_GLContext opengl_context = sglp_sdl_init_opengl(window);
+            if(opengl_context) {
+                api.permanent_memory = api.os_malloc(api.settings.permanent_memory_size);
+                if(api.permanent_memory) {
+                    sglp_SdlWorkQueue work_queue = {0};
+                    if(api.settings.thread_cnt > 0) {
+                        work_queue.hsem = SDL_CreateSemaphore(0);
+
+                        for(int i = 0; (i < api.settings.thread_cnt); ++i) {
+                            SDL_Thread *thread = SDL_CreateThread(sglp_sdl_thread_proc, "Some name.", (void *)&work_queue);
+                        }
+                    }
+
+                    sglp_setup(&api, api.settings.max_no_of_sounds);
+                    sglp_Bool quit = SGLP_FALSE;
+
+                    api.init_game = SGLP_TRUE;
+                    api.dt = 16.6f;
+
+                    while(!quit) {
+                        sglp_sdl_process_pending_events(&api);
+
+                        sglp_platform_update_and_render_callback(&api);
+                        api.init_game = SGLP_FALSE;
+
+                        SDL_GL_SwapWindow(window);
+                    }
+                }
+            }
+        }
+    } else {
+        SDL_Log("Unable to initialize SDL: %s", SDL_GetError());
+    }
+
+    return(0);
+}
+
+#else
+//
 // Win32.
 //
+
 #if SGLP_OS_WIN32
 
 // TODO(Jonny): Remove these.
@@ -2521,10 +2987,10 @@ typedef struct WorkQueue {
 static WorkQueue sglp_global_work_queue;
 
 static void sglp_linux_add_work_queue_entry(void *data, void (*callback)(void *data)) {
-    int32_t NewNextEntryToWrite = (sglp_global_work_queue.next_entry_to_write + 1) % SGLP_ARRAY_COUNT(sglp_global_work_queue.entries);
+    int32_t new_next_entry_to_write = (sglp_global_work_queue.next_entry_to_write + 1) % SGLP_ARRAY_COUNT(sglp_global_work_queue.entries);
     WorkQueueEntry *entry = sglp_global_work_queue.entries + sglp_global_work_queue.next_entry_to_write;
 
-    SGLP_ASSERT(NewNextEntryToWrite != sglp_global_work_queue.next_entry_to_read);
+    SGLP_ASSERT(new_next_entry_to_write != sglp_global_work_queue.next_entry_to_read);
 
     entry->callback = callback;
     entry->e = data;
@@ -2533,7 +2999,7 @@ static void sglp_linux_add_work_queue_entry(void *data, void (*callback)(void *d
 
     // TODO(Jonny): Put a full compiler/write barrier here!
 
-    sglp_global_work_queue.next_entry_to_write = NewNextEntryToWrite;
+    sglp_global_work_queue.next_entry_to_write = new_next_entry_to_write;
     if(sglp_pthread_sem_close) {
         sglp_pthread_sem_close(sglp_global_work_queue.hsem);
     }
@@ -2862,6 +3328,8 @@ int main(int argc, char **argv) {
 }
 
 #endif // SGLP_OS_LINUX
+
+#endif // SGLP_USE_SDL
 
 #endif // #if defined(SGLP_IMPLEMENTATION)
 
