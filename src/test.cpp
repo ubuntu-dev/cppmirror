@@ -23,7 +23,7 @@ Int struct_test_name(void) {
 
     {
         Struct_Data sd = parse_struct_test("struct Foo {};", StructType_struct);
-        if(!string_comp("Foo", sd.name)) {
+        if(!cstring_string_comp("Foo", sd.name)) {
             push_error(ErrorType_incorrect_struct_name);
             ++res;
         }
@@ -31,7 +31,7 @@ Int struct_test_name(void) {
 
     {
         Struct_Data sd = parse_struct_test("struct Foo { int a, b, c; };", StructType_struct);
-        if(!string_comp("Foo", sd.name)) {
+        if(!cstring_string_comp("Foo", sd.name)) {
             push_error(ErrorType_incorrect_struct_name);
             ++res;
         }
@@ -39,7 +39,7 @@ Int struct_test_name(void) {
 
     {
         Struct_Data sd = parse_struct_test("struct Bar { int a; int b; int c; };", StructType_struct);
-        if(!string_comp("Bar", sd.name)) {
+        if(!cstring_string_comp("Bar", sd.name)) {
             push_error(ErrorType_incorrect_struct_name);
             ++res;
         }
@@ -47,7 +47,7 @@ Int struct_test_name(void) {
 
     {
         Struct_Data sd = parse_struct_test("class Foo {};", StructType_struct);
-        if(!string_comp("Foo", sd.name)) {
+        if(!cstring_string_comp("Foo", sd.name)) {
             push_error(ErrorType_incorrect_struct_name);
             ++res;
         }
@@ -55,7 +55,7 @@ Int struct_test_name(void) {
 
     {
         Struct_Data sd = parse_struct_test("class FooBar : public Foo, public Bar {};", StructType_struct);
-        if(!string_comp("FooBar", sd.name)) {
+        if(!cstring_string_comp("FooBar", sd.name)) {
             push_error(ErrorType_incorrect_struct_name);
             ++res;
         }

@@ -9,7 +9,7 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
-/* TODO(Jonny):
+/* TODO -
     - Have a command, like PP_IGNORE, which you can put just before including a file. If you put this, mirror will not include
       that file when preprocessing.
     - In serialize struct, if there is a member which is an enum, call enum_to_string on it's value.
@@ -18,9 +18,10 @@
     - Support modifiers (unnsigned, volatile, const).
     - Some of the printf formatters in pp_generated (%llu, %lld, %Id, %zu) probably aren't very cross-compiler friendly. I believe
       Visual Studio 2017 is the first one to support long long types correctly, and I don't think GCC supports llu.
+    - If I declare an enum in C style then it doesn't work.
 */
 
-enum SwitchType {
+typedef enum {
     SwitchType_unknown,
 
     SwitchType_silent,
@@ -33,7 +34,7 @@ enum SwitchType {
     SwitchType_source_file,
 
     SwitchType_count
-};
+} SwitchType;
 
 SwitchType get_switch_type(Char *str) {
     SwitchType res = SwitchType_unknown;
@@ -42,18 +43,17 @@ SwitchType get_switch_type(Char *str) {
     if(len >= 2) {
         if(str[0] == '-') {
             switch(str[1]) {
-                case 'e': case 'E': {res = SwitchType_log_errors;}               break;
-                case 'h': case 'H': {res = SwitchType_print_help;}               break;
-                case 'p': case 'P': {res = SwitchType_output_preprocessed_file;} break;
-                case 'd': case 'D': {res = SwitchType_macro;}                    break;
+                case 'e': case 'E': res = SwitchType_log_errors;               break;
+                case 'h': case 'H': res = SwitchType_print_help;               break;
+                case 'p': case 'P': res = SwitchType_output_preprocessed_file; break;
+                case 'd': case 'D': res = SwitchType_macro;                    break;
 #if INTERNAL
-                case 's': case 'S': {res = SwitchType_silent;}                   break;
-                case 't': case 'T': {res = SwitchType_run_tests;}                break;
+                case 's': case 'S': res = SwitchType_silent;                   break;
+                case 't': case 'T': res = SwitchType_run_tests;                break;
 #endif
-                default: {assert(0);} break;
+                default: assert(0); break;
             }
-        }
-        else {
+        } else {
             res = SwitchType_source_file;
         }
     }
@@ -75,14 +75,14 @@ Void print_help(void) {
     system_write_to_console(help);
 }
 
-// TODO(Jonny): This will fail if the format isn't "-Diden=res";
+// TODO - This will fail if the format isn't "-Diden=res";
 MacroData parse_passed_in_macro(Char *str) {
     Tokenizer tokenizer = {str};
     Token iden = get_token(&tokenizer);
     eat_token(&tokenizer);
     Token result = get_token(&tokenizer);
 
-    MacroData res = {};
+    MacroData res = {0};
     res.iden = token_to_string(iden);
     res.res = token_to_string(result);
 
@@ -96,32 +96,32 @@ Void my_main(Int argc, Char **argv) {
     if(argc <= 1) {
         push_error(ErrorType_no_parameters);
         print_help();
-    }
-    else {
+    } else {
         Bool should_run_tests = false;
         Bool should_write_to_file = true;
         Bool only_output_preprocessed_file = false;
 
         Int fnames_max_cnt = 16;
-        Char **fnames = new Char *[fnames_max_cnt];
+        //Char **fnames = new Char *[fnames_max_cnt];
+        Char **fnames = system_malloc_arr(sizeof *fnames, fnames_max_cnt);
         Uintptr size = system_get_alloc_size(fnames);
         if(fnames) {
             Uintptr total_file_size = 0;
             Int number_of_files = 0;
 
             Int macro_cnt = 0;
-            MacroData passed_in_macro_data[8] = {};
+            MacroData passed_in_macro_data[8] = {0};
 
             for(Int i = 1; (i < argc); ++i) {
                 Char *switch_name = argv[i];
 
                 SwitchType type = get_switch_type(switch_name);
                 switch(type) {
-                    case SwitchType_silent:                   {should_write_to_file = false;}         break;
-                    case SwitchType_log_errors:               {should_log_errors = true;}             break;
-                    case SwitchType_run_tests:                {should_run_tests = true;}              break;
-                    case SwitchType_print_help:               {print_help();}                         break;
-                    case SwitchType_output_preprocessed_file: {only_output_preprocessed_file = true;} break;
+                    case SwitchType_silent:                   should_write_to_file = false;         break;
+                    case SwitchType_log_errors:               should_log_errors = true;             break;
+                    case SwitchType_run_tests:                should_run_tests = true;              break;
+                    case SwitchType_print_help:               print_help();                         break;
+                    case SwitchType_output_preprocessed_file: only_output_preprocessed_file = true; break;
 
                     case SwitchType_macro:
                         passed_in_macro_data[macro_cnt++] = parse_passed_in_macro(argv[i] + 2); // Skip "-D".
@@ -147,44 +147,37 @@ Void my_main(Int argc, Char **argv) {
 
                 if(!tests_failed) {
                     system_write_to_console("all tests passed...");
-                }
-                else {
+                } else {
                     system_write_to_console("%d tests failed\n", tests_failed);
                 }
 #endif
-            }
-            else {
+            } else {
                 if(!number_of_files) {
                     push_error(ErrorType_no_files_pass_in);
-                }
-                else {
-                    Char directory[1024] = {};
+                } else {
+                    Char directory[1024] = {0};
                     get_current_directory(directory, 1024);
                     Uintptr size_of_all_files = system_get_total_size_of_directory(directory);
 
                     Parse_Result parse_res = parse_streams(number_of_files, fnames, passed_in_macro_data,
                                                            macro_cnt, size_of_all_files);
-#if INTERNAL
-                    defer {
-                        delete[] parse_res.enums.e;
-                        delete[] parse_res.structs.e;
-                        delete[] parse_res.funcs.e;
-                        delete[] parse_res.typedefs.e;
-                    };
-#endif
 
                     File file_to_write = write_data(parse_res);
-#if INTERNAL
-                    defer {
-                        delete[] file_to_write.e;
-                    };
-#endif
+
                     Bool write_success = system_write_to_file("pp_generated.h", file_to_write);
                     assert(write_success);
+
+#if INTERNAL
+                    system_free(file_to_write.e);
+                    system_free(parse_res.enums.e);
+                    system_free(parse_res.structs.e);
+                    system_free(parse_res.funcs.e);
+                    system_free(parse_res.typedefs.e);
+#endif
                 }
             }
 
-            delete[] fnames;
+            system_free(fnames);
         }
     }
 

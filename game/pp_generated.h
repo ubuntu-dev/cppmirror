@@ -1,6 +1,6 @@
 #if !defined(PP_GENERATED_H)
 
-#define PP_IGNORE // TODO(Jonny): Put this before a #include to ignore the file.
+#define PP_IGNORE
 
 #include <stdint.h>
 #include <string.h>
@@ -30,14 +30,11 @@
     #define PP_STATIC
 #endif
 
-#define PP_CONSTEXPR
-//#if (THE_RIGHT_VERSION)
-    #undef PP_CONSTEXPR
-    #define PP_CONSTEXPR constexpr
-//#endif
+#define PP_TRUE 1
+#define PP_FALSE 0
 
-struct pp___m128 { float e[4]; };
-struct pp___m128i { int e[4]; };
+typedef struct pp___m128 { float e[4]; } pp___m128;
+typedef struct pp___m128i { int e[4]; } pp___m128i;
 
 // Primitive types.
 typedef void pp_void;
@@ -47,7 +44,6 @@ typedef int pp_int;
 typedef long pp_long;
 typedef float pp_float;
 typedef double pp_double;
-typedef bool pp_bool;
 typedef uint64_t pp_uint64_t;
 typedef uint32_t pp_uint32_t;
 typedef uint16_t pp_uint16_t;
@@ -60,14 +56,14 @@ typedef uintptr_t pp_uintptr_t;
 typedef intptr_t pp_intptr_t;
 typedef size_t pp_size_t;
 
-PP_CONSTEXPR PP_STATIC pp_MyBool pp_string_compare(char const *a, char const *b) {
+PP_STATIC pp_MyBool pp_string_compare(char const *a, char const *b) {
     for(; (*a != *b); ++a, ++b) {
         if(!(*a) && !(*b)) {
-            return(true);
+            return(PP_TRUE);
         }
     }
 
-    return(false);
+    return(PP_TRUE);
 }
 
 #if !defined(PP_MEMSET)
@@ -83,36 +79,41 @@ PP_STATIC void *PP_MEMSET(void *dst, uint8_t v, uintptr_t size) {
 //
 // Forward declared structs, enums, and functions
 //
-enum Player_Direction : int;
-struct sglp_Sprite;
-struct sglp_PlayingSound;
-struct sglp_OpenGlFunctions;
-struct sglp_Settings;
-struct sglp_File;
-struct sglp_API;
-struct sglp_LoadedSound;
-struct sglp_SoundOutputBuffer;
-struct sglp_AudioState;
-struct sglp_WAVEHeader;
-struct sglp_WavChunk;
-struct sglp_WavFormat;
-struct sglp_RiffIter;
-struct SGLP_XINPUT_GAMEPAD;
-struct SGLP_XINPUT_STATE;
-struct SGLP_XINPUT_VIBRATION;
-struct sglp_Win32SoundOutput;
-struct WorkQueueEntry;
-struct WorkQueue;
-union sglm_V2;
-struct sglm_Mat4x4;
-struct Entity;
-struct Player;
-struct Game_State;
+#if !defined(PP_NO_FORWARD_DECLARE)
+typedef enum sglp_Key sglp_Key;
+typedef enum Player_Direction Player_Direction;
+typedef enum ID ID;
+typedef struct sglp_Sprite sglp_Sprite;
+typedef struct sglp_PlayingSound sglp_PlayingSound;
+typedef struct sglp_OpenGlFunctions sglp_OpenGlFunctions;
+typedef struct sglp_Settings sglp_Settings;
+typedef struct sglp_File sglp_File;
+typedef struct sglp_API sglp_API;
+typedef struct sglp_LoadedSound sglp_LoadedSound;
+typedef struct sglp_SoundOutputBuffer sglp_SoundOutputBuffer;
+typedef struct sglp_AudioState sglp_AudioState;
+typedef struct sglp_WAVEHeader sglp_WAVEHeader;
+typedef struct sglp_WavChunk sglp_WavChunk;
+typedef struct sglp_WavFormat sglp_WavFormat;
+typedef struct sglp_RiffIter sglp_RiffIter;
+typedef struct SGLP_XINPUT_GAMEPAD SGLP_XINPUT_GAMEPAD;
+typedef struct SGLP_XINPUT_STATE SGLP_XINPUT_STATE;
+typedef struct SGLP_XINPUT_VIBRATION SGLP_XINPUT_VIBRATION;
+typedef struct sglp_Win32SoundOutput sglp_Win32SoundOutput;
+typedef struct WorkQueueEntry WorkQueueEntry;
+typedef struct WorkQueue WorkQueue;
+typedef union sglm_V2 sglm_V2;
+typedef struct sglm_Mat4x4 sglm_Mat4x4;
+typedef struct Entity Entity;
+typedef struct Player Player;
+typedef struct Game_State Game_State;
+typedef struct V2 V2;
+#endif // PP_NO_FORWARD_DECLARE
 
 //
 // An enum, with an index for each type in the codebase.
 //
-enum pp_Type {
+typedef enum pp_Type {
     pp_Type_unknown,
     pp_Type_char,
     pp_Type_short,
@@ -120,7 +121,6 @@ enum pp_Type {
     pp_Type_long,
     pp_Type_float,
     pp_Type_double,
-    pp_Type_bool,
     pp_Type_uint64_t,
     pp_Type_uint32_t,
     pp_Type_uint16_t,
@@ -236,6 +236,44 @@ enum pp_Type {
     pp_Type_sglp_glXMakeCurrent_t,
     pp_Type_sglp_glXSwapBuffers_t,
     pp_Type_sglm_Bool,
+    pp_Type_sgl_Uint64,
+    pp_Type_sgl_Uint32,
+    pp_Type_sgl_Uint16,
+    pp_Type_sgl_Uint8,
+    pp_Type_sgl_Int64,
+    pp_Type_sgl_Int32,
+    pp_Type_sgl_Int16,
+    pp_Type_sgl_Int8,
+    pp_Type_sgl_Int,
+    pp_Type_sgl_Uint,
+    pp_Type_sgl_Byte,
+    pp_Type_sgl_Uintptr,
+    pp_Type_sgl_Intptr,
+    pp_Type_sgl_Float32,
+    pp_Type_sgl_Float64,
+    pp_Type_sgl_Float,
+    pp_Type_sgl_Void,
+    pp_Type_sgl_Char,
+    pp_Type_sgl_Bool,
+    pp_Type_Uint64,
+    pp_Type_Uint32,
+    pp_Type_Uint16,
+    pp_Type_Uint8,
+    pp_Type_Int64,
+    pp_Type_Int32,
+    pp_Type_Int16,
+    pp_Type_Int8,
+    pp_Type_Int,
+    pp_Type_Uint,
+    pp_Type_Byte,
+    pp_Type_Uintptr,
+    pp_Type_Intptr,
+    pp_Type_Float32,
+    pp_Type_Float64,
+    pp_Type_Float,
+    pp_Type_Void,
+    pp_Type_Char,
+    pp_Type_Bool,
     pp_Type_sglp_Key,
     pp_Type_Player_Direction,
     pp_Type_ID,
@@ -265,10 +303,11 @@ enum pp_Type {
     pp_Type_Entity,
     pp_Type_Player,
     pp_Type_Game_State,
+    pp_Type_V2,
     pp_Type___m128i,
 
     pp_Type_count
-};
+} pp_Type;
 
 //
 // Forward declared recreated stuff.
@@ -299,9 +338,12 @@ typedef struct pp_sglm_Mat4x4 pp_sglm_Mat4x4;    typedef struct pp_sglm_Mat4x4 p
 typedef struct pp_Entity pp_Entity;    typedef struct pp_Entity pp_pp_Entity;
 typedef struct pp_Player pp_Player;    typedef struct pp_Player pp_pp_Player;
 typedef struct pp_Game_State pp_Game_State;    typedef struct pp_Game_State pp_pp_Game_State;
+typedef struct pp_V2 pp_V2;    typedef struct pp_V2 pp_pp_V2;
 
 // Forward declared enums
-enum pp_Player_Direction : int;
+typedef int pp_sglp_Key;
+typedef int pp_Player_Direction;
+typedef int pp_ID;
 
 //
 // Create typedefs.
@@ -410,12 +452,50 @@ typedef pp_uintptr_t pp_sglp_glXCreateContext_t;
 typedef pp_uintptr_t pp_sglp_glXMakeCurrent_t;
 typedef pp_uintptr_t pp_sglp_glXSwapBuffers_t;
 typedef pp_int pp_sglm_Bool;
+typedef pp_uint64_t pp_sgl_Uint64;
+typedef pp_uint32_t pp_sgl_Uint32;
+typedef pp_uint16_t pp_sgl_Uint16;
+typedef pp_uint8_t pp_sgl_Uint8;
+typedef pp_int64_t pp_sgl_Int64;
+typedef pp_int32_t pp_sgl_Int32;
+typedef pp_int16_t pp_sgl_Int16;
+typedef pp_int8_t pp_sgl_Int8;
+typedef pp_sgl_Int32 pp_sgl_Int;
+typedef pp_sgl_Uint32 pp_sgl_Uint;
+typedef pp_sgl_Uint8 pp_sgl_Byte;
+typedef pp_uintptr_t pp_sgl_Uintptr;
+typedef pp_intptr_t pp_sgl_Intptr;
+typedef pp_float pp_sgl_Float32;
+typedef pp_double pp_sgl_Float64;
+typedef pp_sgl_Float32 pp_sgl_Float;
+typedef pp_void pp_sgl_Void;
+typedef pp_char pp_sgl_Char;
+typedef pp_int pp_sgl_Bool;
+typedef pp_sgl_Uint64 pp_Uint64;
+typedef pp_sgl_Uint32 pp_Uint32;
+typedef pp_sgl_Uint16 pp_Uint16;
+typedef pp_sgl_Uint8 pp_Uint8;
+typedef pp_sgl_Int64 pp_Int64;
+typedef pp_sgl_Int32 pp_Int32;
+typedef pp_sgl_Int16 pp_Int16;
+typedef pp_sgl_Int8 pp_Int8;
+typedef pp_sgl_Int pp_Int;
+typedef pp_sgl_Uint pp_Uint;
+typedef pp_sgl_Byte pp_Byte;
+typedef pp_sgl_Uintptr pp_Uintptr;
+typedef pp_sgl_Intptr pp_Intptr;
+typedef pp_sgl_Float32 pp_Float32;
+typedef pp_sgl_Float64 pp_Float64;
+typedef pp_sgl_Float pp_Float;
+typedef pp_sgl_Void pp_Void;
+typedef pp_sgl_Char pp_Char;
+typedef pp_sgl_Bool pp_Bool;
 
 //
 // Recreated structs.
 //
 struct pp_sglp_Sprite {
-    int32_t w; int32_t h; int32_t id; int32_t frame_cnt; uint32_t vbo_arr[2]; uint32_t mesh; 
+    int32_t w; int32_t h; int32_t id; int32_t frame_cnt_x; int32_t frame_cnt_y; uint32_t vbo_arr[2]; uint32_t mesh; 
 };
 struct pp_sglp_PlayingSound {
     pp_sglp_PlayingSound *next; float cur_volume0; float cur_volume1; float target_volume0; float target_volume1; float dcur_volume0; float dcur_volume1; float dsample; int32_t id; float samples_played; 
@@ -484,11 +564,14 @@ struct pp_Player {
     pp_Entity trans; float start_x; float start_y; pp_Player_Direction dir; float current_frame; 
 };
 struct pp_Game_State {
-    pp_sglp_Sprite player_sprite; pp_sglp_Sprite enemy_one_sprite; pp_Player player; pp_Entity enemy[4]; pp_sglp_Sprite text[26]; 
+    pp_sglp_Sprite player_sprite; pp_sglp_Sprite enemy_one_sprite; pp_sglp_Sprite bitmap_sprite; pp_Player player; pp_Entity enemy[4]; 
+};
+struct pp_V2 {
+    float x; float y; 
 };
 
 // Turn a typedef'd type into it's original type.
-PP_CONSTEXPR PP_STATIC pp_Type pp_typedef_to_original(pp_Type type) {
+PP_STATIC pp_Type pp_typedef_to_original(pp_Type type) {
     switch(type) {
         case pp_Type_sglp_Bool: { return(pp_Type_int); } break;
         case pp_Type_sglp_GLenum: { return(pp_Type_uint32_t); } break;
@@ -594,19 +677,58 @@ PP_CONSTEXPR PP_STATIC pp_Type pp_typedef_to_original(pp_Type type) {
         case pp_Type_sglp_glXMakeCurrent_t: { return(pp_Type_uintptr_t); } break;
         case pp_Type_sglp_glXSwapBuffers_t: { return(pp_Type_uintptr_t); } break;
         case pp_Type_sglm_Bool: { return(pp_Type_int); } break;
+        case pp_Type_sgl_Uint64: { return(pp_Type_uint64_t); } break;
+        case pp_Type_sgl_Uint32: { return(pp_Type_uint32_t); } break;
+        case pp_Type_sgl_Uint16: { return(pp_Type_uint16_t); } break;
+        case pp_Type_sgl_Uint8: { return(pp_Type_uint8_t); } break;
+        case pp_Type_sgl_Int64: { return(pp_Type_int64_t); } break;
+        case pp_Type_sgl_Int32: { return(pp_Type_int32_t); } break;
+        case pp_Type_sgl_Int16: { return(pp_Type_int16_t); } break;
+        case pp_Type_sgl_Int8: { return(pp_Type_int8_t); } break;
+        case pp_Type_sgl_Int: { return(pp_Type_sgl_Int32); } break;
+        case pp_Type_sgl_Uint: { return(pp_Type_sgl_Uint32); } break;
+        case pp_Type_sgl_Byte: { return(pp_Type_sgl_Uint8); } break;
+        case pp_Type_sgl_Uintptr: { return(pp_Type_uintptr_t); } break;
+        case pp_Type_sgl_Intptr: { return(pp_Type_intptr_t); } break;
+        case pp_Type_sgl_Float32: { return(pp_Type_float); } break;
+        case pp_Type_sgl_Float64: { return(pp_Type_double); } break;
+        case pp_Type_sgl_Float: { return(pp_Type_sgl_Float32); } break;
+        case pp_Type_sgl_Void: { return(pp_Type_void); } break;
+        case pp_Type_sgl_Char: { return(pp_Type_char); } break;
+        case pp_Type_sgl_Bool: { return(pp_Type_int); } break;
+        case pp_Type_Uint64: { return(pp_Type_sgl_Uint64); } break;
+        case pp_Type_Uint32: { return(pp_Type_sgl_Uint32); } break;
+        case pp_Type_Uint16: { return(pp_Type_sgl_Uint16); } break;
+        case pp_Type_Uint8: { return(pp_Type_sgl_Uint8); } break;
+        case pp_Type_Int64: { return(pp_Type_sgl_Int64); } break;
+        case pp_Type_Int32: { return(pp_Type_sgl_Int32); } break;
+        case pp_Type_Int16: { return(pp_Type_sgl_Int16); } break;
+        case pp_Type_Int8: { return(pp_Type_sgl_Int8); } break;
+        case pp_Type_Int: { return(pp_Type_sgl_Int); } break;
+        case pp_Type_Uint: { return(pp_Type_sgl_Uint); } break;
+        case pp_Type_Byte: { return(pp_Type_sgl_Byte); } break;
+        case pp_Type_Uintptr: { return(pp_Type_sgl_Uintptr); } break;
+        case pp_Type_Intptr: { return(pp_Type_sgl_Intptr); } break;
+        case pp_Type_Float32: { return(pp_Type_sgl_Float32); } break;
+        case pp_Type_Float64: { return(pp_Type_sgl_Float64); } break;
+        case pp_Type_Float: { return(pp_Type_sgl_Float); } break;
+        case pp_Type_Void: { return(pp_Type_sgl_Void); } break;
+        case pp_Type_Char: { return(pp_Type_sgl_Char); } break;
+        case pp_Type_Bool: { return(pp_Type_sgl_Bool); } break;
     }
 
     return(type);
 }
-struct pp_MemberDefinition {
+typedef struct pp_MemberDefinition {
     pp_Type type;
     char const *name;
     uintptr_t offset;
     uintptr_t ptr;
     uintptr_t arr_size;
-};
+} pp_MemberDefinition;
 
-PP_CONSTEXPR PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t index) {
+PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t index) {
+    pp_MemberDefinition failres;
     pp_Type real_type = pp_typedef_to_original(type);
     if(real_type == pp_Type___m128) {
         switch(index) {
@@ -639,14 +761,18 @@ PP_CONSTEXPR PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type
                 return(res);
             } break; 
             case 3: {
-                pp_MemberDefinition res = {pp_Type_int32_t, "frame_cnt", PP_OFFSETOF(pp_sglp_Sprite, frame_cnt), 0, 0};
+                pp_MemberDefinition res = {pp_Type_int32_t, "frame_cnt_x", PP_OFFSETOF(pp_sglp_Sprite, frame_cnt_x), 0, 0};
                 return(res);
             } break; 
             case 4: {
-                pp_MemberDefinition res = {pp_Type_uint32_t, "vbo_arr", PP_OFFSETOF(pp_sglp_Sprite, vbo_arr), 0, 2};
+                pp_MemberDefinition res = {pp_Type_int32_t, "frame_cnt_y", PP_OFFSETOF(pp_sglp_Sprite, frame_cnt_y), 0, 0};
                 return(res);
             } break; 
             case 5: {
+                pp_MemberDefinition res = {pp_Type_uint32_t, "vbo_arr", PP_OFFSETOF(pp_sglp_Sprite, vbo_arr), 0, 2};
+                return(res);
+            } break; 
+            case 6: {
                 pp_MemberDefinition res = {pp_Type_uint32_t, "mesh", PP_OFFSETOF(pp_sglp_Sprite, mesh), 0, 0};
                 return(res);
             } break; 
@@ -1247,15 +1373,27 @@ PP_CONSTEXPR PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type
                 return(res);
             } break; 
             case 2: {
-                pp_MemberDefinition res = {pp_Type_Player, "player", PP_OFFSETOF(pp_Game_State, player), 0, 0};
+                pp_MemberDefinition res = {pp_Type_sglp_Sprite, "bitmap_sprite", PP_OFFSETOF(pp_Game_State, bitmap_sprite), 0, 0};
                 return(res);
             } break; 
             case 3: {
-                pp_MemberDefinition res = {pp_Type_Entity, "enemy", PP_OFFSETOF(pp_Game_State, enemy), 0, 4};
+                pp_MemberDefinition res = {pp_Type_Player, "player", PP_OFFSETOF(pp_Game_State, player), 0, 0};
                 return(res);
             } break; 
             case 4: {
-                pp_MemberDefinition res = {pp_Type_sglp_Sprite, "text", PP_OFFSETOF(pp_Game_State, text), 0, 26};
+                pp_MemberDefinition res = {pp_Type_Entity, "enemy", PP_OFFSETOF(pp_Game_State, enemy), 0, 4};
+                return(res);
+            } break; 
+        }
+    }
+    else if(real_type == pp_Type_V2) {
+        switch(index) {
+            case 0: {
+                pp_MemberDefinition res = {pp_Type_float, "x", PP_OFFSETOF(pp_V2, x), 0, 0};
+                return(res);
+            } break; 
+            case 1: {
+                pp_MemberDefinition res = {pp_Type_float, "y", PP_OFFSETOF(pp_V2, y), 0, 0};
                 return(res);
             } break; 
         }
@@ -1263,14 +1401,14 @@ PP_CONSTEXPR PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type
 
     // Not found
     PP_ASSERT(0);
-    pp_MemberDefinition failres; PP_MEMSET(&failres, 0, sizeof(failres)); // Zero all the results for failure case.
+    PP_MEMSET(&failres, 0, sizeof(failres));
     return(failres);
 }
 
-PP_CONSTEXPR PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
+PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
     switch(pp_typedef_to_original(type)) {
         case pp_Type___m128: case pp_Type___m128i: { return(1); }
-        case pp_Type_sglp_Sprite: { return(6); } break;
+        case pp_Type_sglp_Sprite: { return(7); } break;
         case pp_Type_sglp_PlayingSound: { return(10); } break;
         case pp_Type_sglp_OpenGlFunctions: { return(34); } break;
         case pp_Type_sglp_Settings: { return(8); } break;
@@ -1294,13 +1432,14 @@ PP_CONSTEXPR PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_Entity: { return(5); } break;
         case pp_Type_Player: { return(5); } break;
         case pp_Type_Game_State: { return(5); } break;
+        case pp_Type_V2: { return(2); } break;
     }
 
     PP_ASSERT(0);
     return(0);
 }
 
-enum pp_StructureType {
+typedef enum pp_StructureType {
     pp_StructureType_unknown,
 
     pp_StructureType_primitive,
@@ -1308,11 +1447,11 @@ enum pp_StructureType {
     pp_StructureType_enum,
 
     pp_StructureType_count
-};
+} pp_StructureType;
 
-PP_CONSTEXPR PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {
+PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {
     switch(pp_typedef_to_original(type)) {
-        case pp_Type_char: case pp_Type_short: case pp_Type_int: case pp_Type_long: case pp_Type_float: case pp_Type_double: case pp_Type_bool: case pp_Type_uint64_t: case pp_Type_uint32_t: case pp_Type_uint16_t: case pp_Type_uint8_t: case pp_Type_int64_t: case pp_Type_int32_t: case pp_Type_int16_t: case pp_Type_int8_t: case pp_Type_uintptr_t: case pp_Type_intptr_t: case pp_Type_size_t: {
+        case pp_Type_char: case pp_Type_short: case pp_Type_int: case pp_Type_long: case pp_Type_float: case pp_Type_double: case pp_Type_uint64_t: case pp_Type_uint32_t: case pp_Type_uint16_t: case pp_Type_uint8_t: case pp_Type_int64_t: case pp_Type_int32_t: case pp_Type_int16_t: case pp_Type_int8_t: case pp_Type_uintptr_t: case pp_Type_intptr_t: case pp_Type_size_t: {
             return(pp_StructureType_primitive);
         } break;
 
@@ -1320,7 +1459,7 @@ PP_CONSTEXPR PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {
             return(pp_StructureType_enum);
         } break;
 
-        case pp_Type___m128: case pp_Type___m128i: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_Settings: case pp_Type_sglp_File: case pp_Type_sglp_API: case pp_Type_sglp_LoadedSound: case pp_Type_sglp_SoundOutputBuffer: case pp_Type_sglp_AudioState: case pp_Type_sglp_WAVEHeader: case pp_Type_sglp_WavChunk: case pp_Type_sglp_WavFormat: case pp_Type_sglp_RiffIter: case pp_Type_SGLP_XINPUT_GAMEPAD: case pp_Type_SGLP_XINPUT_STATE: case pp_Type_SGLP_XINPUT_VIBRATION: case pp_Type_sglp_Win32SoundOutput: case pp_Type_WorkQueueEntry: case pp_Type_WorkQueue: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_Entity: case pp_Type_Player: case pp_Type_Game_State: {
+        case pp_Type___m128: case pp_Type___m128i: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_Settings: case pp_Type_sglp_File: case pp_Type_sglp_API: case pp_Type_sglp_LoadedSound: case pp_Type_sglp_SoundOutputBuffer: case pp_Type_sglp_AudioState: case pp_Type_sglp_WAVEHeader: case pp_Type_sglp_WavChunk: case pp_Type_sglp_WavFormat: case pp_Type_sglp_RiffIter: case pp_Type_SGLP_XINPUT_GAMEPAD: case pp_Type_SGLP_XINPUT_STATE: case pp_Type_SGLP_XINPUT_VIBRATION: case pp_Type_sglp_Win32SoundOutput: case pp_Type_WorkQueueEntry: case pp_Type_WorkQueue: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_Entity: case pp_Type_Player: case pp_Type_Game_State: case pp_Type_V2: {
             return(pp_StructureType_struct);
         } break;
     }
@@ -1329,7 +1468,7 @@ PP_CONSTEXPR PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {
     return(pp_StructureType_unknown);
 }
 
-PP_CONSTEXPR PP_STATIC char const * pp_type_to_string(pp_Type type) {
+PP_STATIC char const * pp_type_to_string(pp_Type type) {
     switch(type) {
         case pp_Type_char: { return("char"); } break;
         case pp_Type_short: { return("short"); } break;
@@ -1337,7 +1476,6 @@ PP_CONSTEXPR PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_long: { return("long"); } break;
         case pp_Type_float: { return("float"); } break;
         case pp_Type_double: { return("double"); } break;
-        case pp_Type_bool: { return("bool"); } break;
         case pp_Type_uint64_t: { return("uint64_t"); } break;
         case pp_Type_uint32_t: { return("uint32_t"); } break;
         case pp_Type_uint16_t: { return("uint16_t"); } break;
@@ -1453,6 +1591,44 @@ PP_CONSTEXPR PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_sglp_glXMakeCurrent_t: { return("sglp_glXMakeCurrent_t"); } break;
         case pp_Type_sglp_glXSwapBuffers_t: { return("sglp_glXSwapBuffers_t"); } break;
         case pp_Type_sglm_Bool: { return("sglm_Bool"); } break;
+        case pp_Type_sgl_Uint64: { return("sgl_Uint64"); } break;
+        case pp_Type_sgl_Uint32: { return("sgl_Uint32"); } break;
+        case pp_Type_sgl_Uint16: { return("sgl_Uint16"); } break;
+        case pp_Type_sgl_Uint8: { return("sgl_Uint8"); } break;
+        case pp_Type_sgl_Int64: { return("sgl_Int64"); } break;
+        case pp_Type_sgl_Int32: { return("sgl_Int32"); } break;
+        case pp_Type_sgl_Int16: { return("sgl_Int16"); } break;
+        case pp_Type_sgl_Int8: { return("sgl_Int8"); } break;
+        case pp_Type_sgl_Int: { return("sgl_Int"); } break;
+        case pp_Type_sgl_Uint: { return("sgl_Uint"); } break;
+        case pp_Type_sgl_Byte: { return("sgl_Byte"); } break;
+        case pp_Type_sgl_Uintptr: { return("sgl_Uintptr"); } break;
+        case pp_Type_sgl_Intptr: { return("sgl_Intptr"); } break;
+        case pp_Type_sgl_Float32: { return("sgl_Float32"); } break;
+        case pp_Type_sgl_Float64: { return("sgl_Float64"); } break;
+        case pp_Type_sgl_Float: { return("sgl_Float"); } break;
+        case pp_Type_sgl_Void: { return("sgl_Void"); } break;
+        case pp_Type_sgl_Char: { return("sgl_Char"); } break;
+        case pp_Type_sgl_Bool: { return("sgl_Bool"); } break;
+        case pp_Type_Uint64: { return("Uint64"); } break;
+        case pp_Type_Uint32: { return("Uint32"); } break;
+        case pp_Type_Uint16: { return("Uint16"); } break;
+        case pp_Type_Uint8: { return("Uint8"); } break;
+        case pp_Type_Int64: { return("Int64"); } break;
+        case pp_Type_Int32: { return("Int32"); } break;
+        case pp_Type_Int16: { return("Int16"); } break;
+        case pp_Type_Int8: { return("Int8"); } break;
+        case pp_Type_Int: { return("Int"); } break;
+        case pp_Type_Uint: { return("Uint"); } break;
+        case pp_Type_Byte: { return("Byte"); } break;
+        case pp_Type_Uintptr: { return("Uintptr"); } break;
+        case pp_Type_Intptr: { return("Intptr"); } break;
+        case pp_Type_Float32: { return("Float32"); } break;
+        case pp_Type_Float64: { return("Float64"); } break;
+        case pp_Type_Float: { return("Float"); } break;
+        case pp_Type_Void: { return("Void"); } break;
+        case pp_Type_Char: { return("Char"); } break;
+        case pp_Type_Bool: { return("Bool"); } break;
         case pp_Type_sglp_Key: { return("sglp_Key"); } break;
         case pp_Type_Player_Direction: { return("Player_Direction"); } break;
         case pp_Type_ID: { return("ID"); } break;
@@ -1482,6 +1658,7 @@ PP_CONSTEXPR PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_Entity: { return("Entity"); } break;
         case pp_Type_Player: { return("Player"); } break;
         case pp_Type_Game_State: { return("Game_State"); } break;
+        case pp_Type_V2: { return("V2"); } break;
         case pp_Type___m128i: { return("__m128i"); } break;
     }
     
@@ -1489,486 +1666,226 @@ PP_CONSTEXPR PP_STATIC char const * pp_type_to_string(pp_Type type) {
     return(0);
 }
 
-PP_CONSTEXPR PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
+PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
     switch(pp_typedef_to_original(type)) {
-        case pp_Type_char:
-            return sizeof(pp_char);
-            break;
-        case pp_Type_short:
-            return sizeof(pp_short);
-            break;
-        case pp_Type_int:
-            return sizeof(pp_int);
-            break;
-        case pp_Type_long:
-            return sizeof(pp_long);
-            break;
-        case pp_Type_float:
-            return sizeof(pp_float);
-            break;
-        case pp_Type_double:
-            return sizeof(pp_double);
-            break;
-        case pp_Type_bool:
-            return sizeof(pp_bool);
-            break;
-        case pp_Type_uint64_t:
-            return sizeof(pp_uint64_t);
-            break;
-        case pp_Type_uint32_t:
-            return sizeof(pp_uint32_t);
-            break;
-        case pp_Type_uint16_t:
-            return sizeof(pp_uint16_t);
-            break;
-        case pp_Type_uint8_t:
-            return sizeof(pp_uint8_t);
-            break;
-        case pp_Type_int64_t:
-            return sizeof(pp_int64_t);
-            break;
-        case pp_Type_int32_t:
-            return sizeof(pp_int32_t);
-            break;
-        case pp_Type_int16_t:
-            return sizeof(pp_int16_t);
-            break;
-        case pp_Type_int8_t:
-            return sizeof(pp_int8_t);
-            break;
-        case pp_Type_uintptr_t:
-            return sizeof(pp_uintptr_t);
-            break;
-        case pp_Type_intptr_t:
-            return sizeof(pp_intptr_t);
-            break;
-        case pp_Type_size_t:
-            return sizeof(pp_size_t);
-            break;
-        case pp_Type_sglp_Bool:
-            return sizeof(pp_sglp_Bool);
-            break;
-        case pp_Type_sglp_GLenum:
-            return sizeof(pp_sglp_GLenum);
-            break;
-        case pp_Type_sglp_GLbitfield:
-            return sizeof(pp_sglp_GLbitfield);
-            break;
-        case pp_Type_sglp_GLuint:
-            return sizeof(pp_sglp_GLuint);
-            break;
-        case pp_Type_sglp_GLint:
-            return sizeof(pp_sglp_GLint);
-            break;
-        case pp_Type_sglp_GLsizei:
-            return sizeof(pp_sglp_GLsizei);
-            break;
-        case pp_Type_sglp_GLboolean:
-            return sizeof(pp_sglp_GLboolean);
-            break;
-        case pp_Type_sglp_GLbyte:
-            return sizeof(pp_sglp_GLbyte);
-            break;
-        case pp_Type_sglp_GLshort:
-            return sizeof(pp_sglp_GLshort);
-            break;
-        case pp_Type_sglp_GLubyte:
-            return sizeof(pp_sglp_GLubyte);
-            break;
-        case pp_Type_sglp_GLushort:
-            return sizeof(pp_sglp_GLushort);
-            break;
-        case pp_Type_sglp_GLulong:
-            return sizeof(pp_sglp_GLulong);
-            break;
-        case pp_Type_sglp_GLfloat:
-            return sizeof(pp_sglp_GLfloat);
-            break;
-        case pp_Type_sglp_GLclampf:
-            return sizeof(pp_sglp_GLclampf);
-            break;
-        case pp_Type_sglp_GLdouble:
-            return sizeof(pp_sglp_GLdouble);
-            break;
-        case pp_Type_sglp_GLclampd:
-            return sizeof(pp_sglp_GLclampd);
-            break;
-        case pp_Type_sglp_GLchar:
-            return sizeof(pp_sglp_GLchar);
-            break;
-        case pp_Type_sglp_GLsizeiptr:
-            return sizeof(pp_sglp_GLsizeiptr);
-            break;
-        case pp_Type_sglp_glBindTexture_t:
-            return sizeof(pp_sglp_glBindTexture_t);
-            break;
-        case pp_Type_sglp_glClear_t:
-            return sizeof(pp_sglp_glClear_t);
-            break;
-        case pp_Type_sglp_glClearColor_t:
-            return sizeof(pp_sglp_glClearColor_t);
-            break;
-        case pp_Type_sglp_glDrawArrays_t:
-            return sizeof(pp_sglp_glDrawArrays_t);
-            break;
-        case pp_Type_sglp_glGetError_t:
-            return sizeof(pp_sglp_glGetError_t);
-            break;
-        case pp_Type_sglp_glTexImage2D_t:
-            return sizeof(pp_sglp_glTexImage2D_t);
-            break;
-        case pp_Type_sglp_glTexParameteri_t:
-            return sizeof(pp_sglp_glTexParameteri_t);
-            break;
-        case pp_Type_sglp_glGetString_t:
-            return sizeof(pp_sglp_glGetString_t);
-            break;
-        case pp_Type_sglp_glViewport_t:
-            return sizeof(pp_sglp_glViewport_t);
-            break;
-        case pp_Type_sglp_glCreateShader_t:
-            return sizeof(pp_sglp_glCreateShader_t);
-            break;
-        case pp_Type_sglp_glShaderSource_t:
-            return sizeof(pp_sglp_glShaderSource_t);
-            break;
-        case pp_Type_sglp_glCompileShader_t:
-            return sizeof(pp_sglp_glCompileShader_t);
-            break;
-        case pp_Type_sglp_glGetShaderiv_t:
-            return sizeof(pp_sglp_glGetShaderiv_t);
-            break;
-        case pp_Type_sglp_glCreateProgram_t:
-            return sizeof(pp_sglp_glCreateProgram_t);
-            break;
-        case pp_Type_sglp_glAttachShader_t:
-            return sizeof(pp_sglp_glAttachShader_t);
-            break;
-        case pp_Type_sglp_glBindAttribLocation_t:
-            return sizeof(pp_sglp_glBindAttribLocation_t);
-            break;
-        case pp_Type_sglp_glLinkProgram_t:
-            return sizeof(pp_sglp_glLinkProgram_t);
-            break;
-        case pp_Type_sglp_glUseProgram_t:
-            return sizeof(pp_sglp_glUseProgram_t);
-            break;
-        case pp_Type_sglp_glGenBuffers_t:
-            return sizeof(pp_sglp_glGenBuffers_t);
-            break;
-        case pp_Type_sglp_glBindBuffer_t:
-            return sizeof(pp_sglp_glBindBuffer_t);
-            break;
-        case pp_Type_sglp_glBufferData_t:
-            return sizeof(pp_sglp_glBufferData_t);
-            break;
-        case pp_Type_sglp_glVertexAttribPointer_t:
-            return sizeof(pp_sglp_glVertexAttribPointer_t);
-            break;
-        case pp_Type_sglp_glEnableVertexAttribArray_t:
-            return sizeof(pp_sglp_glEnableVertexAttribArray_t);
-            break;
-        case pp_Type_sglp_glUniform1i_t:
-            return sizeof(pp_sglp_glUniform1i_t);
-            break;
-        case pp_Type_sglp_glUniform2f_t:
-            return sizeof(pp_sglp_glUniform2f_t);
-            break;
-        case pp_Type_sglp_glUniform4f_t:
-            return sizeof(pp_sglp_glUniform4f_t);
-            break;
-        case pp_Type_sglp_glUniformMatrix4fv_t:
-            return sizeof(pp_sglp_glUniformMatrix4fv_t);
-            break;
-        case pp_Type_sglp_glGetUniformLocation_t:
-            return sizeof(pp_sglp_glGetUniformLocation_t);
-            break;
-        case pp_Type_sglp_glIsShader_t:
-            return sizeof(pp_sglp_glIsShader_t);
-            break;
-        case pp_Type_sglp_glGetProgramiv_t:
-            return sizeof(pp_sglp_glGetProgramiv_t);
-            break;
-        case pp_Type_sglp_glGetProgramInfoLog_t:
-            return sizeof(pp_sglp_glGetProgramInfoLog_t);
-            break;
-        case pp_Type_sglp_glGetShaderInfoLog_t:
-            return sizeof(pp_sglp_glGetShaderInfoLog_t);
-            break;
-        case pp_Type_sglp_glGenVertexArrays_t:
-            return sizeof(pp_sglp_glGenVertexArrays_t);
-            break;
-        case pp_Type_sglp_glBindVertexArray_t:
-            return sizeof(pp_sglp_glBindVertexArray_t);
-            break;
-        case pp_Type_sglp_TranslateMessage_t:
-            return sizeof(pp_sglp_TranslateMessage_t);
-            break;
-        case pp_Type_sglp_DispatchMessageA_t:
-            return sizeof(pp_sglp_DispatchMessageA_t);
-            break;
-        case pp_Type_sglp_PeekMessageA_t:
-            return sizeof(pp_sglp_PeekMessageA_t);
-            break;
-        case pp_Type_sglp_DefWindowProcA_t:
-            return sizeof(pp_sglp_DefWindowProcA_t);
-            break;
-        case pp_Type_sglp_RegisterClassA_t:
-            return sizeof(pp_sglp_RegisterClassA_t);
-            break;
-        case pp_Type_sglp_CreateWindowExA_t:
-            return sizeof(pp_sglp_CreateWindowExA_t);
-            break;
-        case pp_Type_sglp_SetWindowPos_t:
-            return sizeof(pp_sglp_SetWindowPos_t);
-            break;
-        case pp_Type_sglp_GetWindowPlacement_t:
-            return sizeof(pp_sglp_GetWindowPlacement_t);
-            break;
-        case pp_Type_sglp_SetWindowPlacement_t:
-            return sizeof(pp_sglp_SetWindowPlacement_t);
-            break;
-        case pp_Type_sglp_GetDC_t:
-            return sizeof(pp_sglp_GetDC_t);
-            break;
-        case pp_Type_sglp_GetCursorPos_t:
-            return sizeof(pp_sglp_GetCursorPos_t);
-            break;
-        case pp_Type_sglp_ScreenToClient_t:
-            return sizeof(pp_sglp_ScreenToClient_t);
-            break;
-        case pp_Type_sglp_GetWindowLongA_t:
-            return sizeof(pp_sglp_GetWindowLongA_t);
-            break;
-        case pp_Type_sglp_SetWindowLongA_t:
-            return sizeof(pp_sglp_SetWindowLongA_t);
-            break;
-        case pp_Type_sglp_MonitorFromWindow_t:
-            return sizeof(pp_sglp_MonitorFromWindow_t);
-            break;
-        case pp_Type_sglp_GetMonitorInfoA_t:
-            return sizeof(pp_sglp_GetMonitorInfoA_t);
-            break;
-        case pp_Type_sglp_GetSystemMetrics_t:
-            return sizeof(pp_sglp_GetSystemMetrics_t);
-            break;
-        case pp_Type_sglp_ChoosePixelFormat_t:
-            return sizeof(pp_sglp_ChoosePixelFormat_t);
-            break;
-        case pp_Type_sglp_DescribePixelFormat_t:
-            return sizeof(pp_sglp_DescribePixelFormat_t);
-            break;
-        case pp_Type_sglp_SetPixelFormat_t:
-            return sizeof(pp_sglp_SetPixelFormat_t);
-            break;
-        case pp_Type_sglp_SwapBuffers_t:
-            return sizeof(pp_sglp_SwapBuffers_t);
-            break;
-        case pp_Type_DirectSoundCreate:
-            return sizeof(pp_DirectSoundCreate);
-            break;
-        case pp_Type_sglp_XInputGetState_t:
-            return sizeof(pp_sglp_XInputGetState_t);
-            break;
-        case pp_Type_sglp_XInputSetState_t:
-            return sizeof(pp_sglp_XInputSetState_t);
-            break;
-        case pp_Type_wglGetProcAddress_t:
-            return sizeof(pp_wglGetProcAddress_t);
-            break;
-        case pp_Type_wglCreateContext_t:
-            return sizeof(pp_wglCreateContext_t);
-            break;
-        case pp_Type_wglMakeCurrent_t:
-            return sizeof(pp_wglMakeCurrent_t);
-            break;
-        case pp_Type_wglDeleteContext_t:
-            return sizeof(pp_wglDeleteContext_t);
-            break;
-        case pp_Type_wglCreateContextAttribsArb_t:
-            return sizeof(pp_wglCreateContextAttribsArb_t);
-            break;
-        case pp_Type_wglSwapIntervalExt_t:
-            return sizeof(pp_wglSwapIntervalExt_t);
-            break;
-        case pp_Type_TimeBeginPeriod_t:
-            return sizeof(pp_TimeBeginPeriod_t);
-            break;
-        case pp_Type_sglp_XOpenDisplay_t:
-            return sizeof(pp_sglp_XOpenDisplay_t);
-            break;
-        case pp_Type_sglp_XCreateColorMap_t:
-            return sizeof(pp_sglp_XCreateColorMap_t);
-            break;
-        case pp_Type_sglp_XCreateWindow_t:
-            return sizeof(pp_sglp_XCreateWindow_t);
-            break;
-        case pp_Type_sglp_XMapWindow_t:
-            return sizeof(pp_sglp_XMapWindow_t);
-            break;
-        case pp_Type_sglp_XStoreName_t:
-            return sizeof(pp_sglp_XStoreName_t);
-            break;
-        case pp_Type_sglp_XSelectInput_t:
-            return sizeof(pp_sglp_XSelectInput_t);
-            break;
-        case pp_Type_sglp_XPending_t:
-            return sizeof(pp_sglp_XPending_t);
-            break;
-        case pp_Type_sglp_XNextEvent_t:
-            return sizeof(pp_sglp_XNextEvent_t);
-            break;
-        case pp_Type_sglp_XKeycodeToKeysym_t:
-            return sizeof(pp_sglp_XKeycodeToKeysym_t);
-            break;
-        case pp_Type_sglp_XGetWindowAttributes_t:
-            return sizeof(pp_sglp_XGetWindowAttributes_t);
-            break;
-        case pp_Type_sglp_XQueryPointer_t:
-            return sizeof(pp_sglp_XQueryPointer_t);
-            break;
-        case pp_Type_sglp_sem_open_t:
-            return sizeof(pp_sglp_sem_open_t);
-            break;
-        case pp_Type_sglp_sem_close_t:
-            return sizeof(pp_sglp_sem_close_t);
-            break;
-        case pp_Type_sglp_pthread_create_t:
-            return sizeof(pp_sglp_pthread_create_t);
-            break;
-        case pp_Type_sglp_glXGetProcAddressArb_t:
-            return sizeof(pp_sglp_glXGetProcAddressArb_t);
-            break;
-        case pp_Type_sglp_glXChooseVisual_t:
-            return sizeof(pp_sglp_glXChooseVisual_t);
-            break;
-        case pp_Type_sglp_glXCreateContext_t:
-            return sizeof(pp_sglp_glXCreateContext_t);
-            break;
-        case pp_Type_sglp_glXMakeCurrent_t:
-            return sizeof(pp_sglp_glXMakeCurrent_t);
-            break;
-        case pp_Type_sglp_glXSwapBuffers_t:
-            return sizeof(pp_sglp_glXSwapBuffers_t);
-            break;
-        case pp_Type_sglm_Bool:
-            return sizeof(pp_sglm_Bool);
-            break;
-        case pp_Type_sglp_Key:
-            return sizeof(pp_int);
-            break;
-        case pp_Type_Player_Direction:
-            return sizeof(pp_Player_Direction);
-            break;
-        case pp_Type_ID:
-            return sizeof(pp_int);
-            break;
-        case pp_Type_sglp_Sprite:
-            return sizeof(pp_sglp_Sprite);
-            break;
-        case pp_Type_sglp_PlayingSound:
-            return sizeof(pp_sglp_PlayingSound);
-            break;
-        case pp_Type_sglp_OpenGlFunctions:
-            return sizeof(pp_sglp_OpenGlFunctions);
-            break;
-        case pp_Type_sglp_Settings:
-            return sizeof(pp_sglp_Settings);
-            break;
-        case pp_Type_sglp_File:
-            return sizeof(pp_sglp_File);
-            break;
-        case pp_Type_sglp_API:
-            return sizeof(pp_sglp_API);
-            break;
-        case pp_Type_sglp_LoadedSound:
-            return sizeof(pp_sglp_LoadedSound);
-            break;
-        case pp_Type_sglp_SoundOutputBuffer:
-            return sizeof(pp_sglp_SoundOutputBuffer);
-            break;
-        case pp_Type_sglp_AudioState:
-            return sizeof(pp_sglp_AudioState);
-            break;
-        case pp_Type_sglp_WAVEHeader:
-            return sizeof(pp_sglp_WAVEHeader);
-            break;
-        case pp_Type_sglp_WavChunk:
-            return sizeof(pp_sglp_WavChunk);
-            break;
-        case pp_Type_sglp_WavFormat:
-            return sizeof(pp_sglp_WavFormat);
-            break;
-        case pp_Type_sglp_RiffIter:
-            return sizeof(pp_sglp_RiffIter);
-            break;
-        case pp_Type_SGLP_XINPUT_GAMEPAD:
-            return sizeof(pp_SGLP_XINPUT_GAMEPAD);
-            break;
-        case pp_Type_SGLP_XINPUT_STATE:
-            return sizeof(pp_SGLP_XINPUT_STATE);
-            break;
-        case pp_Type_SGLP_XINPUT_VIBRATION:
-            return sizeof(pp_SGLP_XINPUT_VIBRATION);
-            break;
-        case pp_Type_sglp_Win32SoundOutput:
-            return sizeof(pp_sglp_Win32SoundOutput);
-            break;
-        case pp_Type_WorkQueueEntry:
-            return sizeof(pp_WorkQueueEntry);
-            break;
-        case pp_Type_WorkQueue:
-            return sizeof(pp_WorkQueue);
-            break;
-        case pp_Type_sglm_V2:
-            return sizeof(pp_sglm_V2);
-            break;
-        case pp_Type_sglm_Mat4x4:
-            return sizeof(pp_sglm_Mat4x4);
-            break;
-        case pp_Type___m128:
-            return sizeof(pp___m128);
-            break;
-        case pp_Type_Entity:
-            return sizeof(pp_Entity);
-            break;
-        case pp_Type_Player:
-            return sizeof(pp_Player);
-            break;
-        case pp_Type_Game_State:
-            return sizeof(pp_Game_State);
-            break;
-        case pp_Type___m128i:
-            return sizeof(pp___m128i);
-            break;
+        case pp_Type_char: { return sizeof(pp_char); } break;
+        case pp_Type_short: { return sizeof(pp_short); } break;
+        case pp_Type_int: { return sizeof(pp_int); } break;
+        case pp_Type_long: { return sizeof(pp_long); } break;
+        case pp_Type_float: { return sizeof(pp_float); } break;
+        case pp_Type_double: { return sizeof(pp_double); } break;
+        case pp_Type_uint64_t: { return sizeof(pp_uint64_t); } break;
+        case pp_Type_uint32_t: { return sizeof(pp_uint32_t); } break;
+        case pp_Type_uint16_t: { return sizeof(pp_uint16_t); } break;
+        case pp_Type_uint8_t: { return sizeof(pp_uint8_t); } break;
+        case pp_Type_int64_t: { return sizeof(pp_int64_t); } break;
+        case pp_Type_int32_t: { return sizeof(pp_int32_t); } break;
+        case pp_Type_int16_t: { return sizeof(pp_int16_t); } break;
+        case pp_Type_int8_t: { return sizeof(pp_int8_t); } break;
+        case pp_Type_uintptr_t: { return sizeof(pp_uintptr_t); } break;
+        case pp_Type_intptr_t: { return sizeof(pp_intptr_t); } break;
+        case pp_Type_size_t: { return sizeof(pp_size_t); } break;
+        case pp_Type_sglp_Bool: { return sizeof(pp_sglp_Bool); } break;
+        case pp_Type_sglp_GLenum: { return sizeof(pp_sglp_GLenum); } break;
+        case pp_Type_sglp_GLbitfield: { return sizeof(pp_sglp_GLbitfield); } break;
+        case pp_Type_sglp_GLuint: { return sizeof(pp_sglp_GLuint); } break;
+        case pp_Type_sglp_GLint: { return sizeof(pp_sglp_GLint); } break;
+        case pp_Type_sglp_GLsizei: { return sizeof(pp_sglp_GLsizei); } break;
+        case pp_Type_sglp_GLboolean: { return sizeof(pp_sglp_GLboolean); } break;
+        case pp_Type_sglp_GLbyte: { return sizeof(pp_sglp_GLbyte); } break;
+        case pp_Type_sglp_GLshort: { return sizeof(pp_sglp_GLshort); } break;
+        case pp_Type_sglp_GLubyte: { return sizeof(pp_sglp_GLubyte); } break;
+        case pp_Type_sglp_GLushort: { return sizeof(pp_sglp_GLushort); } break;
+        case pp_Type_sglp_GLulong: { return sizeof(pp_sglp_GLulong); } break;
+        case pp_Type_sglp_GLfloat: { return sizeof(pp_sglp_GLfloat); } break;
+        case pp_Type_sglp_GLclampf: { return sizeof(pp_sglp_GLclampf); } break;
+        case pp_Type_sglp_GLdouble: { return sizeof(pp_sglp_GLdouble); } break;
+        case pp_Type_sglp_GLclampd: { return sizeof(pp_sglp_GLclampd); } break;
+        case pp_Type_sglp_GLchar: { return sizeof(pp_sglp_GLchar); } break;
+        case pp_Type_sglp_GLsizeiptr: { return sizeof(pp_sglp_GLsizeiptr); } break;
+        case pp_Type_sglp_glBindTexture_t: { return sizeof(pp_sglp_glBindTexture_t); } break;
+        case pp_Type_sglp_glClear_t: { return sizeof(pp_sglp_glClear_t); } break;
+        case pp_Type_sglp_glClearColor_t: { return sizeof(pp_sglp_glClearColor_t); } break;
+        case pp_Type_sglp_glDrawArrays_t: { return sizeof(pp_sglp_glDrawArrays_t); } break;
+        case pp_Type_sglp_glGetError_t: { return sizeof(pp_sglp_glGetError_t); } break;
+        case pp_Type_sglp_glTexImage2D_t: { return sizeof(pp_sglp_glTexImage2D_t); } break;
+        case pp_Type_sglp_glTexParameteri_t: { return sizeof(pp_sglp_glTexParameteri_t); } break;
+        case pp_Type_sglp_glGetString_t: { return sizeof(pp_sglp_glGetString_t); } break;
+        case pp_Type_sglp_glViewport_t: { return sizeof(pp_sglp_glViewport_t); } break;
+        case pp_Type_sglp_glCreateShader_t: { return sizeof(pp_sglp_glCreateShader_t); } break;
+        case pp_Type_sglp_glShaderSource_t: { return sizeof(pp_sglp_glShaderSource_t); } break;
+        case pp_Type_sglp_glCompileShader_t: { return sizeof(pp_sglp_glCompileShader_t); } break;
+        case pp_Type_sglp_glGetShaderiv_t: { return sizeof(pp_sglp_glGetShaderiv_t); } break;
+        case pp_Type_sglp_glCreateProgram_t: { return sizeof(pp_sglp_glCreateProgram_t); } break;
+        case pp_Type_sglp_glAttachShader_t: { return sizeof(pp_sglp_glAttachShader_t); } break;
+        case pp_Type_sglp_glBindAttribLocation_t: { return sizeof(pp_sglp_glBindAttribLocation_t); } break;
+        case pp_Type_sglp_glLinkProgram_t: { return sizeof(pp_sglp_glLinkProgram_t); } break;
+        case pp_Type_sglp_glUseProgram_t: { return sizeof(pp_sglp_glUseProgram_t); } break;
+        case pp_Type_sglp_glGenBuffers_t: { return sizeof(pp_sglp_glGenBuffers_t); } break;
+        case pp_Type_sglp_glBindBuffer_t: { return sizeof(pp_sglp_glBindBuffer_t); } break;
+        case pp_Type_sglp_glBufferData_t: { return sizeof(pp_sglp_glBufferData_t); } break;
+        case pp_Type_sglp_glVertexAttribPointer_t: { return sizeof(pp_sglp_glVertexAttribPointer_t); } break;
+        case pp_Type_sglp_glEnableVertexAttribArray_t: { return sizeof(pp_sglp_glEnableVertexAttribArray_t); } break;
+        case pp_Type_sglp_glUniform1i_t: { return sizeof(pp_sglp_glUniform1i_t); } break;
+        case pp_Type_sglp_glUniform2f_t: { return sizeof(pp_sglp_glUniform2f_t); } break;
+        case pp_Type_sglp_glUniform4f_t: { return sizeof(pp_sglp_glUniform4f_t); } break;
+        case pp_Type_sglp_glUniformMatrix4fv_t: { return sizeof(pp_sglp_glUniformMatrix4fv_t); } break;
+        case pp_Type_sglp_glGetUniformLocation_t: { return sizeof(pp_sglp_glGetUniformLocation_t); } break;
+        case pp_Type_sglp_glIsShader_t: { return sizeof(pp_sglp_glIsShader_t); } break;
+        case pp_Type_sglp_glGetProgramiv_t: { return sizeof(pp_sglp_glGetProgramiv_t); } break;
+        case pp_Type_sglp_glGetProgramInfoLog_t: { return sizeof(pp_sglp_glGetProgramInfoLog_t); } break;
+        case pp_Type_sglp_glGetShaderInfoLog_t: { return sizeof(pp_sglp_glGetShaderInfoLog_t); } break;
+        case pp_Type_sglp_glGenVertexArrays_t: { return sizeof(pp_sglp_glGenVertexArrays_t); } break;
+        case pp_Type_sglp_glBindVertexArray_t: { return sizeof(pp_sglp_glBindVertexArray_t); } break;
+        case pp_Type_sglp_TranslateMessage_t: { return sizeof(pp_sglp_TranslateMessage_t); } break;
+        case pp_Type_sglp_DispatchMessageA_t: { return sizeof(pp_sglp_DispatchMessageA_t); } break;
+        case pp_Type_sglp_PeekMessageA_t: { return sizeof(pp_sglp_PeekMessageA_t); } break;
+        case pp_Type_sglp_DefWindowProcA_t: { return sizeof(pp_sglp_DefWindowProcA_t); } break;
+        case pp_Type_sglp_RegisterClassA_t: { return sizeof(pp_sglp_RegisterClassA_t); } break;
+        case pp_Type_sglp_CreateWindowExA_t: { return sizeof(pp_sglp_CreateWindowExA_t); } break;
+        case pp_Type_sglp_SetWindowPos_t: { return sizeof(pp_sglp_SetWindowPos_t); } break;
+        case pp_Type_sglp_GetWindowPlacement_t: { return sizeof(pp_sglp_GetWindowPlacement_t); } break;
+        case pp_Type_sglp_SetWindowPlacement_t: { return sizeof(pp_sglp_SetWindowPlacement_t); } break;
+        case pp_Type_sglp_GetDC_t: { return sizeof(pp_sglp_GetDC_t); } break;
+        case pp_Type_sglp_GetCursorPos_t: { return sizeof(pp_sglp_GetCursorPos_t); } break;
+        case pp_Type_sglp_ScreenToClient_t: { return sizeof(pp_sglp_ScreenToClient_t); } break;
+        case pp_Type_sglp_GetWindowLongA_t: { return sizeof(pp_sglp_GetWindowLongA_t); } break;
+        case pp_Type_sglp_SetWindowLongA_t: { return sizeof(pp_sglp_SetWindowLongA_t); } break;
+        case pp_Type_sglp_MonitorFromWindow_t: { return sizeof(pp_sglp_MonitorFromWindow_t); } break;
+        case pp_Type_sglp_GetMonitorInfoA_t: { return sizeof(pp_sglp_GetMonitorInfoA_t); } break;
+        case pp_Type_sglp_GetSystemMetrics_t: { return sizeof(pp_sglp_GetSystemMetrics_t); } break;
+        case pp_Type_sglp_ChoosePixelFormat_t: { return sizeof(pp_sglp_ChoosePixelFormat_t); } break;
+        case pp_Type_sglp_DescribePixelFormat_t: { return sizeof(pp_sglp_DescribePixelFormat_t); } break;
+        case pp_Type_sglp_SetPixelFormat_t: { return sizeof(pp_sglp_SetPixelFormat_t); } break;
+        case pp_Type_sglp_SwapBuffers_t: { return sizeof(pp_sglp_SwapBuffers_t); } break;
+        case pp_Type_DirectSoundCreate: { return sizeof(pp_DirectSoundCreate); } break;
+        case pp_Type_sglp_XInputGetState_t: { return sizeof(pp_sglp_XInputGetState_t); } break;
+        case pp_Type_sglp_XInputSetState_t: { return sizeof(pp_sglp_XInputSetState_t); } break;
+        case pp_Type_wglGetProcAddress_t: { return sizeof(pp_wglGetProcAddress_t); } break;
+        case pp_Type_wglCreateContext_t: { return sizeof(pp_wglCreateContext_t); } break;
+        case pp_Type_wglMakeCurrent_t: { return sizeof(pp_wglMakeCurrent_t); } break;
+        case pp_Type_wglDeleteContext_t: { return sizeof(pp_wglDeleteContext_t); } break;
+        case pp_Type_wglCreateContextAttribsArb_t: { return sizeof(pp_wglCreateContextAttribsArb_t); } break;
+        case pp_Type_wglSwapIntervalExt_t: { return sizeof(pp_wglSwapIntervalExt_t); } break;
+        case pp_Type_TimeBeginPeriod_t: { return sizeof(pp_TimeBeginPeriod_t); } break;
+        case pp_Type_sglp_XOpenDisplay_t: { return sizeof(pp_sglp_XOpenDisplay_t); } break;
+        case pp_Type_sglp_XCreateColorMap_t: { return sizeof(pp_sglp_XCreateColorMap_t); } break;
+        case pp_Type_sglp_XCreateWindow_t: { return sizeof(pp_sglp_XCreateWindow_t); } break;
+        case pp_Type_sglp_XMapWindow_t: { return sizeof(pp_sglp_XMapWindow_t); } break;
+        case pp_Type_sglp_XStoreName_t: { return sizeof(pp_sglp_XStoreName_t); } break;
+        case pp_Type_sglp_XSelectInput_t: { return sizeof(pp_sglp_XSelectInput_t); } break;
+        case pp_Type_sglp_XPending_t: { return sizeof(pp_sglp_XPending_t); } break;
+        case pp_Type_sglp_XNextEvent_t: { return sizeof(pp_sglp_XNextEvent_t); } break;
+        case pp_Type_sglp_XKeycodeToKeysym_t: { return sizeof(pp_sglp_XKeycodeToKeysym_t); } break;
+        case pp_Type_sglp_XGetWindowAttributes_t: { return sizeof(pp_sglp_XGetWindowAttributes_t); } break;
+        case pp_Type_sglp_XQueryPointer_t: { return sizeof(pp_sglp_XQueryPointer_t); } break;
+        case pp_Type_sglp_sem_open_t: { return sizeof(pp_sglp_sem_open_t); } break;
+        case pp_Type_sglp_sem_close_t: { return sizeof(pp_sglp_sem_close_t); } break;
+        case pp_Type_sglp_pthread_create_t: { return sizeof(pp_sglp_pthread_create_t); } break;
+        case pp_Type_sglp_glXGetProcAddressArb_t: { return sizeof(pp_sglp_glXGetProcAddressArb_t); } break;
+        case pp_Type_sglp_glXChooseVisual_t: { return sizeof(pp_sglp_glXChooseVisual_t); } break;
+        case pp_Type_sglp_glXCreateContext_t: { return sizeof(pp_sglp_glXCreateContext_t); } break;
+        case pp_Type_sglp_glXMakeCurrent_t: { return sizeof(pp_sglp_glXMakeCurrent_t); } break;
+        case pp_Type_sglp_glXSwapBuffers_t: { return sizeof(pp_sglp_glXSwapBuffers_t); } break;
+        case pp_Type_sglm_Bool: { return sizeof(pp_sglm_Bool); } break;
+        case pp_Type_sgl_Uint64: { return sizeof(pp_sgl_Uint64); } break;
+        case pp_Type_sgl_Uint32: { return sizeof(pp_sgl_Uint32); } break;
+        case pp_Type_sgl_Uint16: { return sizeof(pp_sgl_Uint16); } break;
+        case pp_Type_sgl_Uint8: { return sizeof(pp_sgl_Uint8); } break;
+        case pp_Type_sgl_Int64: { return sizeof(pp_sgl_Int64); } break;
+        case pp_Type_sgl_Int32: { return sizeof(pp_sgl_Int32); } break;
+        case pp_Type_sgl_Int16: { return sizeof(pp_sgl_Int16); } break;
+        case pp_Type_sgl_Int8: { return sizeof(pp_sgl_Int8); } break;
+        case pp_Type_sgl_Int: { return sizeof(pp_sgl_Int); } break;
+        case pp_Type_sgl_Uint: { return sizeof(pp_sgl_Uint); } break;
+        case pp_Type_sgl_Byte: { return sizeof(pp_sgl_Byte); } break;
+        case pp_Type_sgl_Uintptr: { return sizeof(pp_sgl_Uintptr); } break;
+        case pp_Type_sgl_Intptr: { return sizeof(pp_sgl_Intptr); } break;
+        case pp_Type_sgl_Float32: { return sizeof(pp_sgl_Float32); } break;
+        case pp_Type_sgl_Float64: { return sizeof(pp_sgl_Float64); } break;
+        case pp_Type_sgl_Float: { return sizeof(pp_sgl_Float); } break;
+        case pp_Type_sgl_Char: { return sizeof(pp_sgl_Char); } break;
+        case pp_Type_sgl_Bool: { return sizeof(pp_sgl_Bool); } break;
+        case pp_Type_Uint64: { return sizeof(pp_Uint64); } break;
+        case pp_Type_Uint32: { return sizeof(pp_Uint32); } break;
+        case pp_Type_Uint16: { return sizeof(pp_Uint16); } break;
+        case pp_Type_Uint8: { return sizeof(pp_Uint8); } break;
+        case pp_Type_Int64: { return sizeof(pp_Int64); } break;
+        case pp_Type_Int32: { return sizeof(pp_Int32); } break;
+        case pp_Type_Int16: { return sizeof(pp_Int16); } break;
+        case pp_Type_Int8: { return sizeof(pp_Int8); } break;
+        case pp_Type_Int: { return sizeof(pp_Int); } break;
+        case pp_Type_Uint: { return sizeof(pp_Uint); } break;
+        case pp_Type_Byte: { return sizeof(pp_Byte); } break;
+        case pp_Type_Uintptr: { return sizeof(pp_Uintptr); } break;
+        case pp_Type_Intptr: { return sizeof(pp_Intptr); } break;
+        case pp_Type_Float32: { return sizeof(pp_Float32); } break;
+        case pp_Type_Float64: { return sizeof(pp_Float64); } break;
+        case pp_Type_Float: { return sizeof(pp_Float); } break;
+        case pp_Type_Void: { return sizeof(pp_Void); } break;
+        case pp_Type_Char: { return sizeof(pp_Char); } break;
+        case pp_Type_Bool: { return sizeof(pp_Bool); } break;
+        case pp_Type_sglp_Key: { return sizeof(pp_int); } break;
+        case pp_Type_Player_Direction: { return sizeof(pp_int); } break;
+        case pp_Type_ID: { return sizeof(pp_int); } break;
+        case pp_Type_sglp_Sprite: { return sizeof(pp_sglp_Sprite); } break;
+        case pp_Type_sglp_PlayingSound: { return sizeof(pp_sglp_PlayingSound); } break;
+        case pp_Type_sglp_OpenGlFunctions: { return sizeof(pp_sglp_OpenGlFunctions); } break;
+        case pp_Type_sglp_Settings: { return sizeof(pp_sglp_Settings); } break;
+        case pp_Type_sglp_File: { return sizeof(pp_sglp_File); } break;
+        case pp_Type_sglp_API: { return sizeof(pp_sglp_API); } break;
+        case pp_Type_sglp_LoadedSound: { return sizeof(pp_sglp_LoadedSound); } break;
+        case pp_Type_sglp_SoundOutputBuffer: { return sizeof(pp_sglp_SoundOutputBuffer); } break;
+        case pp_Type_sglp_AudioState: { return sizeof(pp_sglp_AudioState); } break;
+        case pp_Type_sglp_WAVEHeader: { return sizeof(pp_sglp_WAVEHeader); } break;
+        case pp_Type_sglp_WavChunk: { return sizeof(pp_sglp_WavChunk); } break;
+        case pp_Type_sglp_WavFormat: { return sizeof(pp_sglp_WavFormat); } break;
+        case pp_Type_sglp_RiffIter: { return sizeof(pp_sglp_RiffIter); } break;
+        case pp_Type_SGLP_XINPUT_GAMEPAD: { return sizeof(pp_SGLP_XINPUT_GAMEPAD); } break;
+        case pp_Type_SGLP_XINPUT_STATE: { return sizeof(pp_SGLP_XINPUT_STATE); } break;
+        case pp_Type_SGLP_XINPUT_VIBRATION: { return sizeof(pp_SGLP_XINPUT_VIBRATION); } break;
+        case pp_Type_sglp_Win32SoundOutput: { return sizeof(pp_sglp_Win32SoundOutput); } break;
+        case pp_Type_WorkQueueEntry: { return sizeof(pp_WorkQueueEntry); } break;
+        case pp_Type_WorkQueue: { return sizeof(pp_WorkQueue); } break;
+        case pp_Type_sglm_V2: { return sizeof(pp_sglm_V2); } break;
+        case pp_Type_sglm_Mat4x4: { return sizeof(pp_sglm_Mat4x4); } break;
+        case pp_Type___m128: { return sizeof(pp___m128); } break;
+        case pp_Type_Entity: { return sizeof(pp_Entity); } break;
+        case pp_Type_Player: { return sizeof(pp_Player); } break;
+        case pp_Type_Game_State: { return sizeof(pp_Game_State); } break;
+        case pp_Type_V2: { return sizeof(pp_V2); } break;
+        case pp_Type___m128i: { return sizeof(pp___m128i); } break;
     }
 
     PP_ASSERT(0);
     return(0);
 }
-PP_CONSTEXPR PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t index);
+PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t index);
 // uintptr_t pp_serialize_struct(TYPE *var, TYPE, buffer, buffer_size);
 #define pp_serialize_struct(var, Type, buf, size) pp_serialize_struct_(var, PP_CONCAT(pp_Type_, Type), PP_TO_STRING(var), 0, buf, size, 0)
-PP_CONSTEXPR PP_STATIC uintptr_t
+PP_STATIC uintptr_t
 pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent, char *buffer, uintptr_t buf_size, uintptr_t bytes_written) {
     char indent_buf[256] = {0};
+    uintptr_t i, k, num_members;
+    int j;
+
     PP_ASSERT((buffer) && (buf_size > 0)); // Check params.
 
     // Setup the indent buffer.
     indent += 4;
-    for(uintptr_t i = 0; (i < indent); ++i) {indent_buf[i] = ' ';}
+    for(i = 0; (i < indent); ++i) {indent_buf[i] = ' ';}
 
-    uintptr_t num_members = pp_get_number_of_members(type); PP_ASSERT(num_members != -1); // Get the number of members for the for loop.
-    for(uintptr_t i = 0; (i < num_members); ++i) {
+    num_members = pp_get_number_of_members(type); PP_ASSERT(num_members != -1); // Get the number of members for the for loop.
+    for(i = 0; (i < num_members); ++i) {
         pp_MemberDefinition member = pp_get_members_from_type(type, i);
         uintptr_t *member_ptr = (uintptr_t *)((char *)var + member.offset); // Get the actual pointer to the memory address.
         pp_StructureType struct_type = pp_get_structure_type(member.type);
         if(struct_type == pp_StructureType_primitive) {
             char const *type_as_string = pp_type_to_string(member.type);
             if(member.arr_size > 1) {
-                for(int j = 0; (j < member.arr_size); ++j) {
+                for(j = 0; (j < member.arr_size); ++j) {
                     uintptr_t *member_ptr_as_uintptr = (uintptr_t *)member_ptr; // For arrays of pointers.
-                    pp_MyBool is_null = (member.ptr) ? member_ptr_as_uintptr[j] == 0 : false;
+                    pp_MyBool is_null = (member.ptr) ? member_ptr_as_uintptr[j] == 0 : PP_FALSE;
                     if(!is_null) {
 
 #define print_prim_arr(m, Type, p) Type *v = (member.ptr) ? *(Type **)((char unsigned *)member_ptr + (sizeof(uintptr_t) * j)) : &((Type *)member_ptr)[j]; bytes_written += PP_SPRINTF((char *)buffer + bytes_written, buf_size - bytes_written, "\n%s " #Type " %s%s[%d] = " m "", indent_buf, (member.ptr) ? "*" : "", member.name, j, p (Type *)v)
@@ -1978,7 +1895,6 @@ pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent
                         else if(original_type == pp_Type_int)   { print_prim_arr("%d",  int, *);    }
                         else if(original_type == pp_Type_long)  { print_prim_arr("%ld", long, *);   }
                         else if(original_type == pp_Type_short) { print_prim_arr("%d",  short, *);  }
-                        else if(original_type == pp_Type_bool)  { print_prim_arr("%d",  int, *);    }
 
                         else if(original_type == pp_Type_uint64_t) { print_prim_arr("%lu", uint64_t, *); }
                         else if(original_type == pp_Type_int64_t)  { print_prim_arr("%ld", int64_t, *);  }
@@ -2009,7 +1925,7 @@ pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent
                 uintptr_t *v = 0;
                 if(member.ptr) {
                     v = *(uintptr_t **)member_ptr;
-                    for(uintptr_t k = 0; (k < member.ptr - 1); ++k) {
+                    for(k = 0; (k < member.ptr - 1); ++k) {
                         v = *(uintptr_t **)v;
                     }
                 } else {
@@ -2023,7 +1939,6 @@ pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent
                     else if(original_type == pp_Type_int)   { print_prim("%d",  int, *);    }
                     else if(original_type == pp_Type_long)  { print_prim("%ld", long, *);   }
                     else if(original_type == pp_Type_short) { print_prim("%d",  short, *);  }
-                    else if(original_type == pp_Type_bool)  { print_prim("%d",  int, *);    }
 
                     else if(original_type == pp_Type_uint64_t)  { print_prim("%lu", uint64_t, *); }
                     else if(original_type == pp_Type_int64_t)   { print_prim("%ld", int64_t, *);  }
@@ -2052,19 +1967,21 @@ pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent
             }
         } else if(struct_type == pp_StructureType_enum) {
             char const *type_as_string = pp_type_to_string(member.type);
+            pp_Type original_type;
+            char const *enum_as_string;
 
             int *v = 0; // Assuming the enum is an integer.
             if(member.ptr) {
                 v = *(int **)member_ptr;
-                for(int k = 0; (k < member.ptr - 1); ++k) {
+                for(k = 0; (k < member.ptr - 1); ++k) {
                     v = *(int **)v;
                 }
             } else {
                 v = (int *)member_ptr;
             }
 
-            pp_Type original_type = pp_typedef_to_original(member.type);
-            char const *enum_as_string = pp_enum_to_string(original_type, *(int *)v);
+            original_type = pp_typedef_to_original(member.type);
+            enum_as_string = pp_enum_to_string(original_type, *(int *)v);
             if(enum_as_string) {
                 bytes_written += PP_SPRINTF((char *)buffer + bytes_written, buf_size - bytes_written, "\n%s %s *%s = %s", indent_buf, type_as_string, member.name, enum_as_string);
             }
@@ -2080,7 +1997,7 @@ pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent
                 void *ptr = (member.ptr) ? *(uintptr_t **)member_ptr : member_ptr;
                 bytes_written = pp_serialize_struct_(ptr, member.type, member.name, indent, buffer, buf_size - bytes_written, bytes_written);
             } else {
-                for(uintptr_t j = 0; (j < member.arr_size); ++j) {
+                for(j = 0; (j < member.arr_size); ++j) {
                     uintptr_t size_of_struct = pp_get_size_from_type(member.type);
 
                     char unsigned *ptr = 0;
@@ -2107,7 +2024,7 @@ pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent
 //
 // Number of members in an enum.
 //
-PP_CONSTEXPR PP_STATIC uintptr_t pp_get_enum_size_from_type(pp_Type type) {
+PP_STATIC uintptr_t pp_get_enum_size_from_type(pp_Type type) {
     switch(pp_typedef_to_original(type)) {
         case pp_Type_sglp_Key: { return(55); } break;
         case pp_Type_Player_Direction: { return(4); } break;
@@ -2121,7 +2038,7 @@ PP_CONSTEXPR PP_STATIC uintptr_t pp_get_enum_size_from_type(pp_Type type) {
 //
 // String to enum.
 //
-PP_CONSTEXPR PP_STATIC intptr_t pp_string_to_enum(pp_Type type, char const *str) {
+PP_STATIC intptr_t pp_string_to_enum(pp_Type type, char const *str) {
     switch(pp_typedef_to_original(type)) {
         case pp_Type_sglp_Key: {
             if(pp_string_compare(str, "sglp_key_unknown")) { return(0); }
@@ -2192,7 +2109,7 @@ PP_CONSTEXPR PP_STATIC intptr_t pp_string_to_enum(pp_Type type, char const *str)
             else if(pp_string_compare(str, "ID_sound_background")) { return(2); }
             else if(pp_string_compare(str, "ID_sprite_player")) { return(3); }
             else if(pp_string_compare(str, "ID_sprite_enemy_one")) { return(4); }
-            else if(pp_string_compare(str, "ID_sprite_letter")) { return(5); }
+            else if(pp_string_compare(str, "ID_sprite_bitmap_font")) { return(5); }
         } break;
     }
 
@@ -2203,7 +2120,7 @@ PP_CONSTEXPR PP_STATIC intptr_t pp_string_to_enum(pp_Type type, char const *str)
 //
 // Enum to string.
 //
-PP_CONSTEXPR PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t index) {
+PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t index) {
     switch(pp_typedef_to_original(type)) {
         case pp_Type_sglp_Key: {
             switch(index) {
@@ -2279,7 +2196,7 @@ PP_CONSTEXPR PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t ind
                 case 2: { return("ID_sound_background"); } break;
                 case 3: { return("ID_sprite_player"); } break;
                 case 4: { return("ID_sprite_enemy_one"); } break;
-                case 5: { return("ID_sprite_letter"); } break;
+                case 5: { return("ID_sprite_bitmap_font"); } break;
             }
         } break;
     }

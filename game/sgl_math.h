@@ -1,3 +1,16 @@
+/*
+    sgl_math.h - v0.1 - public domain math library - no warranty implied; use at your own risk
+
+    Write #define SGLM_IMPLEMENTATION in ONE of the C/C++ files to create the implementation.
+
+    // It should look like this.
+    #define SGLM_IMPLEMENTATION
+    #include "sgl_math.h"
+
+    LICENSE at end of file.
+*/
+
+
 #if !defined(_SGLM_MATH_H)
 
 //
@@ -113,9 +126,10 @@ sglm_V2 sglm_v2_midpoint(sglm_V2 a, sglm_V2 b);
 //
 // Mat4x4.
 //
-struct sglm_Mat4x4 {
+// TODO - It _may_ be stupid to store a __m128 in a struct...
+typedef struct sglm_Mat4x4 {
     __m128 e[4];
-};
+} sglm_Mat4x4;
 
 sglm_Mat4x4 sglm_mat4x4_set_trans_scale(float x, float y, float scalex, float scaley);
 sglm_Mat4x4 sglm_mat4x4_set_trans_scale_rot(float x, float y, float scalex, float scaley, float angle);
@@ -132,9 +146,9 @@ float *sglm_mat4x4_as_float_arr(float *arr, sglm_Mat4x4 *mat);
 
 #if !defined(SGLM_ASSERT)
     #if SGLM_COMPILER_MSVC
-        #define SGLM_ASSERT(x, ...) do { if(!(x)) { __debugbreak(); } } while(0)
+        #define SGLM_ASSERT(x) do { if(!(x)) { __debugbreak(); } } while(0)
     #else
-        #define SGLM_ASSERT(x, ...) do { if(!(x)) { *(int volatile *)0 = 0; } } while(0) // TODO(Jonny): Find out what debugbreak is actually on Linux.
+        #define SGLM_ASSERT(x) do { if(!(x)) { *(int volatile *)0 = 0; } } while(0) // TODO(Jonny): Find out what debugbreak is actually on Linux.
     #endif
 #endif
 
@@ -235,8 +249,7 @@ sglm_Bool sglm_v2_compare(sglm_V2 a, sglm_V2 b) {
     sglm_Bool res;
     if((a.x == b.x) && (a.y == b.y)) {
         res = 1; // true
-    }
-    else {
+    } else {
         res = 0; // false
     }
 
@@ -495,3 +508,45 @@ sglm_Mat4x4 sglm_mat4x4_mul(sglm_Mat4x4 *a, sglm_Mat4x4 *b) {
 
 #define _SGLM_MATH_H
 #endif // !defined(_SGLM_MATH_H)
+
+/*
+------------------------------------------------------------------------------
+This software is available under 2 licenses -- choose whichever you prefer.
+------------------------------------------------------------------------------
+ALTERNATIVE A - Public Domain (www.unlicense.org)
+This is free and unencumbered software released into the public domain.
+Anyone is free to copy, modify, publish, use, compile, sell, or distribute this
+software, either in source code form or as a compiled binary, for any purpose,
+commercial or non-commercial, and by any means.
+In jurisdictions that recognize copyright laws, the author or authors of this
+software dedicate any and all copyright interest in the software to the public
+domain. We make this dedication for the benefit of the public at large and to
+the detriment of our heirs and successors. We intend this dedication to be an
+overt act of relinquishment in perpetuity of all present and future rights to
+this software under copyright law.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+------------------------------------------------------------------------------
+ALTERNATIVE B - MIT License
+Copyright (c) 2017 Jonathan Livingstone
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+------------------------------------------------------------------------------
+*/

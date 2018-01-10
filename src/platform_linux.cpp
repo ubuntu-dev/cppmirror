@@ -35,11 +35,10 @@ Void *system_realloc(Void *ptr, Uintptr size) {
     Void *res = 0;
     if(ptr) {
         Void *original_raw = (Uintptr *)ptr - 1;
-        Uintptr *new_raw = (Uintptr *)realloc(ptr, size + sizeof(Uintptr));
+        Uintptr *new_raw = (Uintptr *)realloc(original_raw, size + sizeof(Uintptr));
         *new_raw++ = size;
         res = new_raw;
-    }
-    else {
+    } else {
         res = system_malloc(size);
     }
 
@@ -95,8 +94,7 @@ Bool system_create_folder(Char *name) {
 
     if(stat(name, &st) == -1) {
         res = (mkdir(name, 0700) == 0);
-    }
-    else {
+    } else {
         res = true;
     }
 
@@ -112,14 +110,13 @@ Uintptr system_get_total_size_of_directory(Char *dir_name) {
 
     Uintptr total_size = 0;
 
-    struct stat buf = {};
+    struct stat buf = {0};
     Bool exists = true;
-    for (dirent *de = readdir(d); de != NULL; de = readdir(d)) {
+    for (struct dirent *de = readdir(d); de != NULL; de = readdir(d)) {
         exists = stat(de->d_name, &buf);
         if (exists < 0) {
             fprintf(stderr, "Couldn't stat %s\n", de->d_name);
-        }
-        else {
+        } else {
             total_size += buf.st_size;
         }
     }
