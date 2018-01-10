@@ -96,12 +96,6 @@ typedef struct sglp_WAVEHeader sglp_WAVEHeader;
 typedef struct sglp_WavChunk sglp_WavChunk;
 typedef struct sglp_WavFormat sglp_WavFormat;
 typedef struct sglp_RiffIter sglp_RiffIter;
-typedef struct SGLP_XINPUT_GAMEPAD SGLP_XINPUT_GAMEPAD;
-typedef struct SGLP_XINPUT_STATE SGLP_XINPUT_STATE;
-typedef struct SGLP_XINPUT_VIBRATION SGLP_XINPUT_VIBRATION;
-typedef struct sglp_Win32SoundOutput sglp_Win32SoundOutput;
-typedef struct WorkQueueEntry WorkQueueEntry;
-typedef struct WorkQueue WorkQueue;
 typedef union sglm_V2 sglm_V2;
 typedef struct sglm_Mat4x4 sglm_Mat4x4;
 typedef struct Entity Entity;
@@ -185,56 +179,6 @@ typedef enum pp_Type {
     pp_Type_sglp_glGetShaderInfoLog_t,
     pp_Type_sglp_glGenVertexArrays_t,
     pp_Type_sglp_glBindVertexArray_t,
-    pp_Type_sglp_TranslateMessage_t,
-    pp_Type_sglp_DispatchMessageA_t,
-    pp_Type_sglp_PeekMessageA_t,
-    pp_Type_sglp_DefWindowProcA_t,
-    pp_Type_sglp_RegisterClassA_t,
-    pp_Type_sglp_CreateWindowExA_t,
-    pp_Type_sglp_SetWindowPos_t,
-    pp_Type_sglp_GetWindowPlacement_t,
-    pp_Type_sglp_SetWindowPlacement_t,
-    pp_Type_sglp_GetDC_t,
-    pp_Type_sglp_GetCursorPos_t,
-    pp_Type_sglp_ScreenToClient_t,
-    pp_Type_sglp_GetWindowLongA_t,
-    pp_Type_sglp_SetWindowLongA_t,
-    pp_Type_sglp_MonitorFromWindow_t,
-    pp_Type_sglp_GetMonitorInfoA_t,
-    pp_Type_sglp_GetSystemMetrics_t,
-    pp_Type_sglp_ChoosePixelFormat_t,
-    pp_Type_sglp_DescribePixelFormat_t,
-    pp_Type_sglp_SetPixelFormat_t,
-    pp_Type_sglp_SwapBuffers_t,
-    pp_Type_DirectSoundCreate,
-    pp_Type_sglp_XInputGetState_t,
-    pp_Type_sglp_XInputSetState_t,
-    pp_Type_wglGetProcAddress_t,
-    pp_Type_wglCreateContext_t,
-    pp_Type_wglMakeCurrent_t,
-    pp_Type_wglDeleteContext_t,
-    pp_Type_wglCreateContextAttribsArb_t,
-    pp_Type_wglSwapIntervalExt_t,
-    pp_Type_TimeBeginPeriod_t,
-    pp_Type_sglp_XOpenDisplay_t,
-    pp_Type_sglp_XCreateColorMap_t,
-    pp_Type_sglp_XCreateWindow_t,
-    pp_Type_sglp_XMapWindow_t,
-    pp_Type_sglp_XStoreName_t,
-    pp_Type_sglp_XSelectInput_t,
-    pp_Type_sglp_XPending_t,
-    pp_Type_sglp_XNextEvent_t,
-    pp_Type_sglp_XKeycodeToKeysym_t,
-    pp_Type_sglp_XGetWindowAttributes_t,
-    pp_Type_sglp_XQueryPointer_t,
-    pp_Type_sglp_sem_open_t,
-    pp_Type_sglp_sem_close_t,
-    pp_Type_sglp_pthread_create_t,
-    pp_Type_sglp_glXGetProcAddressArb_t,
-    pp_Type_sglp_glXChooseVisual_t,
-    pp_Type_sglp_glXCreateContext_t,
-    pp_Type_sglp_glXMakeCurrent_t,
-    pp_Type_sglp_glXSwapBuffers_t,
     pp_Type_sglm_Bool,
     pp_Type_sgl_Uint64,
     pp_Type_sgl_Uint32,
@@ -291,12 +235,6 @@ typedef enum pp_Type {
     pp_Type_sglp_WavChunk,
     pp_Type_sglp_WavFormat,
     pp_Type_sglp_RiffIter,
-    pp_Type_SGLP_XINPUT_GAMEPAD,
-    pp_Type_SGLP_XINPUT_STATE,
-    pp_Type_SGLP_XINPUT_VIBRATION,
-    pp_Type_sglp_Win32SoundOutput,
-    pp_Type_WorkQueueEntry,
-    pp_Type_WorkQueue,
     pp_Type_sglm_V2,
     pp_Type_sglm_Mat4x4,
     pp_Type___m128,
@@ -327,12 +265,6 @@ typedef struct pp_sglp_WAVEHeader pp_sglp_WAVEHeader;    typedef struct pp_sglp_
 typedef struct pp_sglp_WavChunk pp_sglp_WavChunk;    typedef struct pp_sglp_WavChunk pp_pp_sglp_WavChunk;
 typedef struct pp_sglp_WavFormat pp_sglp_WavFormat;    typedef struct pp_sglp_WavFormat pp_pp_sglp_WavFormat;
 typedef struct pp_sglp_RiffIter pp_sglp_RiffIter;    typedef struct pp_sglp_RiffIter pp_pp_sglp_RiffIter;
-typedef struct pp_SGLP_XINPUT_GAMEPAD pp_SGLP_XINPUT_GAMEPAD;    typedef struct pp_SGLP_XINPUT_GAMEPAD pp_pp_SGLP_XINPUT_GAMEPAD;
-typedef struct pp_SGLP_XINPUT_STATE pp_SGLP_XINPUT_STATE;    typedef struct pp_SGLP_XINPUT_STATE pp_pp_SGLP_XINPUT_STATE;
-typedef struct pp_SGLP_XINPUT_VIBRATION pp_SGLP_XINPUT_VIBRATION;    typedef struct pp_SGLP_XINPUT_VIBRATION pp_pp_SGLP_XINPUT_VIBRATION;
-typedef struct pp_sglp_Win32SoundOutput pp_sglp_Win32SoundOutput;    typedef struct pp_sglp_Win32SoundOutput pp_pp_sglp_Win32SoundOutput;
-typedef struct pp_WorkQueueEntry pp_WorkQueueEntry;    typedef struct pp_WorkQueueEntry pp_pp_WorkQueueEntry;
-typedef struct pp_WorkQueue pp_WorkQueue;    typedef struct pp_WorkQueue pp_pp_WorkQueue;
 typedef union pp_sglm_V2 pp_sglm_V2;    typedef union pp_sglm_V2 pp_pp_sglm_V2;
 typedef struct pp_sglm_Mat4x4 pp_sglm_Mat4x4;    typedef struct pp_sglm_Mat4x4 pp_pp_sglm_Mat4x4;
 typedef struct pp_Entity pp_Entity;    typedef struct pp_Entity pp_pp_Entity;
@@ -401,56 +333,6 @@ typedef pp_uintptr_t pp_sglp_glGetProgramInfoLog_t;
 typedef pp_uintptr_t pp_sglp_glGetShaderInfoLog_t;
 typedef pp_uintptr_t pp_sglp_glGenVertexArrays_t;
 typedef pp_uintptr_t pp_sglp_glBindVertexArray_t;
-typedef pp_uintptr_t pp_sglp_TranslateMessage_t;
-typedef pp_uintptr_t pp_sglp_DispatchMessageA_t;
-typedef pp_uintptr_t pp_sglp_PeekMessageA_t;
-typedef pp_uintptr_t pp_sglp_DefWindowProcA_t;
-typedef pp_uintptr_t pp_sglp_RegisterClassA_t;
-typedef pp_uintptr_t pp_sglp_CreateWindowExA_t;
-typedef pp_uintptr_t pp_sglp_SetWindowPos_t;
-typedef pp_uintptr_t pp_sglp_GetWindowPlacement_t;
-typedef pp_uintptr_t pp_sglp_SetWindowPlacement_t;
-typedef pp_uintptr_t pp_sglp_GetDC_t;
-typedef pp_uintptr_t pp_sglp_GetCursorPos_t;
-typedef pp_uintptr_t pp_sglp_ScreenToClient_t;
-typedef pp_uintptr_t pp_sglp_GetWindowLongA_t;
-typedef pp_uintptr_t pp_sglp_SetWindowLongA_t;
-typedef pp_uintptr_t pp_sglp_MonitorFromWindow_t;
-typedef pp_uintptr_t pp_sglp_GetMonitorInfoA_t;
-typedef pp_uintptr_t pp_sglp_GetSystemMetrics_t;
-typedef pp_uintptr_t pp_sglp_ChoosePixelFormat_t;
-typedef pp_uintptr_t pp_sglp_DescribePixelFormat_t;
-typedef pp_uintptr_t pp_sglp_SetPixelFormat_t;
-typedef pp_uintptr_t pp_sglp_SwapBuffers_t;
-typedef pp_uintptr_t pp_DirectSoundCreate;
-typedef pp_uintptr_t pp_sglp_XInputGetState_t;
-typedef pp_uintptr_t pp_sglp_XInputSetState_t;
-typedef pp_uintptr_t pp_wglGetProcAddress_t;
-typedef pp_uintptr_t pp_wglCreateContext_t;
-typedef pp_uintptr_t pp_wglMakeCurrent_t;
-typedef pp_uintptr_t pp_wglDeleteContext_t;
-typedef pp_uintptr_t pp_wglCreateContextAttribsArb_t;
-typedef pp_uintptr_t pp_wglSwapIntervalExt_t;
-typedef pp_uintptr_t pp_TimeBeginPeriod_t;
-typedef pp_uintptr_t pp_sglp_XOpenDisplay_t;
-typedef pp_uintptr_t pp_sglp_XCreateColorMap_t;
-typedef pp_uintptr_t pp_sglp_XCreateWindow_t;
-typedef pp_uintptr_t pp_sglp_XMapWindow_t;
-typedef pp_uintptr_t pp_sglp_XStoreName_t;
-typedef pp_uintptr_t pp_sglp_XSelectInput_t;
-typedef pp_uintptr_t pp_sglp_XPending_t;
-typedef pp_uintptr_t pp_sglp_XNextEvent_t;
-typedef pp_uintptr_t pp_sglp_XKeycodeToKeysym_t;
-typedef pp_uintptr_t pp_sglp_XGetWindowAttributes_t;
-typedef pp_uintptr_t pp_sglp_XQueryPointer_t;
-typedef pp_uintptr_t pp_sglp_sem_open_t;
-typedef pp_uintptr_t pp_sglp_sem_close_t;
-typedef pp_uintptr_t pp_sglp_pthread_create_t;
-typedef pp_uintptr_t pp_sglp_glXGetProcAddressArb_t;
-typedef pp_uintptr_t pp_sglp_glXChooseVisual_t;
-typedef pp_uintptr_t pp_sglp_glXCreateContext_t;
-typedef pp_uintptr_t pp_sglp_glXMakeCurrent_t;
-typedef pp_uintptr_t pp_sglp_glXSwapBuffers_t;
 typedef pp_int pp_sglm_Bool;
 typedef pp_uint64_t pp_sgl_Uint64;
 typedef pp_uint32_t pp_sgl_Uint32;
@@ -533,24 +415,6 @@ struct pp_sglp_WavFormat {
 struct pp_sglp_RiffIter {
     uint8_t *at; uint8_t *stop; 
 };
-struct pp_SGLP_XINPUT_GAMEPAD {
-    uint16_t wButtons; uint8_t bLeftTrigger; uint8_t bRightTrigger; int16_t sThumbLX; int16_t sThumbLY; int16_t sThumbRX; int16_t sThumbRY; 
-};
-struct pp_SGLP_XINPUT_STATE {
-    uint32_t dwPacketNumber; pp_SGLP_XINPUT_GAMEPAD Gamepad; 
-};
-struct pp_SGLP_XINPUT_VIBRATION {
-    uint16_t wLeftMotorSpeed; uint16_t wRightMotorSpeed; 
-};
-struct pp_sglp_Win32SoundOutput {
-    int32_t samples_per_second; int32_t running_sample_index; int32_t bytes_per_sample; uint32_t secondary_buf_size; uint32_t safety_bytes; 
-};
-struct pp_WorkQueueEntry {
-    pp_void *e; 
-};
-struct pp_WorkQueue {
-    int32_t volatile goal; int32_t volatile cnt; int32_t volatile next_entry_to_write; int32_t volatile next_entry_to_read; pp_void *hsem; pp_WorkQueueEntry entries[256]; 
-};
 union pp_sglm_V2 {
     float e[2];  struct {float x; float y;  };
 };
@@ -626,56 +490,6 @@ PP_STATIC pp_Type pp_typedef_to_original(pp_Type type) {
         case pp_Type_sglp_glGetShaderInfoLog_t: { return(pp_Type_uintptr_t); } break;
         case pp_Type_sglp_glGenVertexArrays_t: { return(pp_Type_uintptr_t); } break;
         case pp_Type_sglp_glBindVertexArray_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_TranslateMessage_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_DispatchMessageA_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_PeekMessageA_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_DefWindowProcA_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_RegisterClassA_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_CreateWindowExA_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_SetWindowPos_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_GetWindowPlacement_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_SetWindowPlacement_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_GetDC_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_GetCursorPos_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_ScreenToClient_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_GetWindowLongA_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_SetWindowLongA_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_MonitorFromWindow_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_GetMonitorInfoA_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_GetSystemMetrics_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_ChoosePixelFormat_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_DescribePixelFormat_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_SetPixelFormat_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_SwapBuffers_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_DirectSoundCreate: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_XInputGetState_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_XInputSetState_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_wglGetProcAddress_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_wglCreateContext_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_wglMakeCurrent_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_wglDeleteContext_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_wglCreateContextAttribsArb_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_wglSwapIntervalExt_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_TimeBeginPeriod_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_XOpenDisplay_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_XCreateColorMap_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_XCreateWindow_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_XMapWindow_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_XStoreName_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_XSelectInput_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_XPending_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_XNextEvent_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_XKeycodeToKeysym_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_XGetWindowAttributes_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_XQueryPointer_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_sem_open_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_sem_close_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_pthread_create_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_glXGetProcAddressArb_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_glXChooseVisual_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_glXCreateContext_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_glXMakeCurrent_t: { return(pp_Type_uintptr_t); } break;
-        case pp_Type_sglp_glXSwapBuffers_t: { return(pp_Type_uintptr_t); } break;
         case pp_Type_sglm_Bool: { return(pp_Type_int); } break;
         case pp_Type_sgl_Uint64: { return(pp_Type_uint64_t); } break;
         case pp_Type_sgl_Uint32: { return(pp_Type_uint32_t); } break;
@@ -1174,122 +988,6 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
             } break; 
         }
     }
-    else if(real_type == pp_Type_SGLP_XINPUT_GAMEPAD) {
-        switch(index) {
-            case 0: {
-                pp_MemberDefinition res = {pp_Type_uint16_t, "wButtons", PP_OFFSETOF(pp_SGLP_XINPUT_GAMEPAD, wButtons), 0, 0};
-                return(res);
-            } break; 
-            case 1: {
-                pp_MemberDefinition res = {pp_Type_uint8_t, "bLeftTrigger", PP_OFFSETOF(pp_SGLP_XINPUT_GAMEPAD, bLeftTrigger), 0, 0};
-                return(res);
-            } break; 
-            case 2: {
-                pp_MemberDefinition res = {pp_Type_uint8_t, "bRightTrigger", PP_OFFSETOF(pp_SGLP_XINPUT_GAMEPAD, bRightTrigger), 0, 0};
-                return(res);
-            } break; 
-            case 3: {
-                pp_MemberDefinition res = {pp_Type_int16_t, "sThumbLX", PP_OFFSETOF(pp_SGLP_XINPUT_GAMEPAD, sThumbLX), 0, 0};
-                return(res);
-            } break; 
-            case 4: {
-                pp_MemberDefinition res = {pp_Type_int16_t, "sThumbLY", PP_OFFSETOF(pp_SGLP_XINPUT_GAMEPAD, sThumbLY), 0, 0};
-                return(res);
-            } break; 
-            case 5: {
-                pp_MemberDefinition res = {pp_Type_int16_t, "sThumbRX", PP_OFFSETOF(pp_SGLP_XINPUT_GAMEPAD, sThumbRX), 0, 0};
-                return(res);
-            } break; 
-            case 6: {
-                pp_MemberDefinition res = {pp_Type_int16_t, "sThumbRY", PP_OFFSETOF(pp_SGLP_XINPUT_GAMEPAD, sThumbRY), 0, 0};
-                return(res);
-            } break; 
-        }
-    }
-    else if(real_type == pp_Type_SGLP_XINPUT_STATE) {
-        switch(index) {
-            case 0: {
-                pp_MemberDefinition res = {pp_Type_uint32_t, "dwPacketNumber", PP_OFFSETOF(pp_SGLP_XINPUT_STATE, dwPacketNumber), 0, 0};
-                return(res);
-            } break; 
-            case 1: {
-                pp_MemberDefinition res = {pp_Type_SGLP_XINPUT_GAMEPAD, "Gamepad", PP_OFFSETOF(pp_SGLP_XINPUT_STATE, Gamepad), 0, 0};
-                return(res);
-            } break; 
-        }
-    }
-    else if(real_type == pp_Type_SGLP_XINPUT_VIBRATION) {
-        switch(index) {
-            case 0: {
-                pp_MemberDefinition res = {pp_Type_uint16_t, "wLeftMotorSpeed", PP_OFFSETOF(pp_SGLP_XINPUT_VIBRATION, wLeftMotorSpeed), 0, 0};
-                return(res);
-            } break; 
-            case 1: {
-                pp_MemberDefinition res = {pp_Type_uint16_t, "wRightMotorSpeed", PP_OFFSETOF(pp_SGLP_XINPUT_VIBRATION, wRightMotorSpeed), 0, 0};
-                return(res);
-            } break; 
-        }
-    }
-    else if(real_type == pp_Type_sglp_Win32SoundOutput) {
-        switch(index) {
-            case 0: {
-                pp_MemberDefinition res = {pp_Type_int32_t, "samples_per_second", PP_OFFSETOF(pp_sglp_Win32SoundOutput, samples_per_second), 0, 0};
-                return(res);
-            } break; 
-            case 1: {
-                pp_MemberDefinition res = {pp_Type_int32_t, "running_sample_index", PP_OFFSETOF(pp_sglp_Win32SoundOutput, running_sample_index), 0, 0};
-                return(res);
-            } break; 
-            case 2: {
-                pp_MemberDefinition res = {pp_Type_int32_t, "bytes_per_sample", PP_OFFSETOF(pp_sglp_Win32SoundOutput, bytes_per_sample), 0, 0};
-                return(res);
-            } break; 
-            case 3: {
-                pp_MemberDefinition res = {pp_Type_uint32_t, "secondary_buf_size", PP_OFFSETOF(pp_sglp_Win32SoundOutput, secondary_buf_size), 0, 0};
-                return(res);
-            } break; 
-            case 4: {
-                pp_MemberDefinition res = {pp_Type_uint32_t, "safety_bytes", PP_OFFSETOF(pp_sglp_Win32SoundOutput, safety_bytes), 0, 0};
-                return(res);
-            } break; 
-        }
-    }
-    else if(real_type == pp_Type_WorkQueueEntry) {
-        switch(index) {
-            case 0: {
-                pp_MemberDefinition res = {pp_Type_void, "e", PP_OFFSETOF(pp_WorkQueueEntry, e), 1, 0};
-                return(res);
-            } break; 
-        }
-    }
-    else if(real_type == pp_Type_WorkQueue) {
-        switch(index) {
-            case 0: {
-                pp_MemberDefinition res = {pp_Type_int32_t, "goal", PP_OFFSETOF(pp_WorkQueue, goal), 0, 0};
-                return(res);
-            } break; 
-            case 1: {
-                pp_MemberDefinition res = {pp_Type_int32_t, "cnt", PP_OFFSETOF(pp_WorkQueue, cnt), 0, 0};
-                return(res);
-            } break; 
-            case 2: {
-                pp_MemberDefinition res = {pp_Type_int32_t, "next_entry_to_write", PP_OFFSETOF(pp_WorkQueue, next_entry_to_write), 0, 0};
-                return(res);
-            } break; 
-            case 3: {
-                pp_MemberDefinition res = {pp_Type_int32_t, "next_entry_to_read", PP_OFFSETOF(pp_WorkQueue, next_entry_to_read), 0, 0};
-                return(res);
-            } break; 
-            case 4: {
-                pp_MemberDefinition res = {pp_Type_void, "hsem", PP_OFFSETOF(pp_WorkQueue, hsem), 1, 0};
-                return(res);
-            } break; 
-            case 5: {
-                pp_MemberDefinition res = {pp_Type_WorkQueueEntry, "entries", PP_OFFSETOF(pp_WorkQueue, entries), 0, 256};
-                return(res);
-            } break; 
-        }
-    }
     else if(real_type == pp_Type_sglm_V2) {
         switch(index) {
             case 0: {
@@ -1421,12 +1119,6 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_sglp_WavChunk: { return(2); } break;
         case pp_Type_sglp_WavFormat: { return(10); } break;
         case pp_Type_sglp_RiffIter: { return(2); } break;
-        case pp_Type_SGLP_XINPUT_GAMEPAD: { return(7); } break;
-        case pp_Type_SGLP_XINPUT_STATE: { return(2); } break;
-        case pp_Type_SGLP_XINPUT_VIBRATION: { return(2); } break;
-        case pp_Type_sglp_Win32SoundOutput: { return(5); } break;
-        case pp_Type_WorkQueueEntry: { return(1); } break;
-        case pp_Type_WorkQueue: { return(6); } break;
         case pp_Type_sglm_V2: { return(3); } break;
         case pp_Type_sglm_Mat4x4: { return(1); } break;
         case pp_Type_Entity: { return(5); } break;
@@ -1459,7 +1151,7 @@ PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {
             return(pp_StructureType_enum);
         } break;
 
-        case pp_Type___m128: case pp_Type___m128i: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_Settings: case pp_Type_sglp_File: case pp_Type_sglp_API: case pp_Type_sglp_LoadedSound: case pp_Type_sglp_SoundOutputBuffer: case pp_Type_sglp_AudioState: case pp_Type_sglp_WAVEHeader: case pp_Type_sglp_WavChunk: case pp_Type_sglp_WavFormat: case pp_Type_sglp_RiffIter: case pp_Type_SGLP_XINPUT_GAMEPAD: case pp_Type_SGLP_XINPUT_STATE: case pp_Type_SGLP_XINPUT_VIBRATION: case pp_Type_sglp_Win32SoundOutput: case pp_Type_WorkQueueEntry: case pp_Type_WorkQueue: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_Entity: case pp_Type_Player: case pp_Type_Game_State: case pp_Type_V2: {
+        case pp_Type___m128: case pp_Type___m128i: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_Settings: case pp_Type_sglp_File: case pp_Type_sglp_API: case pp_Type_sglp_LoadedSound: case pp_Type_sglp_SoundOutputBuffer: case pp_Type_sglp_AudioState: case pp_Type_sglp_WAVEHeader: case pp_Type_sglp_WavChunk: case pp_Type_sglp_WavFormat: case pp_Type_sglp_RiffIter: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_Entity: case pp_Type_Player: case pp_Type_Game_State: case pp_Type_V2: {
             return(pp_StructureType_struct);
         } break;
     }
@@ -1540,56 +1232,6 @@ PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_sglp_glGetShaderInfoLog_t: { return("sglp_glGetShaderInfoLog_t"); } break;
         case pp_Type_sglp_glGenVertexArrays_t: { return("sglp_glGenVertexArrays_t"); } break;
         case pp_Type_sglp_glBindVertexArray_t: { return("sglp_glBindVertexArray_t"); } break;
-        case pp_Type_sglp_TranslateMessage_t: { return("sglp_TranslateMessage_t"); } break;
-        case pp_Type_sglp_DispatchMessageA_t: { return("sglp_DispatchMessageA_t"); } break;
-        case pp_Type_sglp_PeekMessageA_t: { return("sglp_PeekMessageA_t"); } break;
-        case pp_Type_sglp_DefWindowProcA_t: { return("sglp_DefWindowProcA_t"); } break;
-        case pp_Type_sglp_RegisterClassA_t: { return("sglp_RegisterClassA_t"); } break;
-        case pp_Type_sglp_CreateWindowExA_t: { return("sglp_CreateWindowExA_t"); } break;
-        case pp_Type_sglp_SetWindowPos_t: { return("sglp_SetWindowPos_t"); } break;
-        case pp_Type_sglp_GetWindowPlacement_t: { return("sglp_GetWindowPlacement_t"); } break;
-        case pp_Type_sglp_SetWindowPlacement_t: { return("sglp_SetWindowPlacement_t"); } break;
-        case pp_Type_sglp_GetDC_t: { return("sglp_GetDC_t"); } break;
-        case pp_Type_sglp_GetCursorPos_t: { return("sglp_GetCursorPos_t"); } break;
-        case pp_Type_sglp_ScreenToClient_t: { return("sglp_ScreenToClient_t"); } break;
-        case pp_Type_sglp_GetWindowLongA_t: { return("sglp_GetWindowLongA_t"); } break;
-        case pp_Type_sglp_SetWindowLongA_t: { return("sglp_SetWindowLongA_t"); } break;
-        case pp_Type_sglp_MonitorFromWindow_t: { return("sglp_MonitorFromWindow_t"); } break;
-        case pp_Type_sglp_GetMonitorInfoA_t: { return("sglp_GetMonitorInfoA_t"); } break;
-        case pp_Type_sglp_GetSystemMetrics_t: { return("sglp_GetSystemMetrics_t"); } break;
-        case pp_Type_sglp_ChoosePixelFormat_t: { return("sglp_ChoosePixelFormat_t"); } break;
-        case pp_Type_sglp_DescribePixelFormat_t: { return("sglp_DescribePixelFormat_t"); } break;
-        case pp_Type_sglp_SetPixelFormat_t: { return("sglp_SetPixelFormat_t"); } break;
-        case pp_Type_sglp_SwapBuffers_t: { return("sglp_SwapBuffers_t"); } break;
-        case pp_Type_DirectSoundCreate: { return("DirectSoundCreate"); } break;
-        case pp_Type_sglp_XInputGetState_t: { return("sglp_XInputGetState_t"); } break;
-        case pp_Type_sglp_XInputSetState_t: { return("sglp_XInputSetState_t"); } break;
-        case pp_Type_wglGetProcAddress_t: { return("wglGetProcAddress_t"); } break;
-        case pp_Type_wglCreateContext_t: { return("wglCreateContext_t"); } break;
-        case pp_Type_wglMakeCurrent_t: { return("wglMakeCurrent_t"); } break;
-        case pp_Type_wglDeleteContext_t: { return("wglDeleteContext_t"); } break;
-        case pp_Type_wglCreateContextAttribsArb_t: { return("wglCreateContextAttribsArb_t"); } break;
-        case pp_Type_wglSwapIntervalExt_t: { return("wglSwapIntervalExt_t"); } break;
-        case pp_Type_TimeBeginPeriod_t: { return("TimeBeginPeriod_t"); } break;
-        case pp_Type_sglp_XOpenDisplay_t: { return("sglp_XOpenDisplay_t"); } break;
-        case pp_Type_sglp_XCreateColorMap_t: { return("sglp_XCreateColorMap_t"); } break;
-        case pp_Type_sglp_XCreateWindow_t: { return("sglp_XCreateWindow_t"); } break;
-        case pp_Type_sglp_XMapWindow_t: { return("sglp_XMapWindow_t"); } break;
-        case pp_Type_sglp_XStoreName_t: { return("sglp_XStoreName_t"); } break;
-        case pp_Type_sglp_XSelectInput_t: { return("sglp_XSelectInput_t"); } break;
-        case pp_Type_sglp_XPending_t: { return("sglp_XPending_t"); } break;
-        case pp_Type_sglp_XNextEvent_t: { return("sglp_XNextEvent_t"); } break;
-        case pp_Type_sglp_XKeycodeToKeysym_t: { return("sglp_XKeycodeToKeysym_t"); } break;
-        case pp_Type_sglp_XGetWindowAttributes_t: { return("sglp_XGetWindowAttributes_t"); } break;
-        case pp_Type_sglp_XQueryPointer_t: { return("sglp_XQueryPointer_t"); } break;
-        case pp_Type_sglp_sem_open_t: { return("sglp_sem_open_t"); } break;
-        case pp_Type_sglp_sem_close_t: { return("sglp_sem_close_t"); } break;
-        case pp_Type_sglp_pthread_create_t: { return("sglp_pthread_create_t"); } break;
-        case pp_Type_sglp_glXGetProcAddressArb_t: { return("sglp_glXGetProcAddressArb_t"); } break;
-        case pp_Type_sglp_glXChooseVisual_t: { return("sglp_glXChooseVisual_t"); } break;
-        case pp_Type_sglp_glXCreateContext_t: { return("sglp_glXCreateContext_t"); } break;
-        case pp_Type_sglp_glXMakeCurrent_t: { return("sglp_glXMakeCurrent_t"); } break;
-        case pp_Type_sglp_glXSwapBuffers_t: { return("sglp_glXSwapBuffers_t"); } break;
         case pp_Type_sglm_Bool: { return("sglm_Bool"); } break;
         case pp_Type_sgl_Uint64: { return("sgl_Uint64"); } break;
         case pp_Type_sgl_Uint32: { return("sgl_Uint32"); } break;
@@ -1646,12 +1288,6 @@ PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_sglp_WavChunk: { return("sglp_WavChunk"); } break;
         case pp_Type_sglp_WavFormat: { return("sglp_WavFormat"); } break;
         case pp_Type_sglp_RiffIter: { return("sglp_RiffIter"); } break;
-        case pp_Type_SGLP_XINPUT_GAMEPAD: { return("SGLP_XINPUT_GAMEPAD"); } break;
-        case pp_Type_SGLP_XINPUT_STATE: { return("SGLP_XINPUT_STATE"); } break;
-        case pp_Type_SGLP_XINPUT_VIBRATION: { return("SGLP_XINPUT_VIBRATION"); } break;
-        case pp_Type_sglp_Win32SoundOutput: { return("sglp_Win32SoundOutput"); } break;
-        case pp_Type_WorkQueueEntry: { return("WorkQueueEntry"); } break;
-        case pp_Type_WorkQueue: { return("WorkQueue"); } break;
         case pp_Type_sglm_V2: { return("sglm_V2"); } break;
         case pp_Type_sglm_Mat4x4: { return("sglm_Mat4x4"); } break;
         case pp_Type___m128: { return("__m128"); } break;
@@ -1737,56 +1373,6 @@ PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
         case pp_Type_sglp_glGetShaderInfoLog_t: { return sizeof(pp_sglp_glGetShaderInfoLog_t); } break;
         case pp_Type_sglp_glGenVertexArrays_t: { return sizeof(pp_sglp_glGenVertexArrays_t); } break;
         case pp_Type_sglp_glBindVertexArray_t: { return sizeof(pp_sglp_glBindVertexArray_t); } break;
-        case pp_Type_sglp_TranslateMessage_t: { return sizeof(pp_sglp_TranslateMessage_t); } break;
-        case pp_Type_sglp_DispatchMessageA_t: { return sizeof(pp_sglp_DispatchMessageA_t); } break;
-        case pp_Type_sglp_PeekMessageA_t: { return sizeof(pp_sglp_PeekMessageA_t); } break;
-        case pp_Type_sglp_DefWindowProcA_t: { return sizeof(pp_sglp_DefWindowProcA_t); } break;
-        case pp_Type_sglp_RegisterClassA_t: { return sizeof(pp_sglp_RegisterClassA_t); } break;
-        case pp_Type_sglp_CreateWindowExA_t: { return sizeof(pp_sglp_CreateWindowExA_t); } break;
-        case pp_Type_sglp_SetWindowPos_t: { return sizeof(pp_sglp_SetWindowPos_t); } break;
-        case pp_Type_sglp_GetWindowPlacement_t: { return sizeof(pp_sglp_GetWindowPlacement_t); } break;
-        case pp_Type_sglp_SetWindowPlacement_t: { return sizeof(pp_sglp_SetWindowPlacement_t); } break;
-        case pp_Type_sglp_GetDC_t: { return sizeof(pp_sglp_GetDC_t); } break;
-        case pp_Type_sglp_GetCursorPos_t: { return sizeof(pp_sglp_GetCursorPos_t); } break;
-        case pp_Type_sglp_ScreenToClient_t: { return sizeof(pp_sglp_ScreenToClient_t); } break;
-        case pp_Type_sglp_GetWindowLongA_t: { return sizeof(pp_sglp_GetWindowLongA_t); } break;
-        case pp_Type_sglp_SetWindowLongA_t: { return sizeof(pp_sglp_SetWindowLongA_t); } break;
-        case pp_Type_sglp_MonitorFromWindow_t: { return sizeof(pp_sglp_MonitorFromWindow_t); } break;
-        case pp_Type_sglp_GetMonitorInfoA_t: { return sizeof(pp_sglp_GetMonitorInfoA_t); } break;
-        case pp_Type_sglp_GetSystemMetrics_t: { return sizeof(pp_sglp_GetSystemMetrics_t); } break;
-        case pp_Type_sglp_ChoosePixelFormat_t: { return sizeof(pp_sglp_ChoosePixelFormat_t); } break;
-        case pp_Type_sglp_DescribePixelFormat_t: { return sizeof(pp_sglp_DescribePixelFormat_t); } break;
-        case pp_Type_sglp_SetPixelFormat_t: { return sizeof(pp_sglp_SetPixelFormat_t); } break;
-        case pp_Type_sglp_SwapBuffers_t: { return sizeof(pp_sglp_SwapBuffers_t); } break;
-        case pp_Type_DirectSoundCreate: { return sizeof(pp_DirectSoundCreate); } break;
-        case pp_Type_sglp_XInputGetState_t: { return sizeof(pp_sglp_XInputGetState_t); } break;
-        case pp_Type_sglp_XInputSetState_t: { return sizeof(pp_sglp_XInputSetState_t); } break;
-        case pp_Type_wglGetProcAddress_t: { return sizeof(pp_wglGetProcAddress_t); } break;
-        case pp_Type_wglCreateContext_t: { return sizeof(pp_wglCreateContext_t); } break;
-        case pp_Type_wglMakeCurrent_t: { return sizeof(pp_wglMakeCurrent_t); } break;
-        case pp_Type_wglDeleteContext_t: { return sizeof(pp_wglDeleteContext_t); } break;
-        case pp_Type_wglCreateContextAttribsArb_t: { return sizeof(pp_wglCreateContextAttribsArb_t); } break;
-        case pp_Type_wglSwapIntervalExt_t: { return sizeof(pp_wglSwapIntervalExt_t); } break;
-        case pp_Type_TimeBeginPeriod_t: { return sizeof(pp_TimeBeginPeriod_t); } break;
-        case pp_Type_sglp_XOpenDisplay_t: { return sizeof(pp_sglp_XOpenDisplay_t); } break;
-        case pp_Type_sglp_XCreateColorMap_t: { return sizeof(pp_sglp_XCreateColorMap_t); } break;
-        case pp_Type_sglp_XCreateWindow_t: { return sizeof(pp_sglp_XCreateWindow_t); } break;
-        case pp_Type_sglp_XMapWindow_t: { return sizeof(pp_sglp_XMapWindow_t); } break;
-        case pp_Type_sglp_XStoreName_t: { return sizeof(pp_sglp_XStoreName_t); } break;
-        case pp_Type_sglp_XSelectInput_t: { return sizeof(pp_sglp_XSelectInput_t); } break;
-        case pp_Type_sglp_XPending_t: { return sizeof(pp_sglp_XPending_t); } break;
-        case pp_Type_sglp_XNextEvent_t: { return sizeof(pp_sglp_XNextEvent_t); } break;
-        case pp_Type_sglp_XKeycodeToKeysym_t: { return sizeof(pp_sglp_XKeycodeToKeysym_t); } break;
-        case pp_Type_sglp_XGetWindowAttributes_t: { return sizeof(pp_sglp_XGetWindowAttributes_t); } break;
-        case pp_Type_sglp_XQueryPointer_t: { return sizeof(pp_sglp_XQueryPointer_t); } break;
-        case pp_Type_sglp_sem_open_t: { return sizeof(pp_sglp_sem_open_t); } break;
-        case pp_Type_sglp_sem_close_t: { return sizeof(pp_sglp_sem_close_t); } break;
-        case pp_Type_sglp_pthread_create_t: { return sizeof(pp_sglp_pthread_create_t); } break;
-        case pp_Type_sglp_glXGetProcAddressArb_t: { return sizeof(pp_sglp_glXGetProcAddressArb_t); } break;
-        case pp_Type_sglp_glXChooseVisual_t: { return sizeof(pp_sglp_glXChooseVisual_t); } break;
-        case pp_Type_sglp_glXCreateContext_t: { return sizeof(pp_sglp_glXCreateContext_t); } break;
-        case pp_Type_sglp_glXMakeCurrent_t: { return sizeof(pp_sglp_glXMakeCurrent_t); } break;
-        case pp_Type_sglp_glXSwapBuffers_t: { return sizeof(pp_sglp_glXSwapBuffers_t); } break;
         case pp_Type_sglm_Bool: { return sizeof(pp_sglm_Bool); } break;
         case pp_Type_sgl_Uint64: { return sizeof(pp_sgl_Uint64); } break;
         case pp_Type_sgl_Uint32: { return sizeof(pp_sgl_Uint32); } break;
@@ -1841,12 +1427,6 @@ PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
         case pp_Type_sglp_WavChunk: { return sizeof(pp_sglp_WavChunk); } break;
         case pp_Type_sglp_WavFormat: { return sizeof(pp_sglp_WavFormat); } break;
         case pp_Type_sglp_RiffIter: { return sizeof(pp_sglp_RiffIter); } break;
-        case pp_Type_SGLP_XINPUT_GAMEPAD: { return sizeof(pp_SGLP_XINPUT_GAMEPAD); } break;
-        case pp_Type_SGLP_XINPUT_STATE: { return sizeof(pp_SGLP_XINPUT_STATE); } break;
-        case pp_Type_SGLP_XINPUT_VIBRATION: { return sizeof(pp_SGLP_XINPUT_VIBRATION); } break;
-        case pp_Type_sglp_Win32SoundOutput: { return sizeof(pp_sglp_Win32SoundOutput); } break;
-        case pp_Type_WorkQueueEntry: { return sizeof(pp_WorkQueueEntry); } break;
-        case pp_Type_WorkQueue: { return sizeof(pp_WorkQueue); } break;
         case pp_Type_sglm_V2: { return sizeof(pp_sglm_V2); } break;
         case pp_Type_sglm_Mat4x4: { return sizeof(pp_sglm_Mat4x4); } break;
         case pp_Type___m128: { return sizeof(pp___m128); } break;
