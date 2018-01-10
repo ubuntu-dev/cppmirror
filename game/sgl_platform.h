@@ -931,7 +931,7 @@ void sglp_change_pitch(sglp_PlayingSound *snd, float dsample) {
     snd->dsample = dsample;
 }
 
-static sglp_LoadedSound *get_sound(sglp_LoadedSound *Sounds, int32_t id) {
+static sglp_LoadedSound *sglp_get_sound(sglp_LoadedSound *Sounds, int32_t id) {
     int i;
     sglp_LoadedSound *res = 0;
 
@@ -997,7 +997,7 @@ static void sglp_output_playing_sounds(sglp_API *api, sglp_SoundOutputBuffer *sn
             float *dst1 = (float *)float_channel1;
 
             while((total_samples_to_mix) && (!snd_finished)) {
-                sglp_LoadedSound *loaded_snd = get_sound(sglp_global_loaded_sounds, playing_snd->id);
+                sglp_LoadedSound *loaded_snd = sglp_get_sound(sglp_global_loaded_sounds, playing_snd->id);
                 float dvol0 = playing_snd->dcur_volume0 * seconds_per_sample;
                 float dvol1 = playing_snd->dcur_volume1 * seconds_per_sample;
                 uint32_t samples_to_mix, samples_remaining_in_sound;
@@ -1267,7 +1267,7 @@ static void sglp_free_file(sglp_API *api, sglp_File *file) {
 // SDL
 //
 #if defined(SGLP_USE_SDL)
-
+#if 0
 static sglp_File sglp_sdl_read_file(sglp_API *api, char const *fname) {
     sglp_File res = {0};
 
@@ -1826,7 +1826,7 @@ int main(int argc, char **argv) {
 
     return(0);
 }
-
+#endif
 #else
 //
 // Win32.
@@ -2277,12 +2277,12 @@ static sglp_Bool sglp_load_gdi32dll(void) {
 //
 // Threading
 //
-typedef struct WorkQueueEntry {
+typedef struct sglp_Win32WorkQueueEntry {
     void (*callback)(void *data);
     void *e;
-} WorkQueueEntry;
+} sglp_Win32WorkQueueEntry;
 
-typedef struct WorkQueue {
+typedef struct sglp_Win32WorkQueue {
     int32_t volatile goal;
     int32_t volatile cnt;
 
@@ -2290,14 +2290,14 @@ typedef struct WorkQueue {
     int32_t volatile next_entry_to_read;
 
     void *hsem;
-    WorkQueueEntry entries[256]; // TODO(Jonny): Should I make this a Linked List?? Or a dynamically resizing array??
-} WorkQueue;
-static WorkQueue sglp_global_work_queue;
+    sglp_Win32WorkQueueEntry entries[256]; // TODO(Jonny): Should I make this a Linked List?? Or a dynamically resizing array??
+} sglp_Win32WorkQueue;
+static sglp_Win32WorkQueue sglp_global_work_queue;
 
 static void sglp_win32_add_work_queue_entry(void *e, void (*callback)(void *data)) {
     int32_t new_next_entry_to_write = (sglp_global_work_queue.next_entry_to_write + 1) % SGLP_ARRAY_COUNT(sglp_global_work_queue.entries);
 
-    WorkQueueEntry *entry = sglp_global_work_queue.entries + sglp_global_work_queue.next_entry_to_write;
+    sglp_Win32WorkQueueEntry *entry = sglp_global_work_queue.entries + sglp_global_work_queue.next_entry_to_write;
     entry->callback = callback;
     entry->e = e;
 
@@ -2309,7 +2309,7 @@ static void sglp_win32_add_work_queue_entry(void *e, void (*callback)(void *data
     ReleaseSemaphore(sglp_global_work_queue.hsem, 1, 0);
 }
 
-static sglp_Bool sglp_do_next_work_queue_entry(WorkQueue *work_queue) {
+static sglp_Bool sglp_do_next_work_queue_entry(sglp_Win32WorkQueue *work_queue) {
     sglp_Bool res = SGLP_FALSE;
 
     int32_t original_next_entry_to_read = work_queue->next_entry_to_read;
@@ -2319,7 +2319,7 @@ static sglp_Bool sglp_do_next_work_queue_entry(WorkQueue *work_queue) {
                                                    new_new_entry_to_read, original_next_entry_to_read);
 
         if(index == original_next_entry_to_read) {
-            WorkQueueEntry entry = work_queue->entries[index];
+            sglp_Win32WorkQueueEntry entry = work_queue->entries[index];
             entry.callback(entry.e);
             InterlockedIncrement((volatile long *)&work_queue->cnt);
         }
@@ -2340,7 +2340,7 @@ static void sglp_win32_complete_all_work(void) {
 }
 
 static DWORD SGLP_STDCALL sglp_thread_proc(void *p) {
-    WorkQueue *work_queue = (WorkQueue *)p;
+    sglp_Win32WorkQueue *work_queue = (sglp_Win32WorkQueue *)p;
     for(;;) {
         if(sglp_do_next_work_queue_entry(work_queue)) {
             WaitForSingleObjectEx(work_queue->hsem, INFINITE, 0);
@@ -2450,8 +2450,8 @@ static LARGE_INTEGER sglp_win32_get_wall_clock(void) {
     return(res);
 }
 
-static float win32_get_seconds_elapsed(LARGE_INTEGER start, LARGE_INTEGER end,
-                                       int64_t perf_cnt_freq) {
+static float sglp_win32_get_seconds_elapsed(LARGE_INTEGER start, LARGE_INTEGER end,
+                                            int64_t perf_cnt_freq) {
     float res = (float)(end.QuadPart - start.QuadPart) / (float)perf_cnt_freq;
 
     return(res);
@@ -2808,9 +2808,9 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 
                             // Frame rate stuff.
                             {
-                                float seconds_elapsed_for_frame = win32_get_seconds_elapsed(last_counter,
-                                                                                            sglp_win32_get_wall_clock(),
-                                                                                            perf_cnt_freq);
+                                float seconds_elapsed_for_frame = sglp_win32_get_seconds_elapsed(last_counter,
+                                                                                                 sglp_win32_get_wall_clock(),
+                                                                                                 perf_cnt_freq);
                                 if(seconds_elapsed_for_frame < target_seconds_per_frame) {
                                     float test_seconds_elapsed_for_frame;
                                     DWORD sleepms = (DWORD)(1000.0f * (target_seconds_per_frame - seconds_elapsed_for_frame));
@@ -2818,17 +2818,17 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                                         Sleep(sleepms);
                                     }
 
-                                    test_seconds_elapsed_for_frame = win32_get_seconds_elapsed(last_counter,
-                                                                                               sglp_win32_get_wall_clock(),
-                                                                                               perf_cnt_freq);
+                                    test_seconds_elapsed_for_frame = sglp_win32_get_seconds_elapsed(last_counter,
+                                                                                                    sglp_win32_get_wall_clock(),
+                                                                                                    perf_cnt_freq);
                                     if(test_seconds_elapsed_for_frame < target_seconds_per_frame) {
                                         // TODO(Jonny): Log missed Sleep here
                                     }
 
                                     while(seconds_elapsed_for_frame < target_seconds_per_frame) {
-                                        seconds_elapsed_for_frame = win32_get_seconds_elapsed(last_counter,
-                                                                                              sglp_win32_get_wall_clock(),
-                                                                                              perf_cnt_freq);
+                                        seconds_elapsed_for_frame = sglp_win32_get_seconds_elapsed(last_counter,
+                                                                                                   sglp_win32_get_wall_clock(),
+                                                                                                   perf_cnt_freq);
                                     }
                                 } else {
                                     // Missed Frame Rate!
@@ -2836,7 +2836,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 
                                 {
                                     LARGE_INTEGER end_counter = sglp_win32_get_wall_clock();
-                                    ms_per_frame = 1000.0f * win32_get_seconds_elapsed(last_counter, end_counter, perf_cnt_freq);
+                                    ms_per_frame = 1000.0f * sglp_win32_get_seconds_elapsed(last_counter, end_counter, perf_cnt_freq);
                                     last_counter = end_counter;
                                 }
 
@@ -3071,12 +3071,12 @@ static sglp_Bool sglp_linux_load_opengl_funcs(void) {
 //
 // Threading stuff
 //
-typedef struct WorkQueueEntry {
+typedef struct sglp_LinuxWorkQueueEntry {
     void (*callback)(void *data);
     void *e;
-} WorkQueueEntry;
+} sglp_LinuxWorkQueueEntry;
 
-typedef struct WorkQueue {
+typedef struct sglp_LinuxWorkQueue {
     int32_t volatile goal;
     int32_t volatile cnt;
 
@@ -3084,13 +3084,13 @@ typedef struct WorkQueue {
     int32_t volatile next_entry_to_read;
 
     sem_t *hsem;
-    WorkQueueEntry entries[256]; // TODO(Jonny): Should I make this a Linked List?? Or a dynamically resizing array??
-} WorkQueue;
-static WorkQueue sglp_global_work_queue;
+    sglp_LinuxWorkQueueEntry entries[256]; // TODO(Jonny): Should I make this a Linked List?? Or a dynamically resizing array??
+} sglp_LinuxWorkQueue;
+static sglp_LinuxWorkQueue sglp_global_work_queue;
 
 static void sglp_linux_add_work_queue_entry(void *data, void (*callback)(void *data)) {
     int32_t new_next_entry_to_write = (sglp_global_work_queue.next_entry_to_write + 1) % SGLP_ARRAY_COUNT(sglp_global_work_queue.entries);
-    WorkQueueEntry *entry = sglp_global_work_queue.entries + sglp_global_work_queue.next_entry_to_write;
+    sglp_LinuxWorkQueueEntry *entry = sglp_global_work_queue.entries + sglp_global_work_queue.next_entry_to_write;
 
     SGLP_ASSERT(new_next_entry_to_write != sglp_global_work_queue.next_entry_to_read);
 
@@ -3107,7 +3107,7 @@ static void sglp_linux_add_work_queue_entry(void *data, void (*callback)(void *d
     }
 }
 
-static sglp_Bool sglp_linux_do_next_work_queue_entry(WorkQueue *work_queue) {
+static sglp_Bool sglp_linux_do_next_work_queue_entry(sglp_LinuxWorkQueue *work_queue) {
     sglp_Bool res = SGLP_FALSE;
 
     int32_t original_next_entry_to_read = work_queue->next_entry_to_read;
@@ -3115,7 +3115,7 @@ static sglp_Bool sglp_linux_do_next_work_queue_entry(WorkQueue *work_queue) {
     if(original_next_entry_to_read != work_queue->next_entry_to_write) {
         int32_t i = __sync_val_compare_and_swap(&work_queue->next_entry_to_read, original_next_entry_to_read, new_next_entry_to_read);
         if(i == original_next_entry_to_read) {
-            WorkQueueEntry entry = work_queue->entries[i];
+            sglp_LinuxWorkQueueEntry entry = work_queue->entries[i];
             entry.callback(entry.e);
             __sync_fetch_and_add(&work_queue->cnt, 1);
         }
@@ -3136,7 +3136,7 @@ static void sglp_linux_complete_all_work(void) {
 }
 
 static void *sglp_linux_thread_proc(void *Parameter) {
-    WorkQueue *queue = (WorkQueue *)Parameter;
+    sglp_LinuxWorkQueue *queue = (sglp_LinuxWorkQueue *)Parameter;
     for(;;) {
         if(sglp_linux_do_next_work_queue_entry(queue)) {
             // TODO(Jonny): Find a function on Linux that will wait for the thread.
@@ -3261,24 +3261,33 @@ static void sglp_linux_audio_callback(void *user_data, uint8_t *audio_data, int 
     ring_buffer->write_cursor = (ring_buffer->play_cursor + length) % ring_buffer->size;
 }
 
-static void sglp_linux_init_audio(int samples_per_second, int buffer_size) {
-    SDL_AudioSpec audio_settings = {0};
+static sglp_Bool sglp_linux_init_audio(int samples_per_second, int buffer_size) {
+    sglp_Bool result = SGLP_FALSE;
 
-    audio_settings.freq = samples_per_second;
-    audio_settings.format = AUDIO_S16LSB;
-    audio_settings.channels = 2;
-    audio_settings.samples = 512;
-    audio_settings.callback = &sglp_linux_audio_callback;
-    audio_settings.userdata = &sglp_linux_global_secondary_buffer;
+#if !defined(SGLP_NO_SDL)
+    if(SDL_Init(SDL_INIT_AUDIO) == 0) {
+        SDL_AudioSpec audio_settings = {0};
 
-    sglp_linux_global_secondary_buffer.size = buffer_size;
-    sglp_linux_global_secondary_buffer.data = sglp_linux_malloc(buffer_size);
+        audio_settings.freq = samples_per_second;
+        audio_settings.format = AUDIO_S16LSB;
+        audio_settings.channels = 2;
+        audio_settings.samples = 512;
+        audio_settings.callback = &sglp_linux_audio_callback;
+        audio_settings.userdata = &sglp_linux_global_secondary_buffer;
 
-    SDL_OpenAudio(&audio_settings, 0);
+        sglp_linux_global_secondary_buffer.size = buffer_size;
+        sglp_linux_global_secondary_buffer.data = sglp_linux_malloc(buffer_size);
 
-    if(audio_settings.format != AUDIO_S16LSB) {
-        SGLP_ASSERT(0);
+        SDL_OpenAudio(&audio_settings, 0);
+
+        if(audio_settings.format == AUDIO_S16LSB) {
+            SDL_PauseAudio(0);
+            result = SGLP_TRUE;
+        }
     }
+#endif
+
+    return(result);
 }
 
 static void sglp_linux_fill_sound_buffer(sglp_LinuxSoundOutput *sound_output, int byte_to_lock, int bytes_to_write,
@@ -3310,8 +3319,20 @@ static void sglp_linux_fill_sound_buffer(sglp_LinuxSoundOutput *sound_output, in
     }
 }
 
-static void sglp_linux_handle_audio(sglp_API *api, sglp_LinuxSoundOutput *sound_output, int16_t *samples) {
+static void sglp_linux_audio_lock(void) {
+#if !defined(SGLP_NO_SDL)
     SDL_LockAudio();
+#endif
+}
+
+static void sglp_linux_audio_unlock(void) {
+#if !defined(SGLP_NO_SDL)
+    SDL_UnlockAudio();
+#endif
+}
+
+static void sglp_linux_handle_audio(sglp_API *api, sglp_LinuxSoundOutput *sound_output, int16_t *samples) {
+    sglp_linux_audio_lock();
     int byte_to_lock = (sound_output->running_sample_index * sound_output->bytes_per_sample) % sound_output->secondary_buffer_size;
     int target_cursor = ((sglp_linux_global_secondary_buffer.play_cursor + (sound_output->safety_bytes * sound_output->bytes_per_sample)) % sound_output->secondary_buffer_size);
 
@@ -3322,7 +3343,7 @@ static void sglp_linux_handle_audio(sglp_API *api, sglp_LinuxSoundOutput *sound_
     } else {
         bytes_to_write = target_cursor - byte_to_lock;
     }
-    SDL_UnlockAudio();
+    sglp_linux_audio_unlock();
 
     sglp_SoundOutputBuffer sound_buffer = {0};
     sound_buffer.samples_per_second = sound_output->samples_per_second;
@@ -3524,7 +3545,7 @@ int main(int argc, char **argv) {
 
         api.permanent_memory = api.os_malloc(api.settings.permanent_memory_size);
         if(api.permanent_memory) {
-            WorkQueue work_queue = {0};
+            sglp_LinuxWorkQueue work_queue = {0};
 
             if(api.settings.thread_cnt > 0) {
                 if(sglp_pthread_sem_open) {
@@ -3548,15 +3569,11 @@ int main(int argc, char **argv) {
             float target_seconds_per_frame = 1.0f / (float)game_update_hz;
             float ms_per_frame = 0.0f;
 
-            sglp_Bool sound_is_valid = SDL_Init(SDL_INIT_AUDIO) == 0;
-            sglp_LinuxSoundOutput sound_output = {0};
+            sglp_LinuxSoundOutput sound_output = sglp_linux_init_sound_output(game_update_hz);
+            sglp_Bool sound_is_valid = sglp_linux_init_audio(sound_output.samples_per_second, sound_output.secondary_buffer_size);
+
             int16_t *samples = 0;
-
             if(sound_is_valid) {
-                sound_output = sglp_linux_init_sound_output(game_update_hz);
-                sglp_linux_init_audio(sound_output.samples_per_second, sound_output.secondary_buffer_size);
-                SDL_PauseAudio(0);
-
                 int max_possible_overrun = 8;
                 samples = (int16_t *)api.os_malloc((sound_output.samples_per_second + max_possible_overrun) * sound_output.bytes_per_sample);
                 if(!samples) {
