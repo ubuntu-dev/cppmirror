@@ -3,7 +3,6 @@
 #include "pp_generated.h"
 
 #define SGLP_IMPLEMENTATION
-//#define SGLP_USE_SDL
 #include <SDL2/SDL.h>
 #include "sgl_platform.h"
 
