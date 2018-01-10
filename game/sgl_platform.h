@@ -7,6 +7,8 @@
     #define SGLP_IMPLEMENTATION
     #include "sgl_platform.h"
 
+    There are some other flags which can be defined in order to change the behavior of this file.
+
     Some of the "functions" (macros) in this file can be redefined by the user. These include
     - SGLP_ASSERT(x)
 
@@ -1266,9 +1268,6 @@ static void sglp_free_file(sglp_API *api, sglp_File *file) {
 //
 #if defined(SGLP_USE_SDL)
 
-// TODO - Let the user include this?
-#include <SDL2/SDL.h>
-
 static sglp_File sglp_sdl_read_file(sglp_API *api, char const *fname) {
     sglp_File res = {0};
 
@@ -1487,9 +1486,9 @@ static void sglp_sdl_set_opengl_attributes(void) {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     int context_flag = SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG;
-#if defined(SGLP_INTERNAL)
-    context_flag |= SDL_GL_CONTEXT_DEBUG_FLAG;
-#endif
+
+    //context_flag |= SDL_GL_CONTEXT_DEBUG_FLAG;
+
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, context_flag);
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -1601,8 +1600,8 @@ static float sglp_sdl_get_seconds_elapsed(uint64_t start, uint64_t end) {
     return ((float)(end - start) / (float)sglp_sdl_global_perf_count_frequency);
 }
 
-static void sglp_sdl_handle_frame_rate_stuff(uint64_t *last_counter, uint64_t *flip_wall_clock,
-                                             float *target_seconds_per_frame, float *ms_per_frame) {
+static void  sglp_sdl_handle_frame_rate_stuff(uint64_t *last_counter, uint64_t *flip_wall_clock,
+                                              float *target_seconds_per_frame, float *ms_per_frame) {
     float seconds_elapsed_for_frame = sglp_sdl_get_seconds_elapsed(*last_counter,
                                                                    SDL_GetPerformanceCounter());
     if(seconds_elapsed_for_frame < *target_seconds_per_frame) {
@@ -1752,7 +1751,7 @@ static sglp_SdlSoundOutput sglp_sdl_init_sound_output(float game_update_hz) {
 
 int main(int argc, char **argv) {
     if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC | SDL_INIT_AUDIO) == 0) {
-        //sglp_sdl_set_opengl_attributes();
+        //sglp_sdl_set_opengl_attributes(); // TODO - This fails. Why?
 
         sglp_API api = {0};
         sglp_sdl_get_api(&api);
@@ -2871,7 +2870,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 #include <sys/mman.h>
 #include <unistd.h>
 #include <dlfcn.h>
-#include <alsa/asoundlib.h>
+#include <sys/time.h>
 
 #include <stdarg.h> // Var Args
 
@@ -3182,6 +3181,7 @@ static sglp_File sglp_linux_read_file_and_null_terminate(sglp_API *api, char con
 // Utility stuff
 //
 static uint64_t sglp_linux_get_processor_timestamp(void) {
+#if 0
     uint64_t res, low, high;
 
     __asm__("rdtsc" : "=a" (low), "=d" (high));
@@ -3190,6 +3190,16 @@ static uint64_t sglp_linux_get_processor_timestamp(void) {
     res = (high << 32) | low;
 
     return(res);
+#else
+    uint64_t result = 0;
+
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    result = now.tv_sec;
+    result *= 1000000000;
+    result += now.tv_nsec;
+    return(result);
+#endif
 }
 
 //
@@ -3216,213 +3226,362 @@ static void sglp_linux_free(void *ptr) {
     }
 }
 
+//
+// Audio.
+//
+typedef struct sglp_LinuxSoundOutput {
+    int samples_per_second;;
+    uint32_t running_sample_index;
+    int bytes_per_sample;
+    uint32_t secondary_buffer_size;
+    uint32_t safety_bytes;
+} sglp_LinuxSoundOutput;
+
+typedef struct sglp_LinuxAudioRingBuffer {
+    int size;
+    int write_cursor;
+    int play_cursor;
+    void *data;
+} sglp_LinuxAudioRingBuffer;
+static sglp_LinuxAudioRingBuffer sglp_linux_global_secondary_buffer;
+
+static void sglp_linux_audio_callback(void *user_data, uint8_t *audio_data, int length) {
+    sglp_LinuxAudioRingBuffer *ring_buffer = (sglp_LinuxAudioRingBuffer *)user_data;
+
+    int region1_size = length;
+    int region2_size = 0;
+    if((ring_buffer->play_cursor + length) > ring_buffer->size) {
+        region1_size = ring_buffer->size - ring_buffer->play_cursor;
+        region2_size = length - region1_size;
+    }
+
+    sglp_memcpy(audio_data, (uint8_t *)ring_buffer->data + ring_buffer->play_cursor, region1_size);
+    sglp_memcpy(audio_data + region1_size, ring_buffer->data, region2_size);
+    ring_buffer->play_cursor = (ring_buffer->play_cursor + length) % ring_buffer->size;
+    ring_buffer->write_cursor = (ring_buffer->play_cursor + length) % ring_buffer->size;
+}
+
+static void sglp_linux_init_audio(int samples_per_second, int buffer_size) {
+    SDL_AudioSpec audio_settings = {0};
+
+    audio_settings.freq = samples_per_second;
+    audio_settings.format = AUDIO_S16LSB;
+    audio_settings.channels = 2;
+    audio_settings.samples = 512;
+    audio_settings.callback = &sglp_linux_audio_callback;
+    audio_settings.userdata = &sglp_linux_global_secondary_buffer;
+
+    sglp_linux_global_secondary_buffer.size = buffer_size;
+    sglp_linux_global_secondary_buffer.data = sglp_linux_malloc(buffer_size);
+
+    SDL_OpenAudio(&audio_settings, 0);
+
+    if(audio_settings.format != AUDIO_S16LSB) {
+        SGLP_ASSERT(0);
+    }
+}
+
+static void sglp_linux_fill_sound_buffer(sglp_LinuxSoundOutput *sound_output, int byte_to_lock, int bytes_to_write,
+                                         sglp_SoundOutputBuffer *source_buffer) {
+    void *region1 = (uint8_t *)sglp_linux_global_secondary_buffer.data + byte_to_lock;
+    int region1_size = bytes_to_write;
+    if(region1_size + byte_to_lock > sound_output->secondary_buffer_size) {
+        region1_size = sound_output->secondary_buffer_size - byte_to_lock;
+    }
+
+    void *region2 = sglp_linux_global_secondary_buffer.data;
+    int region2_size = bytes_to_write - region1_size;
+
+    int region1_sample_count = region1_size / sound_output->bytes_per_sample;
+    int16_t *dest_sample = (int16_t *)region1;
+    int16_t *source_sample = source_buffer->samples;
+    for(int i = 0; (i < region1_sample_count); ++i) {
+        *dest_sample++ = *source_sample++;
+        *dest_sample++ = *source_sample++;
+        ++sound_output->running_sample_index;
+    }
+
+    int region2_sample_count = region2_size / sound_output->bytes_per_sample;
+    dest_sample = (int16_t *)region2;
+    for(int i = 0; (i < region2_sample_count); ++i) {
+        *dest_sample++ = *source_sample++;
+        *dest_sample++ = *source_sample++;
+        ++sound_output->running_sample_index;
+    }
+}
+
+static void sglp_linux_handle_audio(sglp_API *api, sglp_LinuxSoundOutput *sound_output, int16_t *samples) {
+    SDL_LockAudio();
+    int byte_to_lock = (sound_output->running_sample_index * sound_output->bytes_per_sample) % sound_output->secondary_buffer_size;
+    int target_cursor = ((sglp_linux_global_secondary_buffer.play_cursor + (sound_output->safety_bytes * sound_output->bytes_per_sample)) % sound_output->secondary_buffer_size);
+
+    int bytes_to_write;
+    if(byte_to_lock > target_cursor) {
+        bytes_to_write = sound_output->secondary_buffer_size - byte_to_lock;
+        bytes_to_write += target_cursor;
+    } else {
+        bytes_to_write = target_cursor - byte_to_lock;
+    }
+    SDL_UnlockAudio();
+
+    sglp_SoundOutputBuffer sound_buffer = {0};
+    sound_buffer.samples_per_second = sound_output->samples_per_second;
+    sound_buffer.sample_cnt = SGLP_ALIGN8(bytes_to_write / sound_output->bytes_per_sample);
+    bytes_to_write = sound_buffer.sample_cnt * sound_output->bytes_per_sample;
+    sound_buffer.samples = samples;
+    sglp_output_playing_sounds(api, &sound_buffer);
+
+    sglp_linux_fill_sound_buffer(sound_output, byte_to_lock, bytes_to_write, &sound_buffer);
+}
+
+static sglp_LinuxSoundOutput sglp_linux_init_sound_output(float game_update_hz) {
+    sglp_LinuxSoundOutput sound_output = {0};
+    sound_output.samples_per_second = 48000;
+    sound_output.bytes_per_sample = sizeof(int16_t) * 2;
+    sound_output.secondary_buffer_size = sound_output.samples_per_second * sound_output.bytes_per_sample;
+    sound_output.safety_bytes = (int)(((float)sound_output.samples_per_second * (float)sound_output.bytes_per_sample / game_update_hz) / 2);
+
+    return(sound_output);
+}
+
+// Set API
+static void sglp_linux_set_api(sglp_API *api) {
+    api->free_file = sglp_free_file;
+    api->read_file = sglp_linux_read_file;
+    api->read_file_and_null_terminate = sglp_linux_read_file_and_null_terminate;
+
+    api->get_processor_timestamp = sglp_linux_get_processor_timestamp;
+
+    api->add_work_queue_entry = sglp_linux_add_work_queue_entry;
+    api->complete_all_work = sglp_linux_complete_all_work;
+
+    api->os_malloc = sglp_linux_malloc;
+    api->os_realloc = sglp_linux_realloc;
+    api->os_free = sglp_linux_free;
+
+    sglp_global_opengl = &api->gl;
+
+    // TODO(Jonny): Read from hardware!
+    api->settings.frame_rate = 60;
+    api->settings.thread_cnt = 8;
+
+    api->settings.win_width = 1920 / 2;
+    api->settings.win_height = 1080 / 2;
+}
+
+typedef struct sglp_LinuxWindow {
+    sglp_Bool success;
+    Window win;
+    Display *display;
+} sglp_LinuxWindow;
+static sglp_LinuxWindow sglp_linux_create_opengl_window(sglp_API *api) {
+    sglp_LinuxWindow result = {0};
+
+    result.display = sglp_x11_XOpenDisplay(0);
+    if(result.display) {
+        sglp_GLint attrib_list[] = {GLX_RGBA, GLX_DEPTH_SIZE, 24, GLX_DOUBLEBUFFER, None};
+        XVisualInfo *visual_info = sglp_gl_glXChooseVisual(result.display, 0, attrib_list);
+        if(visual_info) {
+            Window root_window = DefaultRootWindow(result.display);
+            Colormap colour_map = sglp_x11_XCreateColorMap(result.display, root_window, visual_info->visual, AllocNone);
+
+            XSetWindowAttributes set_window_attributes = {0};
+            set_window_attributes.colormap = colour_map;
+            set_window_attributes.event_mask = ExposureMask | KeyPressMask;
+
+            if(!api->settings.win_width) {
+                api->settings.win_width = 1920 / 2;
+            }
+
+            if(!api->settings.win_height) {
+                api->settings.win_height = 1080 / 2;
+            }
+
+            result.win = sglp_x11_XCreateWindow(result.display, root_window, 0, 0, api->settings.win_width,
+                                                api->settings.win_height, 0, visual_info->depth, InputOutput,
+                                                visual_info->visual, CWColormap | CWEventMask, &set_window_attributes);
+            if(result.win) {
+                sglp_x11_XMapWindow(result.display, result.win);
+                sglp_x11_XStoreName(result.display, result.win, (char *)api->settings.window_title);
+
+                GLXContext gl_context = sglp_gl_glXCreateContext(result.display, visual_info, 0, GL_TRUE);
+                sglp_x11_XSelectInput(result.display, result.win, KeyPressMask | KeyReleaseMask);
+                if(gl_context) {
+                    sglp_gl_glXMakeCurrent(result.display, result.win, gl_context);
+
+                    result.success = SGLP_TRUE;
+                }
+            }
+        }
+    }
+
+    return(result);
+}
+
+static void sglp_linux_handle_window_messages(sglp_API *api, sglp_LinuxWindow win) {
+    while(sglp_x11_XPending(win.display)) {
+        XEvent event;
+        sglp_x11_XNextEvent(win.display, &event);
+        if(KeyPress == event.xkey.type) {
+            KeySym X11Key = sglp_x11_XKeycodeToKeysym(win.display, event.xkey.keycode, 0);
+            switch(X11Key) {
+                case XK_Up:    { api->key[sglp_key_up]    = SGLP_TRUE; } break;
+                case XK_Down:  { api->key[sglp_key_down]  = SGLP_TRUE; } break;
+                case XK_Left:  { api->key[sglp_key_left]  = SGLP_TRUE; } break;
+                case XK_Right: { api->key[sglp_key_right] = SGLP_TRUE; } break;
+
+                case 'w': { api->key[sglp_key_w] = SGLP_TRUE; } break;
+                case 's': { api->key[sglp_key_s] = SGLP_TRUE; } break;
+                case 'a': { api->key[sglp_key_a] = SGLP_TRUE; } break;
+                case 'd': { api->key[sglp_key_d] = SGLP_TRUE; } break;
+
+                case XK_space: { api->key[sglp_key_space] = SGLP_TRUE; } break;
+
+                case XK_Escape: { api->key[sglp_key_escape] = SGLP_TRUE; } break;
+            }
+        } else if(KeyRelease == event.xkey.type) {
+            KeySym X11Key = sglp_x11_XKeycodeToKeysym(win.display, event.xkey.keycode, 0);
+            switch(X11Key) {
+                case XK_Up:    { api->key[sglp_key_up]    = SGLP_FALSE; } break;
+                case XK_Down:  { api->key[sglp_key_down]  = SGLP_FALSE; } break;
+                case XK_Left:  { api->key[sglp_key_left]  = SGLP_FALSE; } break;
+                case XK_Right: { api->key[sglp_key_right] = SGLP_FALSE; } break;
+
+                case 'w': { api->key[sglp_key_w] = SGLP_FALSE; } break;
+                case 's': { api->key[sglp_key_s] = SGLP_FALSE; } break;
+                case 'a': { api->key[sglp_key_a] = SGLP_FALSE; } break;
+                case 'd': { api->key[sglp_key_d] = SGLP_FALSE; } break;
+
+                case XK_space: { api->key[sglp_key_space] = SGLP_FALSE; } break;
+
+                case XK_Escape: { api->key[sglp_key_escape] = SGLP_FALSE; } break;
+            }
+        }
+    }
+
+    XWindowAttributes win_attribs = {0};
+    sglp_x11_XGetWindowAttributes(win.display, win.win, &win_attribs);
+}
+
+static uint64_t sglp_linux_global_perf_count_frequency;
+
+static float sglp_linux_get_seconds_elapsed(uint64_t start, uint64_t end) {
+    return ((float)(end - start) / (float)sglp_linux_global_perf_count_frequency);
+}
+
+static void sglp_linux_sleep(uint32_t ms) {
+    struct timespec elapsed, tv;
+
+    elapsed.tv_sec = ms / 1000;
+    elapsed.tv_nsec = (ms % 1000) * 1000000;
+    tv.tv_sec = elapsed.tv_sec;
+    tv.tv_nsec = elapsed.tv_nsec;
+    int err = nanosleep(&tv, &elapsed);
+    // TODO - Check error
+}
+
+static void sglp_linux_handle_frame_rate_stuff(sglp_API *api, uint64_t *last_counter, uint64_t *flip_wall_clock,
+                                               float *target_seconds_per_frame, float *ms_per_frame) {
+    float seconds_elapsed_for_frame = sglp_linux_get_seconds_elapsed(*last_counter,
+                                                                     api->get_processor_timestamp());
+    if(seconds_elapsed_for_frame < *target_seconds_per_frame) {
+        float test_seconds_elapsed_for_frame;
+        uint32_t sleepms = (uint32_t)(1000.0f * (*target_seconds_per_frame - seconds_elapsed_for_frame));
+        if(sleepms > 0) {
+            sglp_linux_sleep(sleepms);
+        }
+
+        test_seconds_elapsed_for_frame = sglp_linux_get_seconds_elapsed(*last_counter,
+                                                                        api->get_processor_timestamp());
+        if(test_seconds_elapsed_for_frame < *target_seconds_per_frame) {
+            // TODO(Jonny): Log missed Sleep here
+        }
+
+        while(seconds_elapsed_for_frame < *target_seconds_per_frame) {
+            seconds_elapsed_for_frame = sglp_linux_get_seconds_elapsed(*last_counter,
+                                                                       api->get_processor_timestamp());
+        }
+    } else {
+        // Missed Frame Rate!
+    }
+
+    uint64_t end_counter = api->get_processor_timestamp();
+    *ms_per_frame = 1000.0f * sglp_linux_get_seconds_elapsed(*last_counter, end_counter);
+    *last_counter = end_counter;
+
+    *flip_wall_clock = api->get_processor_timestamp();
+}
+
 int main(int argc, char **argv) {
     sglp_API api = {0};
 
-    api.free_file = sglp_free_file;
-    api.read_file = sglp_linux_read_file;
-    api.read_file_and_null_terminate = sglp_linux_read_file_and_null_terminate;
+    sglp_linux_set_api(&api);
 
-    api.get_processor_timestamp = sglp_linux_get_processor_timestamp;
-
-    api.add_work_queue_entry = sglp_linux_add_work_queue_entry;
-    api.complete_all_work = sglp_linux_complete_all_work;
-
-    api.os_malloc = sglp_linux_malloc;
-    api.os_realloc = sglp_linux_realloc;
-    api.os_free = sglp_linux_free;
-
-    sglp_global_opengl = &api.gl;
-
-    if((sglp_linux_load_x11()) && (sglp_linux_load_lpthread()) && (sglp_linux_load_gl())) {
-        Display *disp;
-
-        // TODO(Jonny): Read from hardware!
-        api.settings.frame_rate = 60;
-        api.settings.thread_cnt = 8;
-
-        api.settings.win_width = 1920 / 2;
-        api.settings.win_height = 1080 / 2;
-
+    if(sglp_linux_load_x11() && sglp_linux_load_lpthread() && sglp_linux_load_gl() && sglp_linux_load_opengl_funcs()) {
         sglp_platform_setup_settings_callback(&api.settings);
 
-        disp = sglp_x11_XOpenDisplay(0);
-        if(disp) {
-            sglp_GLint attrib_list[] = {GLX_RGBA, GLX_DEPTH_SIZE, 24, GLX_DOUBLEBUFFER, None};
-            XVisualInfo *visual_info = sglp_gl_glXChooseVisual(disp, 0, attrib_list);
-            if(visual_info) {
-                Window root_window = DefaultRootWindow(disp);
-                Colormap colour_map = sglp_x11_XCreateColorMap(disp, root_window, visual_info->visual, AllocNone);
+        sglp_LinuxWindow win = sglp_linux_create_opengl_window(&api);
 
-                XSetWindowAttributes set_window_attributes = {0};
-                set_window_attributes.colormap = colour_map;
-                set_window_attributes.event_mask = ExposureMask | KeyPressMask;
+        api.permanent_memory = api.os_malloc(api.settings.permanent_memory_size);
+        if(api.permanent_memory) {
+            WorkQueue work_queue = {0};
 
-                if(!api.settings.win_width) {
-                    api.settings.win_width = 1920 / 2;
+            if(api.settings.thread_cnt > 0) {
+                if(sglp_pthread_sem_open) {
+                    work_queue.hsem = sglp_pthread_sem_open("Thread", O_CREAT | O_EXCL, 0644, 1);
                 }
 
-                if(!api.settings.win_height) {
-                    api.settings.win_height = 1080 / 2;
-                }
-
-                Window win = sglp_x11_XCreateWindow(disp, root_window, 0, 0, api.settings.win_width,
-                                                    api.settings.win_height, 0, visual_info->depth, InputOutput,
-                                                    visual_info->visual, CWColormap | CWEventMask, &set_window_attributes);
-                if(win) {
-                    sglp_x11_XMapWindow(disp, win);
-                    sglp_x11_XStoreName(disp, win, (char *)api.settings.window_title);
-
-                    GLXContext gl_context = sglp_gl_glXCreateContext(disp, visual_info, 0, GL_TRUE);
-                    sglp_x11_XSelectInput(disp, win, KeyPressMask | KeyReleaseMask);
-                    if(gl_context) {
-                        sglp_gl_glXMakeCurrent(disp, win, gl_context);
-
-                        api.permanent_memory = api.os_malloc(api.settings.permanent_memory_size);
-                        if(api.permanent_memory) {
-                            WorkQueue work_queue = {0};
-
-                            if(api.settings.thread_cnt > 0) {
-                                if(sglp_pthread_sem_open) {
-                                    work_queue.hsem = sglp_pthread_sem_open("Thread", O_CREAT | O_EXCL, 0644, 1);
-                                }
-
-                                for(int i = 0; (i < api.settings.thread_cnt); ++i) {
-                                    pthread_t Thread;
-                                    if(sglp_pthread_pthread_create) {
-                                        sglp_pthread_pthread_create(&Thread, 0, sglp_linux_thread_proc, (void *)&work_queue);
-                                    }
-                                }
-                            }
-
-                            if(sglp_linux_load_opengl_funcs()) {
-                                int channels = 2;
-                                int samples_per_second = 48000;
-                                int sample_rate = samples_per_second;
-                                int bytes_per_sample = sizeof(int16_t) * 2;
-
-                                // Open the PCM device in playback mode.
-                                snd_pcm_t *pcm_handle = 0;
-                                snd_pcm_open(&pcm_handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
-
-                                // Allocate parameters object and fill it with default values.
-                                snd_pcm_hw_params_t *params = (snd_pcm_hw_params_t *)sglp_linux_malloc(snd_pcm_hw_params_sizeof());
-                                snd_pcm_hw_params_any(pcm_handle, params);
-
-                                // Set parameters
-                                snd_pcm_hw_params_set_access(pcm_handle, params, SND_PCM_ACCESS_RW_INTERLEAVED);
-                                snd_pcm_hw_params_set_format(pcm_handle, params, SND_PCM_FORMAT_S16_LE);
-                                snd_pcm_hw_params_set_channels(pcm_handle, params, channels);
-                                snd_pcm_hw_params_set_rate(pcm_handle, params, sample_rate, 0);
-
-                                // Write params.
-                                snd_pcm_hw_params(pcm_handle, params);
-
-                                // Allocate buffer to hold single period.
-                                snd_pcm_uframes_t frames;
-                                int dir;
-                                snd_pcm_hw_params_get_period_size(params, &frames, &dir);
-
-                                int16_t *snd_samples =
-                                    (int16_t *)sglp_linux_malloc((samples_per_second * bytes_per_sample) + ((2 * 8) * sizeof(int16_t)));
-
-                                sglp_setup(&api, api.settings.max_no_of_sounds);
-
-                                XWindowAttributes win_attribs = {0};
-                                sglp_Bool quit = SGLP_FALSE; // TODO(Jonny): Should quit be in sglp_API?
-
-                                int32_t last_time = 0;
-                                int32_t this_time = 0;
-                                float target_ms_per_frame = 16.666666f;
-                                float actual_ms_per_frame = target_ms_per_frame;
-
-                                api.init_game = SGLP_TRUE;
-                                api.dt = 16.6f; // TODO(Jonny): Hacky!
-
-                                while(!quit) {
-                                    while(sglp_x11_XPending(disp)) {
-                                        XEvent event;
-                                        sglp_x11_XNextEvent(disp, &event);
-                                        if(KeyPress == event.xkey.type) {
-                                            KeySym X11Key = sglp_x11_XKeycodeToKeysym(disp, event.xkey.keycode, 0);
-                                            switch(X11Key) {
-                                                case XK_Up:    { api.key[sglp_key_up]    = SGLP_TRUE; } break;
-                                                case XK_Down:  { api.key[sglp_key_down]  = SGLP_TRUE; } break;
-                                                case XK_Left:  { api.key[sglp_key_left]  = SGLP_TRUE; } break;
-                                                case XK_Right: { api.key[sglp_key_right] = SGLP_TRUE; } break;
-
-                                                case 'w': { api.key[sglp_key_w] = SGLP_TRUE; } break;
-                                                case 's': { api.key[sglp_key_s] = SGLP_TRUE; } break;
-                                                case 'a': { api.key[sglp_key_a] = SGLP_TRUE; } break;
-                                                case 'd': { api.key[sglp_key_d] = SGLP_TRUE; } break;
-
-                                                case XK_space: { api.key[sglp_key_space] = SGLP_TRUE; } break;
-
-                                                case XK_Escape: { api.key[sglp_key_escape] = SGLP_TRUE; } break;
-                                            }
-                                        } else if(KeyRelease == event.xkey.type) {
-                                            KeySym X11Key = sglp_x11_XKeycodeToKeysym(disp, event.xkey.keycode, 0);
-                                            switch(X11Key) {
-                                                case XK_Up:    { api.key[sglp_key_up]    = SGLP_FALSE; } break;
-                                                case XK_Down:  { api.key[sglp_key_down]  = SGLP_FALSE; } break;
-                                                case XK_Left:  { api.key[sglp_key_left]  = SGLP_FALSE; } break;
-                                                case XK_Right: { api.key[sglp_key_right] = SGLP_FALSE; } break;
-
-                                                case 'w': { api.key[sglp_key_w] = SGLP_FALSE; } break;
-                                                case 's': { api.key[sglp_key_s] = SGLP_FALSE; } break;
-                                                case 'a': { api.key[sglp_key_a] = SGLP_FALSE; } break;
-                                                case 'd': { api.key[sglp_key_d] = SGLP_FALSE; } break;
-
-                                                case XK_space: { api.key[sglp_key_space] = SGLP_FALSE; } break;
-
-                                                case XK_Escape: { api.key[sglp_key_escape] = SGLP_FALSE; } break;
-                                            }
-                                        }
-                                    }
-
-                                    sglp_x11_XGetWindowAttributes(disp, win, &win_attribs);
-
-                                    sglp_platform_update_and_render_callback(&api);
-                                    api.init_game = SGLP_FALSE;
-
-                                    sglp_gl_glXSwapBuffers(disp, win);
-
-                                    sglp_SoundOutputBuffer sound_buffer = {0};
-                                    sound_buffer.samples_per_second = samples_per_second;
-                                    sound_buffer.sample_cnt = SGLP_ALIGN8((int)(samples_per_second / actual_ms_per_frame));
-                                    sound_buffer.samples = snd_samples;
-
-                                    sglp_output_playing_sounds(&api, &sound_buffer);
-
-                                    int pcmrc = snd_pcm_writei(pcm_handle, sound_buffer.samples, sound_buffer.sample_cnt);
-                                    if(pcmrc == -EPIPE) {
-                                        fprintf(stderr, "Oops\n");
-                                        snd_pcm_prepare(pcm_handle);
-                                    }
-
-                                    // TODO(Jonny): The frame rate stuff isn't working 100%...
-#if 0
-                                    struct timespec TimeSpec;
-                                    clock_gettime(0, &TimeSpec);
-                                    last_time = this_time;
-                                    this_time = TimeSpec.tv_nsec;
-
-                                    float SecondsElapsedForFrame = cast(float)(this_time - last_time) / 1000000.0f;
-                                    actual_ms_per_frame = SecondsElapsedForFrame;
-                                    if(actual_ms_per_frame < 0) {
-                                        actual_ms_per_frame = target_ms_per_frame;
-                                    }
-
-                                    int TimeToSleep = (target_ms_per_frame - SecondsElapsedForFrame) * 1000;
-                                    if(TimeToSleep > 0 && TimeToSleep < target_ms_per_frame) {
-                                        usleep(TimeToSleep);
-                                    }
-#endif
-                                }
-                            }
-                        }
+                for(int i = 0; (i < api.settings.thread_cnt); ++i) {
+                    pthread_t Thread;
+                    if(sglp_pthread_pthread_create) {
+                        sglp_pthread_pthread_create(&Thread, 0, sglp_linux_thread_proc, (void *)&work_queue);
                     }
                 }
+            }
+
+            sglp_setup(&api, api.settings.max_no_of_sounds);
+
+            sglp_linux_global_perf_count_frequency = 1000000000; // TODO - Hacky.
+            float game_update_hz = (float)api.settings.frame_rate;
+            uint64_t last_counter = api.get_processor_timestamp();
+            uint64_t flip_wall_clock = api.get_processor_timestamp();
+            float target_seconds_per_frame = 1.0f / (float)game_update_hz;
+            float ms_per_frame = 0.0f;
+
+            sglp_Bool sound_is_valid = SDL_Init(SDL_INIT_AUDIO) == 0;
+            sglp_LinuxSoundOutput sound_output = {0};
+            int16_t *samples = 0;
+
+            if(sound_is_valid) {
+                sound_output = sglp_linux_init_sound_output(game_update_hz);
+                sglp_linux_init_audio(sound_output.samples_per_second, sound_output.secondary_buffer_size);
+                SDL_PauseAudio(0);
+
+                int max_possible_overrun = 8;
+                samples = (int16_t *)api.os_malloc((sound_output.samples_per_second + max_possible_overrun) * sound_output.bytes_per_sample);
+                if(!samples) {
+                    sound_is_valid = SGLP_FALSE;
+                }
+            }
+
+            api.init_game = SGLP_TRUE;
+            sglp_Bool quit = SGLP_FALSE; // TODO(Jonny): Should quit be in sglp_API?
+            while(!quit) {
+                api.dt = ms_per_frame;
+
+                sglp_linux_handle_window_messages(&api, win);
+
+                sglp_platform_update_and_render_callback(&api);
+                api.init_game = SGLP_FALSE;
+
+                sglp_gl_glXSwapBuffers(win.display, win.win);
+
+                if(sound_is_valid) {
+                    sglp_linux_handle_audio(&api, &sound_output, samples);
+                }
+
+                sglp_linux_handle_frame_rate_stuff(&api, &last_counter, &flip_wall_clock,
+                                                   &target_seconds_per_frame, &ms_per_frame);
             }
         }
     }

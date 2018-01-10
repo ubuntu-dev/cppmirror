@@ -3,6 +3,8 @@
 #include "pp_generated.h"
 
 #define SGLP_IMPLEMENTATION
+//#define SGLP_USE_SDL
+#include <SDL2/SDL.h>
 #include "sgl_platform.h"
 
 #define SGLM_IMPLEMENTATION
@@ -123,6 +125,8 @@ Bool overlap(Entity a, Entity b) {
 
 void draw_debug_information(sglp_API *api, Game_State *gs, float mouse_x, float mouse_y) {
 #if INTERNAL
+//    fprintf(stderr, "%f\n", api->dt);
+
     int buf_size = 256 * 256;
     char *buffer = api->os_malloc(sizeof *buffer * buf_size);
     pp_serialize_struct(&gs->player, Player, buffer, buf_size);
