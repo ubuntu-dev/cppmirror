@@ -1,5 +1,5 @@
 /*===================================================================================================
-  File:                    build.cpp
+  File:                    build.c
   Author:                  Jonathan Livingstone
   Email:                   seagull127@ymail.com
   Licence:                 Public Domain
@@ -19,18 +19,18 @@
 #include "platform.h"
 
 // Source files.
-#include "utilities.cpp"
-#include "lexer.cpp"
-#include "test.cpp"
-#include "write_file.cpp"
+#include "utilities.c"
+#include "lexer.c"
+#include "test.c"
+#include "write_file.c"
 
-#include "main.cpp"
+#include "main.c"
 
 // Windows.
 #if OS_WIN32
 #include "windows.h"
 
-#include "platform_win32.cpp"
+#include "platform_win32.c"
 
 // Linux
 #elif OS_LINUX
@@ -40,5 +40,5 @@
 #include <unistd.h>
 #include <dirent.h>
 
-#include "platform_linux.cpp"
+#include "platform_linux.c"
 #endif

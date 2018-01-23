@@ -29,7 +29,7 @@
 #define SGLP_COMPILER_CLANG 0
 #define SGLP_COMPILER_GCC 0
 
-#define SGLP_ENVIRONMENT64 1
+#define SGLP_ENVIRONMENT64 0
 #define SGLP_ENVIRONMENT32 0
 
 #define SGLP_OS_WIN32 0
@@ -75,7 +75,6 @@
         #define SGLP_ENVIRONMENT32 1
     #endif
 #endif
-
 
 // stdcall
 #define SGLP_STDCALL
@@ -2877,6 +2876,10 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 #include <GL/glx.h>
 
 #include <stdlib.h>
+
+#if !defined(SGLP_NO_INCLUDE_SDL)
+    #include <SDL2/SDL.h>
+#endif
 
 //
 // X11
