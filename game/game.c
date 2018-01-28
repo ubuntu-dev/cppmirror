@@ -123,8 +123,6 @@ Bool overlap(Entity a, Entity b) {
 
 void draw_debug_information(sglp_API *api, Game_State *gs, float mouse_x, float mouse_y) {
 #if INTERNAL
-//    fprintf(stderr, "%f\n", api->dt);
-
     int buf_size = 256 * 256;
     char *buffer = api->os_malloc(sizeof *buffer * buf_size);
     pp_serialize_struct(&gs->player, Player, buffer, buf_size);
@@ -132,6 +130,32 @@ void draw_debug_information(sglp_API *api, Game_State *gs, float mouse_x, float 
     draw_word(buffer, api, gs, 0.0f, 0.0f, size, size);
     api->os_free(buffer);
 #endif
+}
+
+void render(sglp_API *api, Game_State *gs) {
+    // Player
+    {
+        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->player.trans.x, gs->player.trans.y,
+                                                          gs->player.trans.scale_x, gs->player.trans.scale_y,
+                                                          gs->player.trans.rot);
+        float tform[16] = {};
+        sglm_mat4x4_as_float_arr(tform, &mat);
+
+        sglp_draw_sprite(gs->player_sprite, gs->player.current_frame, tform);
+    }
+
+    // Enemies
+    for(int i = 0; (i < NUMBER_OF_ENEMIES); ++i) {
+        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->enemy[i].x, gs->enemy[i].y,
+                                                          gs->enemy[i].scale_x, gs->enemy[i].scale_y, gs->enemy[i].rot);
+        float tform[16] = {};
+        sglm_mat4x4_as_float_arr(tform, &mat);
+
+        sglp_draw_sprite(gs->enemy_one_sprite, 0, tform);
+    }
+
+    // TODO - Read the mouse position from sgl_platform.
+    draw_debug_information(api, gs, 0.0f, 0.0f);
 }
 
 void sglp_platform_update_and_render_callback(sglp_API *api) {
@@ -252,28 +276,7 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
             gs->player.current_frame = gs->player.dir;
         }
 
-        // Render
-        {
-            sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->player.trans.x, gs->player.trans.y,
-                                                              gs->player.trans.scale_x, gs->player.trans.scale_y,
-                                                              gs->player.trans.rot);
-            float tform[16] = {};
-            sglm_mat4x4_as_float_arr(tform, &mat);
-
-            sglp_draw_sprite(gs->player_sprite, gs->player.current_frame, tform);
-        }
-
-        for(int i = 0; (i < NUMBER_OF_ENEMIES); ++i) {
-            sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->enemy[i].x, gs->enemy[i].y,
-                                                              gs->enemy[i].scale_x, gs->enemy[i].scale_y, gs->enemy[i].rot);
-            float tform[16] = {};
-            sglm_mat4x4_as_float_arr(tform, &mat);
-
-            sglp_draw_sprite(gs->enemy_one_sprite, 0, tform);
-        }
-
-        // TODO - Read the mouse position from sgl_platform.
-        draw_debug_information(api, gs, 0.0f, 0.0f);
+        render(api, gs);
     }
 }
 
