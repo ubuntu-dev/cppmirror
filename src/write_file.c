@@ -664,6 +664,7 @@ File write_data(Parse_Result pr) {
             }
 
             // Typedef to original.
+            // TODO - This should go right back through the tree to the base type, not one level.
             {
                 write_ob(&ob,
                          "\n"
@@ -890,7 +891,7 @@ File write_data(Parse_Result pr) {
                                                    "pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent, char *buffer, uintptr_t buf_size, uintptr_t bytes_written) {\n"
                                                    "    char indent_buf[256] = {0};\n"
                                                    "    uintptr_t i, k, num_members;\n"
-												   "    int j;\n"
+                                                   "    int j;\n"
                                                    "\n"
                                                    "    PP_ASSERT((buffer) && (buf_size > 0)); // Check params.\n"
                                                    "\n"
