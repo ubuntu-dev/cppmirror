@@ -677,7 +677,6 @@ File write_data(Parse_Result pr) {
             }
 
             // Typedef to original.
-            // TODO - This should go right back through the tree to the base type, not one level.
             {
                 write_ob(&ob,
                          "\n"
