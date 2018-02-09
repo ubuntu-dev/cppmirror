@@ -101,6 +101,7 @@ typedef int sgl_Bool;
 #define SGL_FALSE 0
 
 // Use #define SGL_NO_BOOL to avoid create Bool typedef here.
+// TODO - The preprocessor gets confused at this bit right now.
 //#if !defined(SGL_NO_TYPES)
 typedef sgl_Uint64 Uint64;
 typedef sgl_Uint32 Uint32;

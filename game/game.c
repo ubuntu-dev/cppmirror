@@ -23,10 +23,10 @@ PP_IGNORE
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_ttf.h"
 
-struct Entity {
-    float x, y;
-    float scale_x, scale_y;
-    float rot;
+struct Transform {
+    Float x, y;
+    Float scale_x, scale_y;
+    Float rot;
 };
 
 enum Player_Direction {
@@ -37,10 +37,15 @@ enum Player_Direction {
 };
 
 struct Player {
-    Entity trans;
-    float start_x, start_y;
+    Transform trans;
+    Float start_x, start_y;
     Player_Direction dir;
-    float current_frame;
+    Float current_frame;
+};
+
+struct Enemy {
+    Transform trans;
+    Bool valid;
 };
 
 #define NUMBER_OF_ENEMIES 4
@@ -50,7 +55,7 @@ struct Game_State {
     sglp_Sprite bitmap_sprite;
 
     Player player;
-    Entity enemy[NUMBER_OF_ENEMIES];
+    Enemy enemy[NUMBER_OF_ENEMIES];
 };
 
 enum ID {
@@ -77,20 +82,20 @@ void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
     //settings->thread_cnt;
 }
 struct V2 {
-    float x, y;
+    Float x, y;
 };
 
-V2 v2(float x, float y) {
+V2 v2(Float x, Float y) {
     V2 res = { .x = x, .y = y };
     return(res);
 }
 
 V2 get_letter_position(char Letter);
 
-void draw_word(char const *str, sglp_API *api, Game_State *gs, float x, float y, float scalex, float scaley) {
+void draw_word(char const *str, sglp_API *api, Game_State *gs, Float x, Float y, Float scalex, Float scaley) {
     scalex *= 0.5f;
     int string_length = sgl_string_len(str);
-    float running_x = x, running_y = y;
+    Float running_x = x, running_y = y;
     for(int i = 0; (i < string_length - 1); ++i) {
         char letter = str[i];
 
@@ -101,7 +106,7 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, float x, float y,
             V2 pos_in_table = get_letter_position(letter);
             if(pos_in_table.x != -1 && pos_in_table.y != -1) {
                 sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale(running_x, running_y, scalex, scaley);
-                float tform[16] = {};
+                Float tform[16] = {};
                 sglm_mat4x4_as_float_arr(tform, &mat);
                 sglp_draw_sprite_frame_matrix(gs->bitmap_sprite, pos_in_table.x, pos_in_table.y, tform);
 
@@ -111,7 +116,7 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, float x, float y,
     }
 }
 
-Bool overlap(Entity a, Entity b) {
+Bool overlap(Transform a, Transform b) {
     if((a.x >= b.x && a.x <= b.x + b.scale_x) || (b.x >= a.x && b.x <= a.x + a.scale_x)) {
         if((a.y >= b.y && a.y <= b.y + b.scale_y) || (b.y >= a.y && b.y <= a.y + a.scale_y)) {
             return(true);
@@ -121,12 +126,12 @@ Bool overlap(Entity a, Entity b) {
     return(false);
 }
 
-void draw_debug_information(sglp_API *api, Game_State *gs, float mouse_x, float mouse_y) {
+void draw_debug_information(sglp_API *api, Game_State *gs, Float mouse_x, Float mouse_y) {
 #if INTERNAL
     int buf_size = 256 * 256;
     char *buffer = api->os_malloc(sizeof *buffer * buf_size);
     pp_serialize_struct(&gs->player, Player, buffer, buf_size);
-    float size = 0.05f;
+    Float size = 0.05f;
     draw_word(buffer, api, gs, 0.0f, 0.0f, size, size);
     api->os_free(buffer);
 #endif
@@ -138,7 +143,7 @@ void render(sglp_API *api, Game_State *gs) {
         sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->player.trans.x, gs->player.trans.y,
                                                           gs->player.trans.scale_x, gs->player.trans.scale_y,
                                                           gs->player.trans.rot);
-        float tform[16] = {};
+        Float tform[16] = {};
         sglm_mat4x4_as_float_arr(tform, &mat);
 
         sglp_draw_sprite(gs->player_sprite, gs->player.current_frame, tform);
@@ -146,9 +151,10 @@ void render(sglp_API *api, Game_State *gs) {
 
     // Enemies
     for(int i = 0; (i < NUMBER_OF_ENEMIES); ++i) {
-        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->enemy[i].x, gs->enemy[i].y,
-                                                          gs->enemy[i].scale_x, gs->enemy[i].scale_y, gs->enemy[i].rot);
-        float tform[16] = {};
+        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->enemy[i].trans.x, gs->enemy[i].trans.y,
+                                                          gs->enemy[i].trans.scale_x, gs->enemy[i].trans.scale_y,
+                                                          gs->enemy[i].trans.rot);
+        Float tform[16] = {};
         sglm_mat4x4_as_float_arr(tform, &mat);
 
         sglp_draw_sprite(gs->enemy_one_sprite, 0, tform);
@@ -156,6 +162,18 @@ void render(sglp_API *api, Game_State *gs) {
 
     // TODO - Read the mouse position from sgl_platform.
     draw_debug_information(api, gs, 0.0f, 0.0f);
+}
+
+Enemy create_enemy(float x, float y) {
+    Enemy res = {};
+
+    res.trans.scale_x = 0.1f;
+    res.trans.scale_y = 0.1f;
+
+    res.trans.x = x;
+    res.trans.y = y;
+
+    return(res);
 }
 
 void sglp_platform_update_and_render_callback(sglp_API *api) {
@@ -188,16 +206,8 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
             gs->enemy_one_sprite = sglp_load_image(api, img_data, 8, 1, ID_sprite_enemy_one, width, height, number_of_components);
             stbi_image_free(img_data);
 
-            float x = 0.1f;
-            for(int i = 0; (i < 4); ++i) {
-                gs->enemy[i].scale_x = 0.1f;
-                gs->enemy[i].scale_y = 0.1f;
-
-                gs->enemy[i].x = x;
-                gs->enemy[i].y = 0.5f;
-
-                x += 0.4f;
-            }
+            Float x = 0.1f;
+            for(int i = 0; (i < 4); ++i) { gs->enemy[i] = create_enemy(x, 0.5f); }
         }
 
         {
@@ -265,7 +275,7 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
         if(api->key['L']) { gs->player.trans.scale_x += 0.01f; }
 
         for(int i = 0; (i < NUMBER_OF_ENEMIES); ++i) {
-            if(overlap(gs->player.trans, gs->enemy[i])) {
+            if(overlap(gs->player.trans, gs->enemy[i].trans)) {
                 gs->player.trans.x = gs->player.start_x;
                 gs->player.trans.y = gs->player.start_y;
             }
