@@ -228,6 +228,19 @@ void write_enum_size_data(OutputBuffer *ob, Enums enums) {
     }
 }
 
+String get_original_type_for_typedef(Typedef_Data td, Typedefs typedefs) {
+    String result = td.original;
+
+    for(Int i = 0; (i < typedefs.cnt); ++i) {
+        if(string_comp(typedefs.e[i].fresh, result)) {
+            result = typedefs.e[i].original;
+            i = 0;
+        }
+    }
+
+    return(result);
+}
+
 File write_data(Parse_Result pr) {
     File res = {0};
     OutputBuffer ob = {0};
@@ -676,10 +689,12 @@ File write_data(Parse_Result pr) {
                     for(Int i = 0; (i < pr.typedefs.cnt); ++i) {
                         Typedef_Data *td = pr.typedefs.e + i;
 
+                        String original = get_original_type_for_typedef(*td, pr.typedefs);
+
                         write_ob(&ob,
                                  "        case pp_Type_%.*s: { return(pp_Type_%.*s); } break;\n",
                                  td->fresh.len, td->fresh.e,
-                                 td->original.len, td->original.e);
+                                 original.len, original.e);
                     }
 
                     write_ob(&ob,
