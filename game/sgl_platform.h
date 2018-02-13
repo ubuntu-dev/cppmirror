@@ -161,13 +161,13 @@ enum sglp_Key {
     sglp_dpad_down,
     sglp_dpad_left,
 
-    start,
-    back,
+    sglp_start,
+    sglp_back,
 
-    left_shoulder,
-    right_shoulder,
-    left_thumb,
-    right_thumb,
+    sglp_left_shoulder,
+    sglp_right_shoulder,
+    sglp_left_thumb,
+    sglp_right_thumb,
 
     sglp_controller_a,
     sglp_controller_b,
@@ -207,24 +207,24 @@ enum sglp_Key {
 //
 // OpenGL
 //
-typedef uint32_t   sglp_GLenum;
-typedef uint32_t   sglp_GLbitfield;
-typedef uint32_t   sglp_GLuint;
-typedef int            sglp_GLint;
-typedef int            sglp_GLsizei;
+typedef uint32_t sglp_GLenum;
+typedef uint32_t sglp_GLbitfield;
+typedef uint32_t sglp_GLuint;
+typedef int      sglp_GLint;
+typedef int      sglp_GLsizei;
 typedef uint8_t  sglp_GLboolean;
-typedef char    sglp_GLbyte;
-typedef short          sglp_GLshort;
+typedef char     sglp_GLbyte;
+typedef short    sglp_GLshort;
 typedef uint8_t  sglp_GLubyte;
 typedef uint16_t sglp_GLushort;
-typedef uint32_t  sglp_GLulong;
-typedef float          sglp_GLfloat;
-typedef float          sglp_GLclampf;
-typedef double         sglp_GLdouble;
-typedef double         sglp_GLclampd;
-typedef void           sglp_GLvoid;
-typedef char           sglp_GLchar;
-typedef long           sglp_GLsizeiptr; // TODO(Jonny): Is this right?
+typedef uint32_t sglp_GLulong;
+typedef float    sglp_GLfloat;
+typedef float    sglp_GLclampf;
+typedef double   sglp_GLdouble;
+typedef double   sglp_GLclampd;
+typedef void     sglp_GLvoid;
+typedef char     sglp_GLchar;
+typedef long     sglp_GLsizeiptr; // TODO(Jonny): Is this right?
 
 #define SGLP_GL_FALSE              0x0
 #define SGLP_GL_TEXTURE_2D         0x0DE1
@@ -3536,6 +3536,7 @@ static void sglp_linux_handle_frame_rate_stuff(sglp_API *api, uint64_t *last_cou
     *flip_wall_clock = api->get_processor_timestamp();
 }
 
+// TODO - Add a temp memory buffer to go with permanent.
 int main(int argc, char **argv) {
     sglp_API api = {0};
 
