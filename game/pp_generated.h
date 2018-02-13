@@ -1660,12 +1660,12 @@ PP_STATIC intptr_t pp_string_to_enum(pp_Type type, char const *str) {
             else if(pp_string_compare(str, "sglp_dpad_up")) { return(15); }
             else if(pp_string_compare(str, "sglp_dpad_down")) { return(16); }
             else if(pp_string_compare(str, "sglp_dpad_left")) { return(17); }
-            else if(pp_string_compare(str, "start")) { return(18); }
-            else if(pp_string_compare(str, "back")) { return(19); }
-            else if(pp_string_compare(str, "left_shoulder")) { return(20); }
-            else if(pp_string_compare(str, "right_shoulder")) { return(21); }
-            else if(pp_string_compare(str, "left_thumb")) { return(22); }
-            else if(pp_string_compare(str, "right_thumb")) { return(23); }
+            else if(pp_string_compare(str, "sglp_start")) { return(18); }
+            else if(pp_string_compare(str, "sglp_back")) { return(19); }
+            else if(pp_string_compare(str, "sglp_left_shoulder")) { return(20); }
+            else if(pp_string_compare(str, "sglp_right_shoulder")) { return(21); }
+            else if(pp_string_compare(str, "sglp_left_thumb")) { return(22); }
+            else if(pp_string_compare(str, "sglp_right_thumb")) { return(23); }
             else if(pp_string_compare(str, "sglp_controller_a")) { return(24); }
             else if(pp_string_compare(str, "sglp_controller_b")) { return(25); }
             else if(pp_string_compare(str, "sglp_controller_x")) { return(26); }
@@ -1743,12 +1743,12 @@ PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t index) {
                 case 15: { return("sglp_dpad_up"); } break;
                 case 16: { return("sglp_dpad_down"); } break;
                 case 17: { return("sglp_dpad_left"); } break;
-                case 18: { return("start"); } break;
-                case 19: { return("back"); } break;
-                case 20: { return("left_shoulder"); } break;
-                case 21: { return("right_shoulder"); } break;
-                case 22: { return("left_thumb"); } break;
-                case 23: { return("right_thumb"); } break;
+                case 18: { return("sglp_start"); } break;
+                case 19: { return("sglp_back"); } break;
+                case 20: { return("sglp_left_shoulder"); } break;
+                case 21: { return("sglp_right_shoulder"); } break;
+                case 22: { return("sglp_left_thumb"); } break;
+                case 23: { return("sglp_right_thumb"); } break;
                 case 24: { return("sglp_controller_a"); } break;
                 case 25: { return("sglp_controller_b"); } break;
                 case 26: { return("sglp_controller_x"); } break;
