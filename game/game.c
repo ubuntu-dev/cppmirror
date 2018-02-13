@@ -207,7 +207,10 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
             stbi_image_free(img_data);
 
             Float x = 0.1f;
-            for(int i = 0; (i < 4); ++i) { gs->enemy[i] = create_enemy(x, 0.5f); }
+            for(int i = 0; (i < 4); ++i) {
+                gs->enemy[i] = create_enemy(x, 0.5f);
+                x += 0.2f;
+            }
         }
 
         {
