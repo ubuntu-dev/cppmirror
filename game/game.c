@@ -23,9 +23,17 @@ PP_IGNORE
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_ttf.h"
 
+struct V2 {
+    float x, y;
+};
+V2 v2(Float x, Float y) {
+    V2 res = { .x = x, .y = y };
+    return(res);
+}
+
 struct Transform {
-    Float x, y;
-    Float scale_x, scale_y;
+    V2 pos;
+    V2 scale;
     Float rot;
 };
 
@@ -38,9 +46,10 @@ enum Player_Direction {
 
 struct Player {
     Transform trans;
-    Float start_x, start_y;
+    V2 start_pos;
     Player_Direction dir;
     Float current_frame;
+    V2 current_speed;
 };
 
 struct Enemy {
@@ -81,16 +90,19 @@ void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
     settings->window_title = "Hello, Lauren!";
     //settings->thread_cnt;
 }
-struct V2 {
-    Float x, y;
-};
-
-V2 v2(Float x, Float y) {
-    V2 res = { .x = x, .y = y };
-    return(res);
-}
 
 V2 get_letter_position(char Letter);
+
+Float accelerate(Float cur, Float max, Float acc, Bool forward) {
+    Float go_forward = (forward) ? 1.0f : -1.0f;
+    Float res = ((go_forward * max) - cur) * acc;
+    if(res > max) {
+        res = max;
+    }
+
+
+    return(res);
+}
 
 void draw_word(char const *str, sglp_API *api, Game_State *gs, Float x, Float y, Float scalex, Float scaley) {
     scalex *= 0.5f;
@@ -117,8 +129,8 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, Float x, Float y,
 }
 
 Bool overlap(Transform a, Transform b) {
-    if((a.x >= b.x && a.x <= b.x + b.scale_x) || (b.x >= a.x && b.x <= a.x + a.scale_x)) {
-        if((a.y >= b.y && a.y <= b.y + b.scale_y) || (b.y >= a.y && b.y <= a.y + a.scale_y)) {
+    if((a.pos.x >= b.pos.x && a.pos.x <= b.pos.x + b.scale.x) || (b.pos.x >= a.pos.x && b.pos.x <= a.pos.x + a.scale.x)) {
+        if((a.pos.y >= b.pos.y && a.pos.y <= b.pos.y + b.scale.y) || (b.pos.y >= a.pos.y && b.pos.y <= a.pos.y + a.scale.y)) {
             return(true);
         }
     }
@@ -142,8 +154,8 @@ void render(sglp_API *api, Game_State *gs) {
 
     // Player
     {
-        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->player.trans.x, gs->player.trans.y,
-                                                          gs->player.trans.scale_x, gs->player.trans.scale_y,
+        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->player.trans.pos.x, gs->player.trans.pos.y,
+                                                          gs->player.trans.scale.x, gs->player.trans.scale.y,
                                                           gs->player.trans.rot);
         Float tform[16] = {};
         sglm_mat4x4_as_float_arr(tform, &mat);
@@ -153,8 +165,8 @@ void render(sglp_API *api, Game_State *gs) {
 
     // Enemies
     for(int i = 0; (i < NUMBER_OF_ENEMIES); ++i) {
-        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->enemy[i].trans.x, gs->enemy[i].trans.y,
-                                                          gs->enemy[i].trans.scale_x, gs->enemy[i].trans.scale_y,
+        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->enemy[i].trans.pos.x, gs->enemy[i].trans.pos.y,
+                                                          gs->enemy[i].trans.scale.x, gs->enemy[i].trans.scale.y,
                                                           gs->enemy[i].trans.rot);
         Float tform[16] = {};
         sglm_mat4x4_as_float_arr(tform, &mat);
@@ -169,11 +181,25 @@ void render(sglp_API *api, Game_State *gs) {
 Enemy create_enemy(float x, float y) {
     Enemy res = {};
 
-    res.trans.scale_x = 0.1f;
-    res.trans.scale_y = 0.1f;
+    res.trans.scale.x = 0.1f;
+    res.trans.scale.y = 0.1f;
 
-    res.trans.x = x;
-    res.trans.y = y;
+    res.trans.pos.x = x;
+    res.trans.pos.y = y;
+
+    return(res);
+}
+
+Player create_player(float x, float y) {
+    Player res = {0};
+
+    res.trans.scale.x = 0.1f;
+    res.trans.scale.y = 0.1f;
+
+    res.trans.pos.x = x;
+    res.trans.pos.y = y;
+
+    res.start_pos = res.trans.pos;
 
     return(res);
 }
@@ -186,14 +212,7 @@ void init(sglp_API *api, Game_State *gs) {
         gs->player_sprite = sglp_load_image(api, img_data, 12, 1, ID_sprite_player, width, height, number_of_components);
         stbi_image_free(img_data);
 
-        gs->player.trans.scale_x = 0.1f;
-        gs->player.trans.scale_y = 0.1f;
-
-        gs->player.trans.x = 0.5f;
-        gs->player.trans.y = 0.7f;
-
-        gs->player.start_x = gs->player.trans.x;
-        gs->player.start_y = gs->player.trans.y;
+        gs->player = create_player(0.5f, 0.7f);
     }
 
     // Load the enemy.
@@ -210,6 +229,7 @@ void init(sglp_API *api, Game_State *gs) {
         }
     }
 
+    // Load font.
     {
         int width, height, number_of_components;
         uint8_t *img_data = stbi_load("freemono.png", &width, &height, &number_of_components, 0);
@@ -243,43 +263,70 @@ void update(sglp_API *api, Game_State *gs) {
         sglp_play_audio(api, ID_sound_bloop);
     }
 
+    V2 max_speed = v2(0.01f, 0.01f);
+    V2 acceleration = v2(0.006f, 0.006f);
+    V2 friction = v2(0.005f, 0.005f);
+
+    V2 current_speed = gs->player.current_speed;
     if(api->key['W']) {
-        gs->player.trans.y -= 0.01f;
+        current_speed.y += accelerate(current_speed.y, max_speed.y, acceleration.y * api->dt, false);
         gs->player.dir = Player_Direction_up;
         gs->player.current_frame = Player_Direction_up;
-    }
-    if(api->key['A']) {
-        gs->player.trans.x -= 0.01f;
-        gs->player.dir = Player_Direction_left;
-        gs->player.current_frame = Player_Direction_left;
-    }
-    if(api->key['S']) {
-        gs->player.trans.y += 0.01f;
+    } else if(api->key['S']) {
+        current_speed.y += accelerate(current_speed.y, max_speed.y, acceleration.y * api->dt, true);
         gs->player.dir = Player_Direction_down;
         gs->player.current_frame = Player_Direction_down;
+    } else {
+        if(current_speed.y > friction.y * 0.5f) {
+            current_speed.y += accelerate(current_speed.y, max_speed.y, friction.y * api->dt, false);
+        } else if(current_speed.y < -friction.y * 0.5f) {
+            current_speed.y += accelerate(current_speed.y, max_speed.y, friction.y * api->dt, true);
+        } else {
+            current_speed.y = 0;
+        }
     }
-    if(api->key['D']) {
-        gs->player.trans.x += 0.01f;
+
+    if(api->key['A']) {
+        current_speed.x += accelerate(current_speed.x, max_speed.x, acceleration.x * api->dt, false);
+        gs->player.dir = Player_Direction_left;
+        gs->player.current_frame = Player_Direction_left;
+    } else if(api->key['D']) {
+        current_speed.x += accelerate(current_speed.x, max_speed.x, acceleration.x * api->dt, true);
         gs->player.dir = Player_Direction_right;
         gs->player.current_frame = Player_Direction_right;
+    } else {
+        if(current_speed.x > friction.x * 0.5f) {
+            current_speed.x += accelerate(current_speed.x, max_speed.x, friction.x * api->dt, false);
+        } else if(current_speed.x < -friction.x * 0.5f) {
+            current_speed.x += accelerate(current_speed.x, max_speed.x, friction.x * api->dt, true);
+        } else {
+            current_speed.x = 0;
+        }
     }
+
+    gs->player.current_speed = current_speed;
+    gs->player.trans.pos.x += gs->player.current_speed.x;
+    gs->player.trans.pos.y += gs->player.current_speed.y;
+
+
 
     if(api->key[sglp_key_space]) {
         // TODO - Shoot.
     }
 
-    if(api->key[sglp_key_left]) { gs->player.trans.rot += 5.0f; }
-    if(api->key[sglp_key_right]) { gs->player.trans.rot -= 5.0f; }
+    float rot_speed = 5.0f;
+    if(api->key[sglp_key_left])  { gs->player.trans.rot += rot_speed; }
+    if(api->key[sglp_key_right]) { gs->player.trans.rot -= rot_speed; }
 
-    if(api->key['I']) { gs->player.trans.scale_y += 0.01f; }
-    if(api->key['K']) { gs->player.trans.scale_y -= 0.01f; }
-    if(api->key['J']) { gs->player.trans.scale_x -= 0.01f; }
-    if(api->key['L']) { gs->player.trans.scale_x += 0.01f; }
+    float scaling_speed = 0.01f;
+    if(api->key['I']) { gs->player.trans.scale.y += scaling_speed; }
+    if(api->key['K']) { gs->player.trans.scale.y -= scaling_speed; }
+    if(api->key['J']) { gs->player.trans.scale.x -= scaling_speed; }
+    if(api->key['L']) { gs->player.trans.scale.x += scaling_speed; }
 
     for(int i = 0; (i < NUMBER_OF_ENEMIES); ++i) {
         if(overlap(gs->player.trans, gs->enemy[i].trans)) {
-            gs->player.trans.x = gs->player.start_x;
-            gs->player.trans.y = gs->player.start_y;
+            gs->player.trans.pos = gs->player.start_pos;
         }
     }
 
@@ -294,7 +341,6 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
 
     if(api->init_game) {
         init(api, gs);
-        //load_all_letters(api, gs);
     } else {
         update(api, gs);
         render(api, gs);
