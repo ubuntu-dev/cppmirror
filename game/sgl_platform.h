@@ -29,7 +29,7 @@
 #define SGLP_COMPILER_CLANG 0
 #define SGLP_COMPILER_GCC 0
 
-#define SGLP_ENVIRONMENT64 1
+#define SGLP_ENVIRONMENT64 0
 #define SGLP_ENVIRONMENT32 0
 
 #define SGLP_OS_WIN32 0
@@ -75,7 +75,6 @@
         #define SGLP_ENVIRONMENT32 1
     #endif
 #endif
-
 
 // stdcall
 #define SGLP_STDCALL
@@ -162,13 +161,13 @@ enum sglp_Key {
     sglp_dpad_down,
     sglp_dpad_left,
 
-    start,
-    back,
+    sglp_start,
+    sglp_back,
 
-    left_shoulder,
-    right_shoulder,
-    left_thumb,
-    right_thumb,
+    sglp_left_shoulder,
+    sglp_right_shoulder,
+    sglp_left_thumb,
+    sglp_right_thumb,
 
     sglp_controller_a,
     sglp_controller_b,
@@ -208,24 +207,24 @@ enum sglp_Key {
 //
 // OpenGL
 //
-typedef uint32_t   sglp_GLenum;
-typedef uint32_t   sglp_GLbitfield;
-typedef uint32_t   sglp_GLuint;
-typedef int            sglp_GLint;
-typedef int            sglp_GLsizei;
+typedef uint32_t sglp_GLenum;
+typedef uint32_t sglp_GLbitfield;
+typedef uint32_t sglp_GLuint;
+typedef int      sglp_GLint;
+typedef int      sglp_GLsizei;
 typedef uint8_t  sglp_GLboolean;
-typedef char    sglp_GLbyte;
-typedef short          sglp_GLshort;
+typedef char     sglp_GLbyte;
+typedef short    sglp_GLshort;
 typedef uint8_t  sglp_GLubyte;
 typedef uint16_t sglp_GLushort;
-typedef uint32_t  sglp_GLulong;
-typedef float          sglp_GLfloat;
-typedef float          sglp_GLclampf;
-typedef double         sglp_GLdouble;
-typedef double         sglp_GLclampd;
-typedef void           sglp_GLvoid;
-typedef char           sglp_GLchar;
-typedef long           sglp_GLsizeiptr; // TODO(Jonny): Is this right?
+typedef uint32_t sglp_GLulong;
+typedef float    sglp_GLfloat;
+typedef float    sglp_GLclampf;
+typedef double   sglp_GLdouble;
+typedef double   sglp_GLclampd;
+typedef void     sglp_GLvoid;
+typedef char     sglp_GLchar;
+typedef long     sglp_GLsizeiptr; // TODO(Jonny): Is this right?
 
 #define SGLP_GL_FALSE              0x0
 #define SGLP_GL_TEXTURE_2D         0x0DE1
@@ -2676,12 +2675,12 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                                         api.key[sglp_dpad_down]      = (controller_state.Gamepad.wButtons & SGLP_XINPUT_GAMEPAD_DPAD_DOWN);
                                         api.key[sglp_dpad_left]      = (controller_state.Gamepad.wButtons & SGLP_XINPUT_GAMEPAD_DPAD_LEFT);
                                         api.key[sglp_dpad_right]     = (controller_state.Gamepad.wButtons & SGLP_XINPUT_GAMEPAD_DPAD_RIGHT);
-                                        api.key[start]          = (controller_state.Gamepad.wButtons & SGLP_XINPUT_GAMEPAD_START);
-                                        api.key[back]           = (controller_state.Gamepad.wButtons & SGLP_XINPUT_GAMEPAD_BACK);
-                                        api.key[left_shoulder]  = (controller_state.Gamepad.wButtons & SGLP_XINPUT_GAMEPAD_LEFT_SHOULDER);
-                                        api.key[right_shoulder] = (controller_state.Gamepad.wButtons & SGLP_XINPUT_GAMEPAD_RIGHT_SHOULDER);
-                                        api.key[left_thumb]     = (controller_state.Gamepad.wButtons & SGLP_XINPUT_GAMEPAD_LEFT_THUMB);
-                                        api.key[right_thumb]    = (controller_state.Gamepad.wButtons & SGLP_XINPUT_GAMEPAD_RIGHT_THUMB);
+                                        api.key[sglp_start]          = (controller_state.Gamepad.wButtons & SGLP_XINPUT_GAMEPAD_START);
+                                        api.key[sglp_back]           = (controller_state.Gamepad.wButtons & SGLP_XINPUT_GAMEPAD_BACK);
+                                        api.key[sglp_left_shoulder]  = (controller_state.Gamepad.wButtons & SGLP_XINPUT_GAMEPAD_LEFT_SHOULDER);
+                                        api.key[sglp_right_shoulder] = (controller_state.Gamepad.wButtons & SGLP_XINPUT_GAMEPAD_RIGHT_SHOULDER);
+                                        api.key[sglp_left_thumb]     = (controller_state.Gamepad.wButtons & SGLP_XINPUT_GAMEPAD_LEFT_THUMB);
+                                        api.key[sglp_right_thumb]    = (controller_state.Gamepad.wButtons & SGLP_XINPUT_GAMEPAD_RIGHT_THUMB);
                                         api.key[sglp_controller_a]   = (controller_state.Gamepad.wButtons & SGLP_XINPUT_GAMEPAD_A);
                                         api.key[sglp_controller_b]   = (controller_state.Gamepad.wButtons & SGLP_XINPUT_GAMEPAD_B);
                                         api.key[sglp_controller_x]   = (controller_state.Gamepad.wButtons & SGLP_XINPUT_GAMEPAD_X);
@@ -2876,6 +2875,10 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 #include <GL/glx.h>
 
 #include <stdlib.h>
+
+#if !defined(SGLP_NO_INCLUDE_SDL)
+    #include <SDL2/SDL.h>
+#endif
 
 //
 // X11
@@ -3532,6 +3535,7 @@ static void sglp_linux_handle_frame_rate_stuff(sglp_API *api, uint64_t *last_cou
     *flip_wall_clock = api->get_processor_timestamp();
 }
 
+// TODO - Add a temp memory buffer to go with permanent.
 int main(int argc, char **argv) {
     sglp_API api = {0};
 
