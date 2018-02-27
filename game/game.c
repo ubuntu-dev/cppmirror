@@ -3,7 +3,8 @@
 #include "pp_generated.h"
 
 #define SGLP_IMPLEMENTATION
-#include <SDL2/SDL.h>
+
+//#include <SDL2/SDL.h>
 #include "sgl_platform.h"
 
 #define SGLM_IMPLEMENTATION
@@ -102,7 +103,7 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, float x, float y,
             V2 pos_in_table = get_letter_position(letter);
             if(pos_in_table.x != -1 && pos_in_table.y != -1) {
                 sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale(running_x, running_y, scalex, scaley);
-                float tform[16] = {};
+                float tform[16] = {0};
                 sglm_mat4x4_as_float_arr(tform, &mat);
                 sglp_draw_sprite_frame_matrix(gs->bitmap_sprite, pos_in_table.x, pos_in_table.y, tform);
 
@@ -258,7 +259,7 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
             sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->player.trans.x, gs->player.trans.y,
                                                               gs->player.trans.scale_x, gs->player.trans.scale_y,
                                                               gs->player.trans.rot);
-            float tform[16] = {};
+            float tform[16] = {0};
             sglm_mat4x4_as_float_arr(tform, &mat);
 
             sglp_draw_sprite(gs->player_sprite, gs->player.current_frame, tform);
@@ -267,7 +268,7 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
         for(int i = 0; (i < NUMBER_OF_ENEMIES); ++i) {
             sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->enemy[i].x, gs->enemy[i].y,
                                                               gs->enemy[i].scale_x, gs->enemy[i].scale_y, gs->enemy[i].rot);
-            float tform[16] = {};
+            float tform[16] = {0};
             sglm_mat4x4_as_float_arr(tform, &mat);
 
             sglp_draw_sprite(gs->enemy_one_sprite, 0, tform);

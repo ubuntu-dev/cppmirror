@@ -1109,11 +1109,10 @@ typedef struct sglp_WAVEHeader {
 } sglp_WAVEHeader;
 
 #define SGLP_RIFF_CODE(a, b, c, d) (((uint32_t)(a) << 0) | ((uint32_t)(b) << 8) | ((uint32_t)(c) << 16) | ((uint32_t)(d) << 24))
-int const WAVE_ChunkID_fmt  = SGLP_RIFF_CODE('f', 'm', 't', ' ');
-int const WAVE_ChunkID_data = SGLP_RIFF_CODE('d', 'a', 't', 'a');
-int const WAVE_ChunkID_RIFF = SGLP_RIFF_CODE('R', 'I', 'F', 'F');
-int const WAVE_ChunkID_WAVE = SGLP_RIFF_CODE('W', 'A', 'V', 'E');
-#undef SGLP_RIFF_CODE
+#define SGLP_WAVE_ChunkID_fmt  SGLP_RIFF_CODE('f', 'm', 't', ' ')
+#define SGLP_WAVE_ChunkID_data SGLP_RIFF_CODE('d', 'a', 't', 'a')
+#define SGLP_WAVE_ChunkID_RIFF SGLP_RIFF_CODE('R', 'I', 'F', 'F')
+#define SGLP_WAVE_ChunkID_WAVE SGLP_RIFF_CODE('W', 'A', 'V', 'E')
 
 typedef struct sglp_WavChunk {
     uint32_t id;
@@ -1195,17 +1194,17 @@ sglp_Bool sglp_load_wav(sglp_API *api, int32_t id, void *data, uintptr_t size) {
 
         header = (sglp_WAVEHeader *)api->os_malloc(size);
         sglp_memcpy(header, data, size);
-        SGLP_ASSERT((header) && (header->riff_id == WAVE_ChunkID_RIFF) && (header->wav_id == WAVE_ChunkID_WAVE));
+        SGLP_ASSERT((header) && (header->riff_id == SGLP_WAVE_ChunkID_RIFF) && (header->wav_id == SGLP_WAVE_ChunkID_WAVE));
 
         for(iter = sglp_parse_chunk_at((header + 1), ((uint8_t *)(header + 1) + header->size - 4)); (sglp_is_valid(iter)); iter = sglp_next_chunk(iter)) {
             switch(sglp_get_type(iter)) {
-                case WAVE_ChunkID_fmt: {
+                case SGLP_WAVE_ChunkID_fmt: {
                     sglp_WavFormat *fmt = (sglp_WavFormat *)sglp_get_chunk_data(iter);
                     SGLP_ASSERT((fmt->wFormatTag == 1) && (fmt->nSamplesPerSec == 48000) && (fmt->wBitsPerSample == 16) && (fmt->nBlockAlign == sizeof(int16_t) * fmt->nChannels));
                     no_channels = fmt->nChannels;
                 } break;
 
-                case WAVE_ChunkID_data: {
+                case SGLP_WAVE_ChunkID_data: {
                     sample_data = (int16_t *)sglp_get_chunk_data(iter);
                     sample_data_size = sglp_get_chunk_data_size(iter);
                 } break;
