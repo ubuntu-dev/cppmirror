@@ -162,13 +162,18 @@ Void my_main(Int argc, Char **argv) {
                     Parse_Result parse_res = parse_streams(number_of_files, fnames, passed_in_macro_data,
                                                            macro_cnt, size_of_all_files);
 
-                    File file_to_write = write_data(parse_res);
+                    if(parse_res.success) {
+                        File file_to_write = write_data(parse_res);
 
-                    Bool write_success = system_write_to_file("pp_generated.h", file_to_write);
-                    assert(write_success);
+                        Bool write_success = system_write_to_file("pp_generated.h", file_to_write);
+                        assert(write_success);
+                        
+#if INTERNAL
+                        system_free(file_to_write.e);
+#endif
+                    }
 
 #if INTERNAL
-                    system_free(file_to_write.e);
                     system_free(parse_res.enums.e);
                     system_free(parse_res.structs.e);
                     system_free(parse_res.funcs.e);

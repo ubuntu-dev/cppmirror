@@ -3,6 +3,7 @@
 #include "pp_generated.h"
 
 #define SGLP_IMPLEMENTATION
+//#include <SDL2/SDL.h>
 #include "sgl_platform.h"
 
 #define SGLM_IMPLEMENTATION
@@ -70,7 +71,7 @@ enum ID {
 };
 
 void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
-    settings->fullscreen = true;
+    settings->fullscreen = false;
 
     //settings->win_width  = 640;
     //settings->win_height = 480;
@@ -106,7 +107,8 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, Float x, Float y,
             V2 pos_in_table = get_letter_position(letter);
             if(pos_in_table.x != -1 && pos_in_table.y != -1) {
                 sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale(running_x, running_y, scalex, scaley);
-                Float tform[16] = {};
+                float tform[16] = {0};
+                
                 sglm_mat4x4_as_float_arr(tform, &mat);
                 sglp_draw_sprite_frame_matrix(gs->bitmap_sprite, pos_in_table.x, pos_in_table.y, tform);
 
@@ -145,7 +147,7 @@ void render(sglp_API *api, Game_State *gs) {
         sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->player.trans.x, gs->player.trans.y,
                                                           gs->player.trans.scale_x, gs->player.trans.scale_y,
                                                           gs->player.trans.rot);
-        Float tform[16] = {};
+        Float tform[16] = {0};
         sglm_mat4x4_as_float_arr(tform, &mat);
 
         sglp_draw_sprite(gs->player_sprite, gs->player.current_frame, tform);
@@ -156,7 +158,7 @@ void render(sglp_API *api, Game_State *gs) {
         sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->enemy[i].trans.x, gs->enemy[i].trans.y,
                                                           gs->enemy[i].trans.scale_x, gs->enemy[i].trans.scale_y,
                                                           gs->enemy[i].trans.rot);
-        Float tform[16] = {};
+        Float tform[16] = {0};
         sglm_mat4x4_as_float_arr(tform, &mat);
 
         sglp_draw_sprite(gs->enemy_one_sprite, 0, tform);
@@ -167,7 +169,7 @@ void render(sglp_API *api, Game_State *gs) {
 }
 
 Enemy create_enemy(float x, float y) {
-    Enemy res = {};
+    Enemy res = {0};
 
     res.trans.scale_x = 0.1f;
     res.trans.scale_y = 0.1f;

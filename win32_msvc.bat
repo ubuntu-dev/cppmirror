@@ -1,5 +1,10 @@
 @echo off
 
+rem TODO - This part should be setup prior to calling this file.
+call "C:\Program Files (x86)\Microsoft Visual Studio\2017\community\VC\Auxiliary\Build\vcvarsall.bat" x64
+
+cd %~dp0
+
 rem Variables to set.
 set RELEASE=false
 set BUILD_GAME=true
@@ -14,19 +19,19 @@ set RELEASE_COMMON_COMPILER_FLAGS=-nologo -MT -fp:fast -Gm- -GR- -EHa- -O2 -Oi %
 IF NOT EXIST "build" mkdir "build"
 pushd "build"
 if "%RELEASE%"=="true" (
-    cl -Femirror %RELEASE_COMMON_COMPILER_FLAGS%  -GS- -Gs9999999 -Wall ../src/build.cpp -link -subsystem:console,5.2 kernel32.lib -stack:0x100000,0x100000
+    cl -Femirror %RELEASE_COMMON_COMPILER_FLAGS%  -GS- -Gs9999999 -Wall ../src/build.c -link -subsystem:console,5.2 kernel32.lib -stack:0x100000,0x100000
 ) else (
-    cl -Femirror %DEBUG_COMMON_COMPILER_FLAGS% -GS- -Gs9999999 -Wall ../src/build.cpp -link -subsystem:console,5.2 kernel32.lib -stack:0x100000,0x100000
+    cl -Femirror %DEBUG_COMMON_COMPILER_FLAGS% -GS- -Gs9999999 -Wall ../src/build.c -link -subsystem:console,5.2 kernel32.lib -stack:0x100000,0x100000
     mirror -t
 )
 popd
 
 if "%BUILD_GAME%"=="true" (
     pushd "game"
-    "../build/mirror.exe" game.cpp
+    "../build/mirror.exe" game.c
     popd
 
     pushd "build"
-    cl -Fegame %DEBUG_COMMON_COMPILER_FLAGS% -Wall "../game/game.cpp" -FmGame.map -link -subsystem:windows,5.2 kernel32.lib
+    cl -Fegame %DEBUG_COMMON_COMPILER_FLAGS% -Wall "../game/game.c" -FmGame.map -link -subsystem:windows,5.2 kernel32.lib
     popd
 )

@@ -92,9 +92,6 @@ File system_read_entire_file_and_null_terminate(Char *fname) {
 
     HANDLE fhandle = CreateFileA(fname, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
     if(fhandle != INVALID_HANDLE_VALUE) {
-        defer {
-            CloseHandle(fhandle);
-        };
         LARGE_INTEGER fsize;
         if(GetFileSizeEx(fhandle, &fsize)) {
             DWORD fsize32 = safe_truncate_size_64(fsize.QuadPart);
@@ -112,6 +109,8 @@ File system_read_entire_file_and_null_terminate(Char *fname) {
                 }
             }
         }
+        
+        CloseHandle(fhandle);
     }
 
     return(res);
@@ -122,9 +121,6 @@ Bool system_write_to_file(Char *fname, File file) {
 
     HANDLE fhandle = CreateFileA(fname, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, 0, CREATE_ALWAYS, 0, 0);
     if(fhandle != INVALID_HANDLE_VALUE) {
-        defer {
-            CloseHandle(fhandle);
-        };
         DWORD fsize32;
 #if ENVIRONMENT32
         fsize32 = file.size;
@@ -140,6 +136,8 @@ Bool system_write_to_file(Char *fname, File file) {
                 res = true;
             }
         }
+        
+        CloseHandle(fhandle);
     }
 
     return(res);
@@ -150,10 +148,7 @@ Uintptr system_get_file_size(Char *fname) {
 
     HANDLE fhandle = CreateFileA(fname, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
     if(fhandle != INVALID_HANDLE_VALUE) {
-        defer {
-            CloseHandle(fhandle);
-        };
-        LARGE_INTEGER large_int = {};
+        LARGE_INTEGER large_int = {0};
         if(GetFileSizeEx(fhandle, &large_int)) {
 #if ENVIRONMENT32
             res = safe_truncate_size_64(large_int.QuadPart);
@@ -162,17 +157,18 @@ Uintptr system_get_file_size(Char *fname) {
 #endif
         }
 
+        CloseHandle(fhandle);
     }
 
     return(res);
 }
 
 Uintptr system_get_total_size_of_directory(Char *path) {
-    WIN32_FIND_DATA data = {};
+    WIN32_FIND_DATA data = {0};
     Uintptr res = 0;
 
-    Char fname[1024] = {};
-    Int fname_index = string_copy(fname, path);
+    Char fname[1024] = {0};
+    Uintptr fname_index = string_copy(fname, path);
     fname[fname_index++] = '\\';
     fname[fname_index++] = '*';
     fname[fname_index++] = '.';
@@ -184,7 +180,7 @@ Uintptr system_get_total_size_of_directory(Char *path) {
             if((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
                 if((strcmp(data.cFileName, ".")) && (strcmp(data.cFileName, ".."))) {
                     // Found a subdirectory.
-                    Char new_fname[1024] = {};
+                    Char new_fname[1024] = {0};
                     Uintptr str_i = string_copy(new_fname, fname);
                     new_fname[str_i++] = '\\';
                     string_copy(new_fname + str_i, data.cFileName);
@@ -211,7 +207,13 @@ Uintptr system_get_total_size_of_directory(Char *path) {
 }
 
 Uintptr get_current_directory(Char *buffer, Uintptr size) {
-    Uintptr res = GetCurrentDirectory(size, buffer);
+    DWORD size32;
+#if ENVIRONMENT32
+    size32 = size;
+#else
+    size32 = safe_truncate_size_64(size);
+#endif
+    Uintptr res = GetCurrentDirectory(size32, buffer);
 
     return(res);
 }
@@ -242,10 +244,7 @@ Bool system_create_folder(Char *name) {
 
 Void system_write_to_console(Char *format, ...) {
     Uintptr alloc_size = 1024;
-    Char *buf = new Char[alloc_size];
-    defer {
-        delete[] buf;
-    };
+    Char *buf = system_malloc(alloc_size);
     if(buf) {
         va_list args;
         va_start(args, format);
@@ -259,6 +258,8 @@ Void system_write_to_console(Char *format, ...) {
 
         assert(res);
         assert(chars_written == len);
+        
+        system_free(buf);
     }
 }
 
@@ -283,11 +284,8 @@ int main(int argc_, char **argv_) {
     }
 
     // Create copy of args.
-    Char *arg_cpy = new Char[args_len + 1];
+    Char *arg_cpy = system_malloc(args_len + 1);
     if(arg_cpy) {
-        defer {
-            delete[] arg_cpy;
-        };
         string_copy(arg_cpy, cmdline);
 
         for(Int i = 0; (i < args_len); ++i) {
@@ -305,26 +303,25 @@ int main(int argc_, char **argv_) {
         in_quotes = false;
         Int mem_size = original_cnt * 2;
         Int argc = 1;
-        Char **argv = new Char *[mem_size];
+        // Char **argv = new Char *[mem_size];
+        Char **argv = system_malloc(sizeof(Char *) * mem_size);
         if(!argv) {
             system_write_to_console("Memory allocation fail");
         }
         else {
-            defer {
-                delete[] argv;
-            };
+            
             Char **cur = argv;
             *cur++ = arg_cpy;
             for(Int i = 0; (i < args_len); ++i) {
                 if(!arg_cpy[i]) {
                     Char *str = arg_cpy + i + 1;
-                    if(!string_contains(str, '*')) {
+                    if(!cstring_contains(str, '*')) {
                         *cur = str;
                         ++cur;
                         ++argc;
                     }
                     else {
-                        WIN32_FIND_DATA find_data = {};
+                        WIN32_FIND_DATA find_data = {0};
                         HANDLE fhandle = FindFirstFile(str, &find_data);
 
                         if(fhandle != INVALID_HANDLE_VALUE) {
@@ -349,7 +346,11 @@ int main(int argc_, char **argv_) {
 
             my_main(argc, argv);
             res = 0;
+            
+            system_free(argv);
         }
+        
+        system_free(arg_cpy);
     }
 
     return(res);
