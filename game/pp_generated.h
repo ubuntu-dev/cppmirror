@@ -98,11 +98,11 @@ typedef struct sglp_WavFormat sglp_WavFormat;
 typedef struct sglp_RiffIter sglp_RiffIter;
 typedef union sglm_V2 sglm_V2;
 typedef struct sglm_Mat4x4 sglm_Mat4x4;
+typedef struct V2 V2;
 typedef struct Transform Transform;
 typedef struct Player Player;
 typedef struct Enemy Enemy;
 typedef struct Game_State Game_State;
-typedef struct V2 V2;
 #endif // PP_NO_FORWARD_DECLARE
 
 //
@@ -239,11 +239,11 @@ typedef enum pp_Type {
     pp_Type_sglm_V2,
     pp_Type_sglm_Mat4x4,
     pp_Type___m128,
+    pp_Type_V2,
     pp_Type_Transform,
     pp_Type_Player,
     pp_Type_Enemy,
     pp_Type_Game_State,
-    pp_Type_V2,
     pp_Type___m128i,
 
     pp_Type_count
@@ -269,11 +269,11 @@ typedef struct pp_sglp_WavFormat pp_sglp_WavFormat;    typedef struct pp_sglp_Wa
 typedef struct pp_sglp_RiffIter pp_sglp_RiffIter;    typedef struct pp_sglp_RiffIter pp_pp_sglp_RiffIter;
 typedef union pp_sglm_V2 pp_sglm_V2;    typedef union pp_sglm_V2 pp_pp_sglm_V2;
 typedef struct pp_sglm_Mat4x4 pp_sglm_Mat4x4;    typedef struct pp_sglm_Mat4x4 pp_pp_sglm_Mat4x4;
+typedef struct pp_V2 pp_V2;    typedef struct pp_V2 pp_pp_V2;
 typedef struct pp_Transform pp_Transform;    typedef struct pp_Transform pp_pp_Transform;
 typedef struct pp_Player pp_Player;    typedef struct pp_Player pp_pp_Player;
 typedef struct pp_Enemy pp_Enemy;    typedef struct pp_Enemy pp_pp_Enemy;
 typedef struct pp_Game_State pp_Game_State;    typedef struct pp_Game_State pp_pp_Game_State;
-typedef struct pp_V2 pp_V2;    typedef struct pp_V2 pp_pp_V2;
 
 // Forward declared enums
 typedef int pp_sglp_Key;
@@ -424,20 +424,20 @@ union pp_sglm_V2 {
 struct pp_sglm_Mat4x4 {
     pp___m128 e[4]; 
 };
+struct pp_V2 {
+    float x; float y; 
+};
 struct pp_Transform {
-    pp_Float x; pp_Float y; pp_Float scale_x; pp_Float scale_y; pp_Float rot; 
+    pp_V2 pos; pp_V2 scale; pp_Float rot; 
 };
 struct pp_Player {
-    pp_Transform trans; pp_Float start_x; pp_Float start_y; pp_Player_Direction dir; pp_Float current_frame; 
+    pp_Transform trans; pp_V2 start_pos; pp_Player_Direction dir; pp_Float current_frame; pp_V2 current_speed; 
 };
 struct pp_Enemy {
     pp_Transform trans; pp_Bool valid; 
 };
 struct pp_Game_State {
     pp_sglp_Sprite player_sprite; pp_sglp_Sprite enemy_one_sprite; pp_sglp_Sprite bitmap_sprite; pp_Player player; pp_Enemy enemy[4]; 
-};
-struct pp_V2 {
-    pp_Float x; pp_Float y; 
 };
 
 // Turn a typedef'd type into it's original type.
@@ -1018,25 +1018,29 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
             } break; 
         }
     }
-    else if(real_type == pp_Type_Transform) {
+    else if(real_type == pp_Type_V2) {
         switch(index) {
             case 0: {
-                pp_MemberDefinition res = {pp_Type_Float, "x", PP_OFFSETOF(pp_Transform, x), 0, 0};
+                pp_MemberDefinition res = {pp_Type_float, "x", PP_OFFSETOF(pp_V2, x), 0, 0};
                 return(res);
             } break; 
             case 1: {
-                pp_MemberDefinition res = {pp_Type_Float, "y", PP_OFFSETOF(pp_Transform, y), 0, 0};
+                pp_MemberDefinition res = {pp_Type_float, "y", PP_OFFSETOF(pp_V2, y), 0, 0};
+                return(res);
+            } break; 
+        }
+    }
+    else if(real_type == pp_Type_Transform) {
+        switch(index) {
+            case 0: {
+                pp_MemberDefinition res = {pp_Type_V2, "pos", PP_OFFSETOF(pp_Transform, pos), 0, 0};
+                return(res);
+            } break; 
+            case 1: {
+                pp_MemberDefinition res = {pp_Type_V2, "scale", PP_OFFSETOF(pp_Transform, scale), 0, 0};
                 return(res);
             } break; 
             case 2: {
-                pp_MemberDefinition res = {pp_Type_Float, "scale_x", PP_OFFSETOF(pp_Transform, scale_x), 0, 0};
-                return(res);
-            } break; 
-            case 3: {
-                pp_MemberDefinition res = {pp_Type_Float, "scale_y", PP_OFFSETOF(pp_Transform, scale_y), 0, 0};
-                return(res);
-            } break; 
-            case 4: {
                 pp_MemberDefinition res = {pp_Type_Float, "rot", PP_OFFSETOF(pp_Transform, rot), 0, 0};
                 return(res);
             } break; 
@@ -1049,19 +1053,19 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 return(res);
             } break; 
             case 1: {
-                pp_MemberDefinition res = {pp_Type_Float, "start_x", PP_OFFSETOF(pp_Player, start_x), 0, 0};
+                pp_MemberDefinition res = {pp_Type_V2, "start_pos", PP_OFFSETOF(pp_Player, start_pos), 0, 0};
                 return(res);
             } break; 
             case 2: {
-                pp_MemberDefinition res = {pp_Type_Float, "start_y", PP_OFFSETOF(pp_Player, start_y), 0, 0};
-                return(res);
-            } break; 
-            case 3: {
                 pp_MemberDefinition res = {pp_Type_Player_Direction, "dir", PP_OFFSETOF(pp_Player, dir), 0, 0};
                 return(res);
             } break; 
-            case 4: {
+            case 3: {
                 pp_MemberDefinition res = {pp_Type_Float, "current_frame", PP_OFFSETOF(pp_Player, current_frame), 0, 0};
+                return(res);
+            } break; 
+            case 4: {
+                pp_MemberDefinition res = {pp_Type_V2, "current_speed", PP_OFFSETOF(pp_Player, current_speed), 0, 0};
                 return(res);
             } break; 
         }
@@ -1102,18 +1106,6 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
             } break; 
         }
     }
-    else if(real_type == pp_Type_V2) {
-        switch(index) {
-            case 0: {
-                pp_MemberDefinition res = {pp_Type_Float, "x", PP_OFFSETOF(pp_V2, x), 0, 0};
-                return(res);
-            } break; 
-            case 1: {
-                pp_MemberDefinition res = {pp_Type_Float, "y", PP_OFFSETOF(pp_V2, y), 0, 0};
-                return(res);
-            } break; 
-        }
-    }
 
     // Not found
     PP_ASSERT(0);
@@ -1139,11 +1131,11 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_sglp_RiffIter: { return(2); } break;
         case pp_Type_sglm_V2: { return(3); } break;
         case pp_Type_sglm_Mat4x4: { return(1); } break;
-        case pp_Type_Transform: { return(5); } break;
+        case pp_Type_V2: { return(2); } break;
+        case pp_Type_Transform: { return(3); } break;
         case pp_Type_Player: { return(5); } break;
         case pp_Type_Enemy: { return(2); } break;
         case pp_Type_Game_State: { return(5); } break;
-        case pp_Type_V2: { return(2); } break;
     }
 
     PP_ASSERT(0);
@@ -1170,7 +1162,7 @@ PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {
             return(pp_StructureType_enum);
         } break;
 
-        case pp_Type___m128: case pp_Type___m128i: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_Settings: case pp_Type_sglp_File: case pp_Type_sglp_API: case pp_Type_sglp_LoadedSound: case pp_Type_sglp_SoundOutputBuffer: case pp_Type_sglp_AudioState: case pp_Type_sglp_WAVEHeader: case pp_Type_sglp_WavChunk: case pp_Type_sglp_WavFormat: case pp_Type_sglp_RiffIter: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_Transform: case pp_Type_Player: case pp_Type_Enemy: case pp_Type_Game_State: case pp_Type_V2: {
+        case pp_Type___m128: case pp_Type___m128i: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_Settings: case pp_Type_sglp_File: case pp_Type_sglp_API: case pp_Type_sglp_LoadedSound: case pp_Type_sglp_SoundOutputBuffer: case pp_Type_sglp_AudioState: case pp_Type_sglp_WAVEHeader: case pp_Type_sglp_WavChunk: case pp_Type_sglp_WavFormat: case pp_Type_sglp_RiffIter: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_V2: case pp_Type_Transform: case pp_Type_Player: case pp_Type_Enemy: case pp_Type_Game_State: {
             return(pp_StructureType_struct);
         } break;
     }
@@ -1310,11 +1302,11 @@ PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_sglm_V2: { return("sglm_V2"); } break;
         case pp_Type_sglm_Mat4x4: { return("sglm_Mat4x4"); } break;
         case pp_Type___m128: { return("__m128"); } break;
+        case pp_Type_V2: { return("V2"); } break;
         case pp_Type_Transform: { return("Transform"); } break;
         case pp_Type_Player: { return("Player"); } break;
         case pp_Type_Enemy: { return("Enemy"); } break;
         case pp_Type_Game_State: { return("Game_State"); } break;
-        case pp_Type_V2: { return("V2"); } break;
         case pp_Type___m128i: { return("__m128i"); } break;
     }
     
@@ -1450,11 +1442,11 @@ PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
         case pp_Type_sglm_V2: { return sizeof(pp_sglm_V2); } break;
         case pp_Type_sglm_Mat4x4: { return sizeof(pp_sglm_Mat4x4); } break;
         case pp_Type___m128: { return sizeof(pp___m128); } break;
+        case pp_Type_V2: { return sizeof(pp_V2); } break;
         case pp_Type_Transform: { return sizeof(pp_Transform); } break;
         case pp_Type_Player: { return sizeof(pp_Player); } break;
         case pp_Type_Enemy: { return sizeof(pp_Enemy); } break;
         case pp_Type_Game_State: { return sizeof(pp_Game_State); } break;
-        case pp_Type_V2: { return sizeof(pp_V2); } break;
         case pp_Type___m128i: { return sizeof(pp___m128i); } break;
     }
 
