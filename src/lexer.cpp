@@ -90,6 +90,8 @@ typedef struct {
 } Typedefs;
 
 typedef struct {
+    Bool success;
+
     Structs structs;
     Enums enums;
     Functions funcs;
@@ -1964,6 +1966,8 @@ Parse_Result parse_streams(Int cnt, Char **fnames, MacroData *md, Int macro_cnt,
     for(Int i = 0; (i < cnt); ++i) {
         File file = system_read_entire_file_and_null_terminate(fnames[i]); // TODO(Jonny): Leak.
         if(file.size) {
+            res.success = true;
+
             file = preprocess_macros(file, md, macro_cnt, max_file_size);
             parse_stream(file.e, &res);
         } else {
