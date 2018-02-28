@@ -1420,7 +1420,6 @@ PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
         case pp_Type_Float32: { return sizeof(pp_Float32); } break;
         case pp_Type_Float64: { return sizeof(pp_Float64); } break;
         case pp_Type_Float: { return sizeof(pp_Float); } break;
-        case pp_Type_Void: { return sizeof(pp_Void); } break;
         case pp_Type_Char: { return sizeof(pp_Char); } break;
         case pp_Type_Bool: { return sizeof(pp_Bool); } break;
         case pp_Type_sglp_Key: { return sizeof(pp_int); } break;
