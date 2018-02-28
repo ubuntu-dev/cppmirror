@@ -127,9 +127,23 @@ Int get_actual_type_count(String *types, Structs structs, Enums enums, Typedefs 
     return(res);
 }
 
+String get_original_type_for_typedef(Typedef_Data td, Typedefs typedefs) {
+    String result = td.original;
+
+    for(Int i = 0; (i < typedefs.cnt); ++i) {
+        if(string_comp(typedefs.e[i].fresh, result)) {
+            result = typedefs.e[i].original;
+            i = 0;
+        }
+    }
+
+    return(result);
+}
+
 Bool is_typedef_for_void(String str, Typedefs typedefs) {
     for(Int i = 0; (i < typedefs.cnt); ++i) {
-        if(string_comp(typedefs.e[i].fresh, str) && string_cstring_comp(typedefs.e[i].original, "void")) {
+        String original = get_original_type_for_typedef(typedefs.e[i], typedefs);
+        if(string_comp(typedefs.e[i].fresh, str) && string_cstring_comp(original, "void")) {
             return(true);
         }
     }
@@ -155,6 +169,7 @@ Void write_get_size_from_type(OutputBuffer *ob, String *types, Int type_count, T
              "PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {\n"
              "    switch(pp_typedef_to_original(type)) {\n");
     for(Int i = 0; (i < type_count); ++i) {
+        // TODO - is_typedef_for_void isn't working.
         if(!string_cstring_comp(types[i], "void") && !is_typedef_for_void(types[i], typedefs)) {
             String cpy = (is_unsized_enum(types[i], enums)) ? create_string("int") : types[i];
 
@@ -226,19 +241,6 @@ void write_enum_size_data(OutputBuffer *ob, Enums enums) {
                  "    return(0);\n"
                  "}\n");
     }
-}
-
-String get_original_type_for_typedef(Typedef_Data td, Typedefs typedefs) {
-    String result = td.original;
-
-    for(Int i = 0; (i < typedefs.cnt); ++i) {
-        if(string_comp(typedefs.e[i].fresh, result)) {
-            result = typedefs.e[i].original;
-            i = 0;
-        }
-    }
-
-    return(result);
 }
 
 File write_data(Parse_Result pr) {
