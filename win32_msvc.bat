@@ -1,7 +1,7 @@
 @echo off
 
 rem TODO - This part should be setup prior to calling this file.
-call "C:\Program Files (x86)\Microsoft Visual Studio\2017\community\VC\Auxiliary\Build\vcvarsall.bat" x64
+call "C:\Program Files (x86)\Microsoft Visual Studio\2017\community\VC\Auxiliary\Build\vcvarsall.bat" x64 > NUL
 
 cd %~dp0
 
