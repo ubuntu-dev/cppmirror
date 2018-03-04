@@ -29,6 +29,7 @@ struct V2 {
 };
 V2 v2(Float x, Float y) {
     V2 res = { .x = x, .y = y };
+    
     return(res);
 }
 
@@ -89,10 +90,8 @@ void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
     settings->permanent_memory_size = sizeof(Game_State);
     settings->max_no_of_sounds = 10;
     settings->window_title = "Hello, Lauren!";
-    //settings->thread_cnt;
+    settings->thread_cnt = 8;
 }
-
-V2 get_letter_position(char Letter);
 
 Float accelerate(Float cur, Float max, Float acc, Bool forward) {
     Float go_forward = (forward) ? 1.0f : -1.0f;
@@ -101,10 +100,10 @@ Float accelerate(Float cur, Float max, Float acc, Bool forward) {
         res = max;
     }
 
-
     return(res);
 }
 
+V2 get_letter_position(char Letter);
 void draw_word(char const *str, sglp_API *api, Game_State *gs, Float x, Float y, Float scalex, Float scaley) {
     scalex *= 0.5f;
     int string_length = sgl_string_len(str);
@@ -143,7 +142,7 @@ Bool overlap(Transform a, Transform b) {
 void draw_debug_information(sglp_API *api, Game_State *gs, Float mouse_x, Float mouse_y) {
 #if INTERNAL
     int buf_size = 256 * 256;
-    char *buffer = api->os_malloc(sizeof *buffer * buf_size);
+    char *buffer = api->os_malloc(sizeof(*buffer) * buf_size);
     pp_serialize_struct(&gs->player, Player, buffer, buf_size);
     Float size = 0.05f;
     draw_word(buffer, api, gs, 0.0f, 0.0f, size, size);
@@ -309,8 +308,6 @@ void update(sglp_API *api, Game_State *gs) {
     gs->player.current_speed = current_speed;
     gs->player.trans.pos.x += gs->player.current_speed.x;
     gs->player.trans.pos.y += gs->player.current_speed.y;
-
-
 
     if(api->key[sglp_key_space]) {
         // TODO - Shoot.

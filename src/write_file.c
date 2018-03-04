@@ -388,6 +388,9 @@ File write_data(Parse_Result pr) {
                      "#if !defined(PP_NO_FORWARD_DECLARE)\n");
 
             // Forward declare enums
+            write_ob(&ob,
+                     "\n"
+                     "/* Forward declared enums. */\n");
             for(Int i = 0; (i < pr.enums.cnt); ++i) {
                 Enum_Data *ed = pr.enums.e + i;
 
@@ -399,6 +402,9 @@ File write_data(Parse_Result pr) {
             }
 
             // Forward declare structs.
+            write_ob(&ob,
+                     "\n"
+                     "/* Forward declared structs. */\n");
             for(Int i = 0; (i < pr.structs.cnt); ++i) {
                 Struct_Data *sd = pr.structs.e + i;
 
@@ -422,6 +428,9 @@ File write_data(Parse_Result pr) {
             }
 
             // Forward declared functions.
+            write_ob(&ob,
+                     "\n"
+                     "/* Forward declared functions. */\n");
             for(Int i = 0; (i < pr.funcs.cnt); ++i) {
                 Function_Data *fd = pr.funcs.e + i;
 
