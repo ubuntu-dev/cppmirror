@@ -39,20 +39,54 @@ struct Transform {
     Float rot;
 };
 
+enum Direction {
+    Direction_unknown,
+    Direction_left,
+    Direction_right,
+    Direction_up,
+    Direction_down,
+};
+
+struct Bullet {
+    Transform trans;
+    Direction dir;
+};
+Bullet bullet(void) {
+    Bullet res = {0};
+    res.trans.scale.x = 0.025f;
+    res.trans.scale.y = 0.025f;
+
+    return(res);
+}
+
+// The player direction is a little complicated because it's used for the animation.
 enum Player_Direction {
     Player_Direction_left = 0,
     Player_Direction_right = 2,
     Player_Direction_up = 4,
     Player_Direction_down = 6,
 };
-
 struct Player {
     Transform trans;
     V2 start_pos;
     Player_Direction dir;
     Float current_frame;
     V2 current_speed;
+
+    Bullet bullet;
+    Bool is_shooting;
 };
+
+Direction player_direction_to_direction(Player_Direction pd) {
+    Direction d = 0;
+    if(0) {}
+    else if(pd == Player_Direction_left)  { d = Direction_left;  }
+    else if(pd == Player_Direction_right) { d = Direction_right; }
+    else if(pd == Player_Direction_up)    { d = Direction_up;    }
+    else if(pd == Player_Direction_down)  { d = Direction_down;  }
+
+    return(d);
+}
 
 struct Enemy {
     Transform trans;
@@ -64,6 +98,7 @@ struct Game_State {
     sglp_Sprite player_sprite;
     sglp_Sprite enemy_one_sprite;
     sglp_Sprite bitmap_sprite;
+    sglp_Sprite bullet_sprite;
 
     Player player;
     Enemy enemy[NUMBER_OF_ENEMIES];
@@ -78,6 +113,7 @@ enum ID {
     ID_sprite_player,
     ID_sprite_enemy_one,
     ID_sprite_bitmap_font,
+    ID_sprite_bullet,
 };
 
 void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
@@ -88,8 +124,9 @@ void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
 
     settings->frame_rate = 30;
     settings->permanent_memory_size = sizeof(Game_State);
+    // TODO - settings->disable_sound = true;
     settings->max_no_of_sounds = 10;
-    settings->window_title = "Hello, Lauren!";
+    settings->window_title = "Game stuff";
     settings->thread_cnt = 8;
 }
 
@@ -144,15 +181,15 @@ void draw_debug_information(sglp_API *api, Game_State *gs, Float mouse_x, Float 
     int buf_size = 256 * 256;
     char *buffer = api->os_malloc(sizeof(*buffer) * buf_size);
     pp_serialize_struct(&gs->player, Player, buffer, buf_size);
-    Float size = 0.05f;
+    Float size = 0.025f;
     draw_word(buffer, api, gs, 0.0f, 0.0f, size, size);
     api->os_free(buffer);
 #endif
 }
 
 void render(sglp_API *api, Game_State *gs) {
-    sglp_clear_screen_for_frame(); // TODO(Jonny): Can this be moved into the platform code?
-
+    sglp_clear_screen_for_frame();
+    
     // Player
     {
         sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->player.trans.pos.x, gs->player.trans.pos.y,
@@ -163,7 +200,19 @@ void render(sglp_API *api, Game_State *gs) {
 
         sglp_draw_sprite(gs->player_sprite, gs->player.current_frame, tform);
     }
+    
+    // Player's Bullet
+    if(gs->player.is_shooting) {
+        Bullet *b = &gs->player.bullet;
+        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(b->trans.pos.x, b->trans.pos.y,
+                                                          b->trans.scale.x, b->trans.scale.y,
+                                                          b->trans.rot);
+        Float tform[16] = {0};
+        sglm_mat4x4_as_float_arr(tform, &mat);
 
+        sglp_draw_sprite(gs->bullet_sprite, 0, tform);
+    }
+    
     // Enemies
     for(int i = 0; (i < NUMBER_OF_ENEMIES); ++i) {
         sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->enemy[i].trans.pos.x, gs->enemy[i].trans.pos.y,
@@ -174,7 +223,7 @@ void render(sglp_API *api, Game_State *gs) {
 
         sglp_draw_sprite(gs->enemy_one_sprite, 0, tform);
     }
-
+    
     // TODO - Read the mouse position from sgl_platform.
     draw_debug_information(api, gs, 0.0f, 0.0f);
 }
@@ -201,6 +250,7 @@ Player create_player(float x, float y) {
     res.trans.pos.y = y;
 
     res.start_pos = res.trans.pos;
+    res.dir = Player_Direction_left;
 
     return(res);
 }
@@ -224,7 +274,7 @@ void init(sglp_API *api, Game_State *gs) {
         stbi_image_free(img_data);
 
         Float x = 0.1f;
-        for(int i = 0; (i < 4); ++i) {
+        for(Int i = 0; (i < 4); ++i) {
             gs->enemy[i] = create_enemy(x, 0.5f);
             x += 0.2f;
         }
@@ -236,6 +286,16 @@ void init(sglp_API *api, Game_State *gs) {
         uint8_t *img_data = stbi_load("freemono.png", &width, &height, &number_of_components, 0);
         gs->bitmap_sprite = sglp_load_image(api, img_data, 16, 16, ID_sprite_bitmap_font, width, height, number_of_components);
         stbi_image_free(img_data);
+    }
+
+    // Load bullet
+    {
+        Int width, height, number_of_components;
+        uint8_t *img_data = stbi_load("bullet.png", &width, &height, &number_of_components, 0);
+        gs->bullet_sprite = sglp_load_image(api, img_data, 1, 1, ID_sprite_bullet, width, height, number_of_components);
+        stbi_image_free(img_data);
+
+        gs->player.bullet = bullet();
     }
 
     // Load background music.
@@ -310,7 +370,19 @@ void update(sglp_API *api, Game_State *gs) {
     gs->player.trans.pos.y += gs->player.current_speed.y;
 
     if(api->key[sglp_key_space]) {
-        // TODO - Shoot.
+        if(!gs->player.is_shooting) {
+            gs->player.is_shooting = true;
+            gs->player.bullet.dir = player_direction_to_direction(gs->player.dir);
+            gs->player.bullet.trans = gs->player.trans;
+        }
+    }
+
+    if(gs->player.is_shooting) {
+        Float bullet_speed = 0.02f;
+        if(gs->player.bullet.dir == Direction_left)  { gs->player.bullet.trans.pos.x -= bullet_speed; }
+        if(gs->player.bullet.dir == Direction_right) { gs->player.bullet.trans.pos.x += bullet_speed; }
+        if(gs->player.bullet.dir == Direction_up)    { gs->player.bullet.trans.pos.y -= bullet_speed; }
+        if(gs->player.bullet.dir == Direction_down)  { gs->player.bullet.trans.pos.y += bullet_speed; }
     }
 
     float rot_speed = 5.0f;
