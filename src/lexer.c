@@ -1894,11 +1894,9 @@ File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int 
                                     }
                                 }
                             }
-                        } else if(token_cstring_compare(preprocessor_dir, "if")) {
-                            Char *before = tokenizer.at;
+                        } else if(token_cstring_compare(preprocessor_dir, "if")) { // if
                             handle_hash_if_statement(&tokenizer, macro_data, macro_cnt);
-                            int i = 0;
-                        } else if(preprocessor_dir.type == Token_Type_hash) {
+                        } else if(preprocessor_dir.type == Token_Type_hash) { // ##
                             Char *prev_token_end = prev_token.e + prev_token.len;
                             Token next_token = peak_token(&tokenizer);
                             Intptr diff = next_token.e - prev_token_end;

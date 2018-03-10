@@ -218,7 +218,7 @@ Uintptr get_current_directory(Char *buffer, Uintptr size) {
     return(res);
 }
 
-// TODO(Jonny): This function is _really_ stupid... fix it.
+// TODO - Should I really check the extension of a file??
 Bool is_valid_cpp_file(Char *fname) {
     Bool res = false;
 
