@@ -84,7 +84,6 @@ typedef int8_t sgl_Int8;
 typedef sgl_Int32 sgl_Int;
 typedef sgl_Uint32 sgl_Uint;
 
-
 typedef sgl_Uint8 sgl_Byte;
 typedef uintptr_t sgl_Uintptr;
 typedef intptr_t sgl_Intptr;
@@ -101,8 +100,7 @@ typedef int sgl_Bool;
 #define SGL_FALSE 0
 
 // Use #define SGL_NO_BOOL to avoid create Bool typedef here.
-// TODO - The preprocessor gets confused at this bit right now.
-//#if !defined(SGL_NO_TYPES)
+#if !defined(SGL_NO_TYPES)
 typedef sgl_Uint64 Uint64;
 typedef sgl_Uint32 Uint32;
 typedef sgl_Uint16 Uint16;
@@ -121,13 +119,14 @@ typedef sgl_Float64 Float64;
 typedef sgl_Float Float;
 typedef sgl_Void Void;
 typedef sgl_Char Char;
+
 #if defined(Bool)
     #undef Bool
 #endif
 typedef sgl_Bool Bool;
 #define true SGL_TRUE
 #define false SGL_FALSE
-//#endif //!defined(SGL_NO_TYPES)
+#endif //!defined(SGL_NO_TYPES)
 
 //
 // Macros
