@@ -309,7 +309,7 @@ int main(int argc_, char **argv_) {
             system_write_to_console("Memory allocation fail");
         }
         else {
-            
+
             Char **cur = argv;
             *cur++ = arg_cpy;
             for(Int i = 0; (i < args_len); ++i) {

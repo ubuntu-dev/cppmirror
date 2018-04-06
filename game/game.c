@@ -29,7 +29,7 @@ struct V2 {
 };
 V2 v2(Float x, Float y) {
     V2 res = { .x = x, .y = y };
-    
+
     return(res);
 }
 
@@ -151,12 +151,13 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, Float x, Float y,
         if(letter == '\n') {
             running_y += scaley;
             running_x = x;
-        } else {
+        }
+        else {
             V2 pos_in_table = get_letter_position(letter);
             if(pos_in_table.x != -1 && pos_in_table.y != -1) {
                 sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale(running_x, running_y, scalex, scaley);
                 float tform[16] = {0};
-                
+
                 sglm_mat4x4_as_float_arr(tform, &mat);
                 sglp_draw_sprite_frame_matrix(gs->bitmap_sprite, pos_in_table.x, pos_in_table.y, tform);
 
@@ -169,11 +170,20 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, Float x, Float y,
 Bool overlap(Transform a, Transform b) {
     if((a.pos.x >= b.pos.x && a.pos.x <= b.pos.x + b.scale.x) || (b.pos.x >= a.pos.x && b.pos.x <= a.pos.x + a.scale.x)) {
         if((a.pos.y >= b.pos.y && a.pos.y <= b.pos.y + b.scale.y) || (b.pos.y >= a.pos.y && b.pos.y <= a.pos.y + a.scale.y)) {
-            return(true);
+            return true;
         }
     }
 
-    return(false);
+    return false;
+}
+
+Bool is_offscreen(Transform t) {
+    if((t.pos.x > 1.0f || t.pos.x < 0.0f) || (t.pos.y > 1.0f || t.pos.y < 0.0f)) {
+        return true;
+    }
+    else {
+        return false;
+    }
 }
 
 void draw_debug_information(sglp_API *api, Game_State *gs, Float mouse_x, Float mouse_y) {
@@ -189,7 +199,7 @@ void draw_debug_information(sglp_API *api, Game_State *gs, Float mouse_x, Float 
 
 void render(sglp_API *api, Game_State *gs) {
     sglp_clear_screen_for_frame();
-    
+
     // Player
     {
         sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->player.trans.pos.x, gs->player.trans.pos.y,
@@ -200,7 +210,7 @@ void render(sglp_API *api, Game_State *gs) {
 
         sglp_draw_sprite(gs->player_sprite, gs->player.current_frame, tform);
     }
-    
+
     // Player's Bullet
     if(gs->player.is_shooting) {
         Bullet *b = &gs->player.bullet;
@@ -212,18 +222,20 @@ void render(sglp_API *api, Game_State *gs) {
 
         sglp_draw_sprite(gs->bullet_sprite, 0, tform);
     }
-    
+
     // Enemies
     for(int i = 0; (i < NUMBER_OF_ENEMIES); ++i) {
-        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->enemy[i].trans.pos.x, gs->enemy[i].trans.pos.y,
-                                                          gs->enemy[i].trans.scale.x, gs->enemy[i].trans.scale.y,
-                                                          gs->enemy[i].trans.rot);
-        Float tform[16] = {0};
-        sglm_mat4x4_as_float_arr(tform, &mat);
+        if(gs->enemy[i].valid) {
+            sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->enemy[i].trans.pos.x, gs->enemy[i].trans.pos.y,
+                                                              gs->enemy[i].trans.scale.x, gs->enemy[i].trans.scale.y,
+                                                              gs->enemy[i].trans.rot);
+            Float tform[16] = {0};
+            sglm_mat4x4_as_float_arr(tform, &mat);
 
-        sglp_draw_sprite(gs->enemy_one_sprite, 0, tform);
+            sglp_draw_sprite(gs->enemy_one_sprite, 0, tform);
+        }
     }
-    
+
     // TODO - Read the mouse position from sgl_platform.
     draw_debug_information(api, gs, 0.0f, 0.0f);
 }
@@ -236,6 +248,8 @@ Enemy create_enemy(float x, float y) {
 
     res.trans.pos.x = x;
     res.trans.pos.y = y;
+
+    res.valid = true;
 
     return(res);
 }
@@ -320,10 +334,6 @@ void init(sglp_API *api, Game_State *gs) {
 
 void update(sglp_API *api, Game_State *gs) {
     // Update
-    if(api->key[sglp_key_space]) {
-        sglp_play_audio(api, ID_sound_bloop);
-    }
-
     V2 max_speed = v2(0.01f, 0.01f);
     V2 acceleration = v2(0.006f, 0.006f);
     V2 friction = v2(0.005f, 0.005f);
@@ -333,16 +343,20 @@ void update(sglp_API *api, Game_State *gs) {
         current_speed.y += accelerate(current_speed.y, max_speed.y, acceleration.y * api->dt, false);
         gs->player.dir = Player_Direction_up;
         gs->player.current_frame = Player_Direction_up;
-    } else if(api->key['S']) {
+    }
+    else if(api->key['S']) {
         current_speed.y += accelerate(current_speed.y, max_speed.y, acceleration.y * api->dt, true);
         gs->player.dir = Player_Direction_down;
         gs->player.current_frame = Player_Direction_down;
-    } else {
+    }
+    else {
         if(current_speed.y > friction.y * 0.5f) {
             current_speed.y += accelerate(current_speed.y, max_speed.y, friction.y * api->dt, false);
-        } else if(current_speed.y < -friction.y * 0.5f) {
+        }
+        else if(current_speed.y < -friction.y * 0.5f) {
             current_speed.y += accelerate(current_speed.y, max_speed.y, friction.y * api->dt, true);
-        } else {
+        }
+        else {
             current_speed.y = 0;
         }
     }
@@ -351,16 +365,20 @@ void update(sglp_API *api, Game_State *gs) {
         current_speed.x += accelerate(current_speed.x, max_speed.x, acceleration.x * api->dt, false);
         gs->player.dir = Player_Direction_left;
         gs->player.current_frame = Player_Direction_left;
-    } else if(api->key['D']) {
+    }
+    else if(api->key['D']) {
         current_speed.x += accelerate(current_speed.x, max_speed.x, acceleration.x * api->dt, true);
         gs->player.dir = Player_Direction_right;
         gs->player.current_frame = Player_Direction_right;
-    } else {
+    }
+    else {
         if(current_speed.x > friction.x * 0.5f) {
             current_speed.x += accelerate(current_speed.x, max_speed.x, friction.x * api->dt, false);
-        } else if(current_speed.x < -friction.x * 0.5f) {
+        }
+        else if(current_speed.x < -friction.x * 0.5f) {
             current_speed.x += accelerate(current_speed.x, max_speed.x, friction.x * api->dt, true);
-        } else {
+        }
+        else {
             current_speed.x = 0;
         }
     }
@@ -371,6 +389,8 @@ void update(sglp_API *api, Game_State *gs) {
 
     if(api->key[sglp_key_space]) {
         if(!gs->player.is_shooting) {
+            sglp_play_audio(api, ID_sound_bloop);
+
             gs->player.is_shooting = true;
             gs->player.bullet.dir = player_direction_to_direction(gs->player.dir);
             gs->player.bullet.trans = gs->player.trans;
@@ -379,10 +399,25 @@ void update(sglp_API *api, Game_State *gs) {
 
     if(gs->player.is_shooting) {
         Float bullet_speed = 0.02f;
-        if(gs->player.bullet.dir == Direction_left)  { gs->player.bullet.trans.pos.x -= bullet_speed; }
-        if(gs->player.bullet.dir == Direction_right) { gs->player.bullet.trans.pos.x += bullet_speed; }
-        if(gs->player.bullet.dir == Direction_up)    { gs->player.bullet.trans.pos.y -= bullet_speed; }
-        if(gs->player.bullet.dir == Direction_down)  { gs->player.bullet.trans.pos.y += bullet_speed; }
+
+        if(gs->player.bullet.dir == Direction_left)       gs->player.bullet.trans.pos.x -= bullet_speed;
+        else if(gs->player.bullet.dir == Direction_right) gs->player.bullet.trans.pos.x += bullet_speed;
+
+        if(gs->player.bullet.dir == Direction_up)         gs->player.bullet.trans.pos.y -= bullet_speed;
+        else if(gs->player.bullet.dir == Direction_down)  gs->player.bullet.trans.pos.y += bullet_speed;
+
+        for(int i = 0; (i < NUMBER_OF_ENEMIES); ++i) {
+            if(gs->enemy[i].valid && overlap(gs->player.bullet.trans, gs->enemy[i].trans)) {
+                gs->enemy[i].valid = false;
+                gs->player.is_shooting = false;
+                // TODO - Hacky way to move the bullet offsreen
+                gs->player.bullet.trans.pos = v2(400, 400);
+            }
+        }
+
+        if(is_offscreen(gs->player.bullet.trans)) {
+            gs->player.is_shooting = false;
+        }
     }
 
     float rot_speed = 5.0f;
@@ -396,8 +431,10 @@ void update(sglp_API *api, Game_State *gs) {
     if(api->key['L']) { gs->player.trans.scale.x += scaling_speed; }
 
     for(int i = 0; (i < NUMBER_OF_ENEMIES); ++i) {
-        if(overlap(gs->player.trans, gs->enemy[i].trans)) {
-            gs->player.trans.pos = gs->player.start_pos;
+        if(gs->enemy[i].valid) {
+            if(overlap(gs->player.trans, gs->enemy[i].trans)) {
+                gs->player.trans.pos = gs->player.start_pos;
+            }
         }
     }
 
@@ -412,7 +449,8 @@ void sglp_platform_update_and_render_callback(sglp_API *api) {
 
     if(api->init_game) {
         init(api, gs);
-    } else {
+    }
+    else {
         update(api, gs);
         render(api, gs);
     }
