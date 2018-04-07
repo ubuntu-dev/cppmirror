@@ -75,6 +75,8 @@ struct Player {
 
     Bullet bullet;
     Bool is_shooting;
+
+    char *some_variable;
 };
 
 Direction player_direction_to_direction(Player_Direction pd) {
@@ -118,6 +120,8 @@ enum ID {
 
 void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
     settings->fullscreen = false;
+
+    settings->allow_sound = false;
 
     //settings->win_width  = 640;
     //settings->win_height = 480;
@@ -295,6 +299,8 @@ Player create_player(float x, float y) {
 
     res.start_pos = res.trans.pos;
     res.dir = Player_Direction_left;
+
+    res.some_variable = "hello Lauren";
 
     return(res);
 }

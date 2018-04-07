@@ -401,7 +401,7 @@ struct pp_sglp_OpenGlFunctions {
     pp_sglp_glBindTexture_t *glBindTexture; pp_sglp_glClear_t *glClear; pp_sglp_glClearColor_t *glClearColor; pp_sglp_glDrawArrays_t *glDrawArrays; pp_sglp_glGetError_t *glGetError; pp_sglp_glTexImage2D_t *glTexImage2D; pp_sglp_glTexParameteri_t *glTexParameteri; pp_sglp_glGetString_t *glGetString; pp_sglp_glViewport_t *glViewport; pp_sglp_glCreateShader_t *glCreateShader; pp_sglp_glShaderSource_t *glShaderSource; pp_sglp_glCompileShader_t *glCompileShader; pp_sglp_glGetShaderiv_t *glGetShaderiv; pp_sglp_glCreateProgram_t *glCreateProgram; pp_sglp_glAttachShader_t *glAttachShader; pp_sglp_glBindAttribLocation_t *glBindAttribLocation; pp_sglp_glLinkProgram_t *glLinkProgram; pp_sglp_glUseProgram_t *glUseProgram; pp_sglp_glGenBuffers_t *glGenBuffers; pp_sglp_glBindBuffer_t *glBindBuffer; pp_sglp_glBufferData_t *glBufferData; pp_sglp_glVertexAttribPointer_t *glVertexAttribPointer; pp_sglp_glEnableVertexAttribArray_t *glEnableVertexAttribArray; pp_sglp_glUniform1i_t *glUniform1i; pp_sglp_glUniform2f_t *glUniform2f; pp_sglp_glUniform4f_t *glUniform4f; pp_sglp_glUniformMatrix4fv_t *glUniformMatrix4fv; pp_sglp_glGetUniformLocation_t *glGetUniformLocation; pp_sglp_glIsShader_t *glIsShader; pp_sglp_glGetProgramiv_t *glGetProgramiv; pp_sglp_glGetProgramInfoLog_t *glGetProgramInfoLog; pp_sglp_glGetShaderInfoLog_t *glGetShaderInfoLog; pp_sglp_glGenVertexArrays_t *glGenVertexArrays; pp_sglp_glBindVertexArray_t *glBindVertexArray; 
 };
 struct pp_sglp_Settings {
-    pp_sglp_Bool fullscreen; int32_t win_width; int32_t win_height; int32_t frame_rate; uintptr_t permanent_memory_size; int32_t max_no_of_sounds; char const *window_title; int32_t thread_cnt; 
+    pp_sglp_Bool fullscreen; int32_t win_width; int32_t win_height; int32_t frame_rate; uintptr_t permanent_memory_size; int32_t max_no_of_sounds; char const *window_title; int32_t thread_cnt; pp_sglp_Bool allow_sound; 
 };
 struct pp_sglp_File {
     uint8_t *e; uintptr_t size; 
@@ -446,7 +446,7 @@ struct pp_Bullet {
     pp_Transform trans; pp_Direction dir; 
 };
 struct pp_Player {
-    pp_Transform trans; pp_V2 start_pos; pp_Player_Direction dir; pp_Float current_frame; pp_V2 current_speed; pp_Bullet bullet; pp_Bool is_shooting; 
+    pp_Transform trans; pp_V2 start_pos; pp_Player_Direction dir; pp_Float current_frame; pp_V2 current_speed; pp_Bullet bullet; pp_Bool is_shooting; char *some_variable; 
 };
 struct pp_Enemy {
     pp_Transform trans; pp_Bool valid; 
@@ -831,6 +831,10 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 pp_MemberDefinition res = {pp_Type_int32_t, "thread_cnt", PP_OFFSETOF(pp_sglp_Settings, thread_cnt), 0, 0};
                 return(res);
             } break; 
+            case 8: {
+                pp_MemberDefinition res = {pp_Type_sglp_Bool, "allow_sound", PP_OFFSETOF(pp_sglp_Settings, allow_sound), 0, 0};
+                return(res);
+            } break; 
         }
     }
     else if(real_type == pp_Type_sglp_File) {
@@ -1111,6 +1115,10 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 pp_MemberDefinition res = {pp_Type_Bool, "is_shooting", PP_OFFSETOF(pp_Player, is_shooting), 0, 0};
                 return(res);
             } break; 
+            case 7: {
+                pp_MemberDefinition res = {pp_Type_char, "some_variable", PP_OFFSETOF(pp_Player, some_variable), 1, 0};
+                return(res);
+            } break; 
         }
     }
     else if(real_type == pp_Type_Enemy) {
@@ -1166,7 +1174,7 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_sglp_Sprite: { return(7); } break;
         case pp_Type_sglp_PlayingSound: { return(10); } break;
         case pp_Type_sglp_OpenGlFunctions: { return(34); } break;
-        case pp_Type_sglp_Settings: { return(8); } break;
+        case pp_Type_sglp_Settings: { return(9); } break;
         case pp_Type_sglp_File: { return(2); } break;
         case pp_Type_sglp_API: { return(9); } break;
         case pp_Type_sglp_LoadedSound: { return(4); } break;
@@ -1181,7 +1189,7 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_V2: { return(2); } break;
         case pp_Type_Transform: { return(3); } break;
         case pp_Type_Bullet: { return(2); } break;
-        case pp_Type_Player: { return(7); } break;
+        case pp_Type_Player: { return(8); } break;
         case pp_Type_Enemy: { return(2); } break;
         case pp_Type_Game_State: { return(6); } break;
     }

@@ -369,6 +369,7 @@ typedef struct sglp_Settings {
     int32_t max_no_of_sounds;
     char const *window_title;
     int32_t thread_cnt;
+    sglp_Bool allow_sound;
 } sglp_Settings;
 
 typedef struct sglp_File {
@@ -2524,6 +2525,18 @@ static void sglp_win32_process_pending_messages(HWND wnd, float *key, sglp_Bool 
     }
 }
 
+static void sglp_win32_get_mouse_position(sglp_API *api, HWND win) {
+    POINT mouse_point = {0};
+    RECT rect = {0};
+    if(sglp_user32_GetCursorPos(&mouse_point) && sglp_user32_GetWindowRect(win, &rect)) {
+        float x = mouse_point.x - rect.left;
+        float y = mouse_point.y - rect.top;
+
+        api->mouse_x = SGLP_NORMALISE(x, (float)api->settings.win_width, 0.0f);
+        api->mouse_y = SGLP_NORMALISE(y, (float)api->settings.win_height, 0.0f);
+    }
+}
+
 int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int show_code) {
     int i;
     sglp_API api = {0};
@@ -2564,6 +2577,8 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 
         api.settings.win_width = sglp_user32_GetSystemMetrics(SM_CXSCREEN);
         api.settings.win_height = sglp_user32_GetSystemMetrics(SM_CYSCREEN);
+
+        api.settings.allow_sound = SGLP_TRUE;
 
         sglp_platform_setup_settings_callback(&api.settings);
 
@@ -2683,7 +2698,6 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 
                         float ms_per_frame = 16.6666f;
                         sglp_Bool snd_is_valid = SGLP_FALSE;
-                        sglp_Bool allow_snd = SGLP_TRUE;
 
                         sglp_setup(&api, api.settings.max_no_of_sounds);
 
@@ -2765,6 +2779,8 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                                 }
                             }
 
+                            sglp_win32_get_mouse_position(&api, win);
+
                             sglp_gdi_SwapBuffers(sglp_user32_GetDC(win));
 
                             // Output Sound.
@@ -2807,7 +2823,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                                     snd_buf.samples = snd_samples;
                                     sglp_output_playing_sounds(&api, &snd_buf);
 
-                                    if(allow_snd) {
+                                    if(api.settings.allow_sound) {
                                         // Fill the Sound Buffer.
                                         void *region1, *region2;
                                         DWORD region1_size, region2_size;
