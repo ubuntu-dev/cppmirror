@@ -8,33 +8,31 @@
                            The use of this code is at your own risk
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
-#if 0
-extern "C" {
-    int _fltused;
+
+int _fltused;
 
 #pragma function(memset)
-    void *memset(void *dest, int c, size_t count) {
-        assert(c < 0xFF);
-        Byte *dest8 = (Byte *)dest;
-        while(count--) {
-            *dest8++ = (Byte)c;
-        }
-
-        return(dest);
+void *memset(void *dest, int c, size_t count) {
+    assert(c < 0xFF);
+    Byte *dest8 = (Byte *)dest;
+    while(count--) {
+        *dest8++ = (Byte)c;
     }
+
+    return(dest);
+}
 
 #pragma function(memcpy)
-    void *memcpy(void *dest, void const *src, size_t count) {
-        Byte *dst8 = (Byte *)dest;
-        Byte *src8 = (Byte *)src;
-        while (count--) {
-            *dst8++ = *src8++;
-        }
-
-        return(dest);
+void *memcpy(void *dest, void const *src, size_t count) {
+    Byte *dst8 = (Byte *)dest;
+    Byte *src8 = (Byte *)src;
+    while (count--) {
+        *dst8++ = *src8++;
     }
+
+    return(dest);
 }
-#endif
+
 Uint64 system_get_performance_counter(void) {
     Uint64 res = 0;
 
