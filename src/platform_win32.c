@@ -109,7 +109,7 @@ File system_read_entire_file_and_null_terminate(Char *fname) {
                 }
             }
         }
-        
+
         CloseHandle(fhandle);
     }
 
@@ -136,7 +136,7 @@ Bool system_write_to_file(Char *fname, File file) {
                 res = true;
             }
         }
-        
+
         CloseHandle(fhandle);
     }
 
@@ -258,7 +258,7 @@ Void system_write_to_console(Char *format, ...) {
 
         assert(res);
         assert(chars_written == len);
-        
+
         system_free(buf);
     }
 }
@@ -346,12 +346,18 @@ int main(int argc_, char **argv_) {
 
             my_main(argc, argv);
             res = 0;
-            
+
             system_free(argv);
         }
-        
+
         system_free(arg_cpy);
     }
 
     return(res);
+}
+
+// Because the CRT is poop.
+void mainCRTStartup(void) {
+    int res = main(0, 0);
+    ExitProcess(res);
 }
