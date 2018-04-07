@@ -135,7 +135,7 @@ sglp_Bool sglp_load_wav(struct sglp_API *api, int32_t id, void *e, uintptr_t siz
 //
 // Keyboard.
 //
-enum sglp_Key {
+typedef enum sglp_Key {
     sglp_key_unknown,
 
     // TODO(Jonny): Add all the rest of the keys.
@@ -202,7 +202,7 @@ enum sglp_Key {
     sglp_key_z,
 
     sglp_key_cnt = 128
-};
+} sglp_Key;
 
 //
 // OpenGL
@@ -385,6 +385,8 @@ typedef struct sglp_API {
     sglp_Bool init_game;
     sglp_Bool quit;
 
+    float mouse_x, mouse_y;
+
     //
     // Platform
     //
@@ -485,6 +487,7 @@ int32_t sglp_gl_coord_to_screen_pixel_y(float gly, int32_t win_height) {
     return(res);
 }
 
+// TODO - Seems stupid to have max then min.
 #define SGLP_NORMALISE(v, max, min) (((v) - (min)) / ((max) - (min)))
 
 float sglp_screen_pixel_coord_to_gl_x(int32_t winx, int32_t win_width) {
@@ -745,12 +748,15 @@ uint32_t sglp_load_and_compile_shaders(char const *fvertex, char const *ffragmen
         sglp_global_opengl->glLinkProgram(res);
         sglp_global_opengl->glUseProgram(res);
 
-    } else if((!vert_compiled) && (!frag_compiled)) {
+    }
+    else if((!vert_compiled) && (!frag_compiled)) {
         sglp_print_shader_err(vert_shader);
         sglp_print_shader_err(frag_shader);
-    } else if(!vert_compiled) {
+    }
+    else if(!vert_compiled) {
         sglp_print_shader_err(vert_shader);
-    } else {
+    }
+    else {
         sglp_print_shader_err(frag_shader);
     }
 
@@ -914,7 +920,8 @@ void sglp_change_volume(sglp_PlayingSound *snd, float FadeDurationSeconds, float
     if(FadeDurationSeconds <= 0.0f) {
         snd->cur_volume0 = snd->target_volume0 = vol0;
         snd->cur_volume1 = snd->target_volume1 = vol1;
-    } else {
+    }
+    else {
         snd->target_volume0 = vol0;
         snd->target_volume1 = vol1;
 
@@ -1074,7 +1081,8 @@ static void sglp_output_playing_sounds(sglp_API *api, sglp_SoundOutputBuffer *sn
                 *playing_snd_ptr = playing_snd->next;
                 playing_snd->next = sglp_global_audio_state.first_free_playing_snd;
                 sglp_global_audio_state.first_free_playing_snd = playing_snd;
-            } else {
+            }
+            else {
                 playing_snd_ptr = &playing_snd->next;
             }
         }
@@ -1217,7 +1225,8 @@ sglp_Bool sglp_load_wav(sglp_API *api, int32_t id, void *data, uintptr_t size) {
         if(no_channels == 1) {
             loaded_snd->samples[0] = (int16_t *)sample_data;
             loaded_snd->samples[1] = 0;
-        } else if(no_channels == 2) {
+        }
+        else if(no_channels == 2) {
             loaded_snd->samples[0] = sample_data;
             loaded_snd->samples[1] = sample_data + sample_cnt;
 
@@ -1226,7 +1235,8 @@ sglp_Bool sglp_load_wav(sglp_API *api, int32_t id, void *data, uintptr_t size) {
                 sample_data[2 * i] = sample_data[i];
                 sample_data[i]   = Source;
             }
-        } else {
+        }
+        else {
             res = SGLP_FALSE;
             SGLP_ASSERT(SGLP_FALSE);
         }
@@ -1360,7 +1370,8 @@ static sglp_Bool sglp_sdl_do_next_work_queue_entry(sglp_SdlWorkQueue *work_queue
             SDL_AtomicIncRef(&x);
             work_queue->cnt = x.value;
         }
-    } else {
+    }
+    else {
         res = SGLP_TRUE;
     }
 
@@ -1506,7 +1517,8 @@ static void sglp_sdl_set_opengl_attributes(void) {
         if(context) {
             // NOTE: CreateContext succeeded. Good.
             SDL_GL_DeleteContext(context);
-        } else {
+        }
+        else {
             // NOTE: CreateContext failed. Try setting OpenGL to a lower version
             SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
             SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
@@ -1521,7 +1533,8 @@ static sglp_Key sglp_sdl_key_to_sgl_key(SDL_Keycode k) {
     sglp_Key res = sglp_key_unknown;
     if(k >= SDLK_a && k <= SDLK_z) {
         res = (sglp_Key)k + ('A' - 'a');
-    } else {
+    }
+    else {
         switch(k) {
             case SDLK_RCTRL:  case SDLK_LCTRL:  { res = sglp_key_ctrl;   } break;
             case SDLK_RSHIFT: case SDLK_LSHIFT: { res = sglp_key_shift;  } break;
@@ -1619,7 +1632,8 @@ static void  sglp_sdl_handle_frame_rate_stuff(uint64_t *last_counter, uint64_t *
             seconds_elapsed_for_frame = sglp_sdl_get_seconds_elapsed(*last_counter,
                                                                      SDL_GetPerformanceCounter());
         }
-    } else {
+    }
+    else {
         // Missed Frame Rate!
     }
 
@@ -1722,7 +1736,8 @@ static void sglp_sdl_handle_audio(sglp_API *api, sglp_SdlSoundOutput *sound_outp
     if(byte_to_lock > target_cursor) {
         bytes_to_write = sound_output->secondary_buffer_size - byte_to_lock;
         bytes_to_write += target_cursor;
-    } else {
+    }
+    else {
         bytes_to_write = target_cursor - byte_to_lock;
     }
     SDL_UnlockAudio();
@@ -1818,7 +1833,8 @@ int main(int argc, char **argv) {
                 }
             }
         }
-    } else {
+    }
+    else {
         SDL_Log("Unable to initialize SDL: %s", SDL_GetError());
     }
 
@@ -1934,6 +1950,9 @@ static sglp_GetMonitorInfoA_t *sglp_user32_GetMonitorInfoA;
 
 typedef int SGLP_STDCALL sglp_GetSystemMetrics_t(int nIndex);
 static sglp_GetSystemMetrics_t *sglp_user32_GetSystemMetrics;
+
+typedef BOOL SGLP_STDCALL sglp_GetWindowRect_t(HWND hWnd, LPRECT lpRect);
+static sglp_GetWindowRect_t *sglp_user32_GetWindowRect;
 
 //
 // Gdi32
@@ -2073,7 +2092,8 @@ static sglp_Bool sglp_win32_init_opengl(HWND win) {
         HMODULE hopengl32 = LoadLibraryA("opengl32.dll");
         if(!hopengl32) {
             SGLP_ASSERT(0);
-        } else {
+        }
+        else {
             wglGetProcAddress_t *gl32_wglGetProcAddress = (wglGetProcAddress_t *)GetProcAddress(hopengl32, "wglGetProcAddress");
             wglCreateContext_t  *gl32_wglCreateContext  = (wglCreateContext_t *) GetProcAddress(hopengl32, "wglCreateContext");
             wglMakeCurrent_t    *gl32_wglMakeCurrent    = (wglMakeCurrent_t *)   GetProcAddress(hopengl32, "wglMakeCurrent");
@@ -2198,7 +2218,8 @@ static void sglp_win32_toggle_fullscreen(HWND win) {
                                      monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top,
                                      SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
         }
-    } else {
+    }
+    else {
         sglp_user32_SetWindowLongA(win, GWL_STYLE, style | WS_OVERLAPPEDWINDOW);
         sglp_user32_SetWindowPlacement(win, &sglp_global_win_pos);
         sglp_user32_SetWindowPos(win, 0, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
@@ -2235,12 +2256,14 @@ static sglp_Bool sglp_load_user32dll(void) {
         SGLP_USER32_LOAD(MonitorFromWindow);
         SGLP_USER32_LOAD(GetMonitorInfoA);
         SGLP_USER32_LOAD(GetSystemMetrics);
+        SGLP_USER32_LOAD(GetWindowRect);
 
 #undef SGLP_USER32_LOAD_
 #undef SGLP_USER32_LOAD
 
         res = funcs_loaded;
-    } else {
+    }
+    else {
         SGLP_ASSERT(0);
     }
 
@@ -2265,7 +2288,8 @@ static sglp_Bool sglp_load_gdi32dll(void) {
 #undef SGLP_GDI_LOAD
 
         res = funcs_loaded;
-    } else {
+    }
+    else {
         SGLP_ASSERT(0);
     }
 
@@ -2321,7 +2345,8 @@ static sglp_Bool sglp_do_next_work_queue_entry(sglp_Win32WorkQueue *work_queue) 
             entry.callback(entry.e);
             InterlockedIncrement((volatile long *)&work_queue->cnt);
         }
-    } else {
+    }
+    else {
         res = SGLP_TRUE;
     }
 
@@ -2424,7 +2449,8 @@ static void *sglp_win32_realloc(void *ptr, uintptr_t size) {
 
     if(ptr) {
         res = HeapReAlloc(GetProcessHeap(), 0x00000008/*HEAP_ZERO_MEMORY*/, ptr, size);
-    } else {
+    }
+    else {
         res = HeapAlloc(GetProcessHeap(), 0x00000008/*HEAP_ZERO_MEMORY*/, size);
     }
 
@@ -2605,7 +2631,8 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                 if(should_play_snd) {
                     if(!secondary_buffer) {
                         should_play_snd = SGLP_FALSE;
-                    } else {
+                    }
+                    else {
                         // Clear the sound buffer.
                         void *region1, *region2;
                         DWORD region1_size, region2_size;
@@ -2649,7 +2676,8 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                     api.permanent_memory = sglp_win32_malloc(api.settings.permanent_memory_size);
                     if(!api.permanent_memory) {
                         SGLP_ASSERT(0);
-                    } else {
+                    }
+                    else {
                         LARGE_INTEGER last_counter = sglp_win32_get_wall_clock();
                         LARGE_INTEGER flip_wall_clock = sglp_win32_get_wall_clock();
 
@@ -2698,17 +2726,20 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 
                                             if(left_stickx > 0) {
                                                 api.key[sglp_left_stick_x] = SGLP_NORMALISE(left_stickx, 0, 0xFFFF);
-                                            } else if (left_stickx < 0) {
+                                            }
+                                            else if (left_stickx < 0) {
                                                 api.key[sglp_left_stick_x] = -SGLP_NORMALISE(left_stickx, 0, 0xFFFF);
                                             }
 
                                             if(left_stickx > 0) {
                                                 api.key[sglp_left_stick_y] = SGLP_NORMALISE(left_sticky, 0, 0xFFFF);
-                                            } else if (left_stickx < 0) {
+                                            }
+                                            else if (left_stickx < 0) {
                                                 api.key[sglp_left_stick_y] = -SGLP_NORMALISE(left_sticky, 0, 0xFFFF);
                                             }
                                         }
-                                    } else {
+                                    }
+                                    else {
                                         // Controller not available.
                                     }
                                 }
@@ -2717,6 +2748,22 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                             api.dt = ms_per_frame;
                             sglp_platform_update_and_render_callback(&api);
                             api.init_game = SGLP_FALSE;
+
+                            // Get mouse position.
+                            {
+                                POINT mouse_point = {0};
+                                RECT rect = {0};
+                                if(sglp_user32_GetCursorPos(&mouse_point) && sglp_user32_GetWindowRect(win, &rect)) {
+                                    int x = mouse_point.x - rect.left;
+                                    int y = mouse_point.y - rect.top;
+                                    if(api.key[sglp_key_space]) {
+                                        int k = 0;
+                                    }
+
+                                    api.mouse_x = SGLP_NORMALISE((float)x, (float)api.settings.win_width, 0.0f);
+                                    api.mouse_y = SGLP_NORMALISE((float)y, (float)api.settings.win_height, 0.0f);
+                                }
+                            }
 
                             sglp_gdi_SwapBuffers(sglp_user32_GetDC(win));
 
@@ -2748,7 +2795,8 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                                         (write_cursor + expected_snd_bytes_per_frame + snd_output.safety_bytes) % snd_output.secondary_buf_size;
                                     if(byte_to_lock > target_cursor) {
                                         bytes_to_write = (snd_output.secondary_buf_size - byte_to_lock) + target_cursor;
-                                    } else {
+                                    }
+                                    else {
                                         bytes_to_write = target_cursor - byte_to_lock;
                                     }
 
@@ -2799,7 +2847,8 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                                             IDirectSoundBuffer_Unlock(secondary_buffer, region1, region1_size, region2, region2_size);
                                         }
                                     }
-                                } else {
+                                }
+                                else {
                                     snd_is_valid = SGLP_FALSE;
                                 }
                             }
@@ -2828,7 +2877,8 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                                                                                                    sglp_win32_get_wall_clock(),
                                                                                                    perf_cnt_freq);
                                     }
-                                } else {
+                                }
+                                else {
                                     // Missed Frame Rate!
                                 }
 
@@ -3121,7 +3171,8 @@ static sglp_Bool sglp_linux_do_next_work_queue_entry(sglp_LinuxWorkQueue *work_q
             entry.callback(entry.e);
             __sync_fetch_and_add(&work_queue->cnt, 1);
         }
-    } else {
+    }
+    else {
         res = SGLP_TRUE;
     }
 
@@ -3342,7 +3393,8 @@ static void sglp_linux_handle_audio(sglp_API *api, sglp_LinuxSoundOutput *sound_
     if(byte_to_lock > target_cursor) {
         bytes_to_write = sound_output->secondary_buffer_size - byte_to_lock;
         bytes_to_write += target_cursor;
-    } else {
+    }
+    else {
         bytes_to_write = target_cursor - byte_to_lock;
     }
     sglp_linux_audio_unlock();
@@ -3462,7 +3514,8 @@ static void sglp_linux_handle_window_messages(sglp_API *api, sglp_LinuxWindow wi
 
                 case XK_Escape: { api->key[sglp_key_escape] = SGLP_TRUE; } break;
             }
-        } else if(KeyRelease == event.xkey.type) {
+        }
+        else if(KeyRelease == event.xkey.type) {
             KeySym X11Key = sglp_x11_XKeycodeToKeysym(win.display, event.xkey.keycode, 0);
             switch(X11Key) {
                 case XK_Up:    { api->key[sglp_key_up]    = SGLP_FALSE; } break;
@@ -3524,7 +3577,8 @@ static void sglp_linux_handle_frame_rate_stuff(sglp_API *api, uint64_t *last_cou
             seconds_elapsed_for_frame = sglp_linux_get_seconds_elapsed(*last_counter,
                                                                        api->get_processor_timestamp());
         }
-    } else {
+    }
+    else {
         // Missed Frame Rate!
     }
 

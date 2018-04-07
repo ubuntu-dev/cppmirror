@@ -141,27 +141,28 @@ Float accelerate(Float cur, Float max, Float acc, Bool forward) {
 }
 
 V2 get_letter_position(char Letter);
-void draw_word(char const *str, sglp_API *api, Game_State *gs, Float x, Float y, Float scalex, Float scaley) {
-    scalex *= 0.5f;
+void draw_word(char const *str, sglp_API *api, Game_State *gs, V2 pos, V2 scale) {
+    scale.x *= 0.5f;
     int string_length = sgl_string_len(str);
-    Float running_x = x, running_y = y;
+    Float running_x = pos.x;
+    Float running_y = pos.y;
     for(int i = 0; (i < string_length - 1); ++i) {
         char letter = str[i];
 
         if(letter == '\n') {
-            running_y += scaley;
-            running_x = x;
+            running_y += scale.y;
+            running_x = pos.x;
         }
         else {
             V2 pos_in_table = get_letter_position(letter);
             if(pos_in_table.x != -1 && pos_in_table.y != -1) {
-                sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale(running_x, running_y, scalex, scaley);
+                sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale(running_x, running_y, scale.x, scale.y);
                 float tform[16] = {0};
 
                 sglm_mat4x4_as_float_arr(tform, &mat);
                 sglp_draw_sprite_frame_matrix(gs->bitmap_sprite, pos_in_table.x, pos_in_table.y, tform);
 
-                running_x += scalex;
+                running_x += scale.x;
             }
         }
     }
@@ -170,6 +171,16 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, Float x, Float y,
 Bool overlap(Transform a, Transform b) {
     if((a.pos.x >= b.pos.x && a.pos.x <= b.pos.x + b.scale.x) || (b.pos.x >= a.pos.x && b.pos.x <= a.pos.x + a.scale.x)) {
         if((a.pos.y >= b.pos.y && a.pos.y <= b.pos.y + b.scale.y) || (b.pos.y >= a.pos.y && b.pos.y <= a.pos.y + a.scale.y)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+Bool point_overlap(V2 p, Transform t) {
+    if((p.x > t.pos.x && p.x < t.pos.x + t.scale.x)) {
+        if((p.y > t.pos.y && p.y < t.pos.y + t.scale.y)) {
             return true;
         }
     }
@@ -186,14 +197,33 @@ Bool is_offscreen(Transform t) {
     }
 }
 
-void draw_debug_information(sglp_API *api, Game_State *gs, Float mouse_x, Float mouse_y) {
+// TODO - When this function draws text it'd be good if it made sure the text was always onscreen.
+void draw_debug_information(sglp_API *api, Game_State *gs) {
 #if INTERNAL
-    int buf_size = 256 * 256;
-    char *buffer = api->os_malloc(sizeof(*buffer) * buf_size);
-    pp_serialize_struct(&gs->player, Player, buffer, buf_size);
-    Float size = 0.025f;
-    draw_word(buffer, api, gs, 0.0f, 0.0f, size, size);
-    api->os_free(buffer);
+
+    V2 mouse_pos = v2(api->mouse_x, api->mouse_y);
+    Player *player = &gs->player;
+    V2 word_size = v2(0.025f, 0.025f);
+
+    // Player
+    if(point_overlap(mouse_pos, player->trans)) {
+        int buf_size = 256 * 256;
+        char *buffer = api->os_malloc(sizeof(*buffer) * buf_size);
+        pp_serialize_struct(player, Player, buffer, buf_size);
+        draw_word(buffer, api, gs, player->trans.pos, word_size);
+        api->os_free(buffer);
+    }
+
+    // Enemeies
+    for(int i = 0; (i < NUMBER_OF_ENEMIES); ++i) {
+        if(gs->enemy[i].valid && point_overlap(mouse_pos, gs->enemy[i].trans)) {
+            int buf_size = 256 * 256;
+            char *buffer = api->os_malloc(sizeof(*buffer) * buf_size);
+            pp_serialize_struct(&gs->enemy[i], Enemy, buffer, buf_size);
+            draw_word(buffer, api, gs, gs->enemy[i].trans.pos, word_size);
+            api->os_free(buffer);
+        }
+    }
 #endif
 }
 
@@ -237,7 +267,7 @@ void render(sglp_API *api, Game_State *gs) {
     }
 
     // TODO - Read the mouse position from sgl_platform.
-    draw_debug_information(api, gs, 0.0f, 0.0f);
+    draw_debug_information(api, gs);
 }
 
 Enemy create_enemy(float x, float y) {

@@ -407,7 +407,7 @@ struct pp_sglp_File {
     uint8_t *e; uintptr_t size; 
 };
 struct pp_sglp_API {
-    pp_sglp_Settings settings; pp_sglp_OpenGlFunctions gl; pp_void *permanent_memory; float key[256]; float dt; pp_sglp_Bool init_game; pp_sglp_Bool quit; 
+    pp_sglp_Settings settings; pp_sglp_OpenGlFunctions gl; pp_void *permanent_memory; float key[256]; float dt; pp_sglp_Bool init_game; pp_sglp_Bool quit; float mouse_x; float mouse_y; 
 };
 struct pp_sglp_LoadedSound {
     uint32_t sample_cnt; uint32_t no_channels; int16_t *samples[2]; int32_t id; 
@@ -875,6 +875,14 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 pp_MemberDefinition res = {pp_Type_sglp_Bool, "quit", PP_OFFSETOF(pp_sglp_API, quit), 0, 0};
                 return(res);
             } break; 
+            case 7: {
+                pp_MemberDefinition res = {pp_Type_float, "mouse_x", PP_OFFSETOF(pp_sglp_API, mouse_x), 0, 0};
+                return(res);
+            } break; 
+            case 8: {
+                pp_MemberDefinition res = {pp_Type_float, "mouse_y", PP_OFFSETOF(pp_sglp_API, mouse_y), 0, 0};
+                return(res);
+            } break; 
         }
     }
     else if(real_type == pp_Type_sglp_LoadedSound) {
@@ -1160,7 +1168,7 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_sglp_OpenGlFunctions: { return(34); } break;
         case pp_Type_sglp_Settings: { return(8); } break;
         case pp_Type_sglp_File: { return(2); } break;
-        case pp_Type_sglp_API: { return(7); } break;
+        case pp_Type_sglp_API: { return(9); } break;
         case pp_Type_sglp_LoadedSound: { return(4); } break;
         case pp_Type_sglp_SoundOutputBuffer: { return(3); } break;
         case pp_Type_sglp_AudioState: { return(2); } break;
