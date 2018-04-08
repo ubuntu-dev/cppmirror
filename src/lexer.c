@@ -307,6 +307,8 @@ Bool token_equals(Token token, Char *str) {
     return(res);
 }
 
+
+
 Token get_token(Tokenizer *tokenizer); // Because C/C++...
 Token peak_token(Tokenizer *tokenizer) {
     Tokenizer cpy = *tokenizer;
@@ -800,7 +802,7 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
             typedef struct {
                 Char *pos;
                 Access access;
-                Bool is_inside_anonymous_struct;
+                AnonymousStruct anonymous_struct;
             } MemberInfo;
 
             Uintptr member_info_mem_cnt = 256;
@@ -811,7 +813,7 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
             MemberInfo *member_info = system_malloc(sizeof *member_info * member_info_mem_cnt);
 
             if(member_info) {
-                Bool inside_anonymous_struct = false;
+                AnonymousStruct inside_anonymous_struct = AnonymousStruct_none;
                 for(;;) {
                     Token token = get_token(tokenizer);
 
@@ -828,13 +830,19 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
                         }
                     }
                     else {
-                        if(token_equals(token, "struct")) {
+                        if(is_token_struct(token)) {
                             Token next = peak_token(tokenizer);
 
                             // If we're in an anonymous struct, just ignore it.
                             if(next.type == Token_Type_open_brace) {
                                 eat_token(tokenizer); // Eat the open brace.
-                                inside_anonymous_struct = true;
+                                String s = token_to_string(token);
+                                if(string_cstring_comp(s, "union")) {
+                                    inside_anonymous_struct = AnonymousStruct_union;
+                                }
+                                else if(string_cstring_comp(s, "struct")) {
+                                    inside_anonymous_struct = AnonymousStruct_struct;
+                                }
                             }
 
                             // Whether we're in an anonymous struct or not, we still want to set the token to it's next.
@@ -902,7 +910,7 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
                                     MemberInfo *mi = member_info + member_cnt++;
 
                                     mi->pos = token.e;
-                                    mi->is_inside_anonymous_struct = inside_anonymous_struct;
+                                    mi->anonymous_struct = inside_anonymous_struct;
                                     mi->access = current_access;
                                 }
                                 else {
@@ -965,7 +973,7 @@ Parse_Struct_Result parse_struct(Tokenizer *tokenizer, Struct_Type struct_type) 
                             for(Int j = 0; (j < var_cnt); ++j) {
                                 Tokenizer fake_tokenizer = { member_info[i].pos };
                                 res.sd.members[member_index] = parse_member(&fake_tokenizer, j);
-                                res.sd.members[member_index].is_inside_anonymous_struct = member_info[i].is_inside_anonymous_struct;
+                                res.sd.members[member_index].anonymous_struct = member_info[i].anonymous_struct;
                                 res.sd.members[member_index].access = member_info[i].access;
                                 ++member_index;
                             }

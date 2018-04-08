@@ -67,7 +67,7 @@ enum Player_Direction {
     Player_Direction_down = 6,
 };
 struct Player {
-    Transform trans;
+    // Transform trans;
     V2 start_pos;
     Player_Direction dir;
     Float current_frame;
@@ -75,8 +75,6 @@ struct Player {
 
     Bullet bullet;
     Bool is_shooting;
-
-    char *some_variable;
 };
 
 Direction player_direction_to_direction(Player_Direction pd) {
@@ -91,19 +89,36 @@ Direction player_direction_to_direction(Player_Direction pd) {
 }
 
 struct Enemy {
-    Transform trans;
-    Bool valid;
+    // Transform trans;
+    char *name;
 };
 
-#define NUMBER_OF_ENEMIES 4
+struct Shared {
+    pp_Type type;
+    Bool valid;
+    Transform trans;
+};
+
+struct Entity {
+    Shared shared;
+
+    union {
+        Enemy enemy;
+        Player player;
+    };
+};
+
+// #define NUMBER_OF_ENEMIES 4
+#define MAX_NUMBER_OF_ENTITIES 16
 struct Game_State {
     sglp_Sprite player_sprite;
     sglp_Sprite enemy_one_sprite;
     sglp_Sprite bitmap_sprite;
     sglp_Sprite bullet_sprite;
 
-    Player player;
-    Enemy enemy[NUMBER_OF_ENEMIES];
+    Entity entity[MAX_NUMBER_OF_ENTITIES];
+    // Player player;
+    // Enemy enemy[NUMBER_OF_ENEMIES];
 };
 
 enum ID {
@@ -183,8 +198,10 @@ Bool overlap(Transform a, Transform b) {
 }
 
 Bool point_overlap(V2 p, Transform t) {
-    if((p.x > t.pos.x && p.x < t.pos.x + t.scale.x)) {
-        if((p.y > t.pos.y && p.y < t.pos.y + t.scale.y)) {
+    float x = t.pos.x - (t.scale.x * 0.5f);
+    float y = t.pos.y - (t.scale.y * 0.5f);
+    if((p.x > x && p.x < x + t.scale.x)) {
+        if((p.y > y && p.y < y + t.scale.y)) {
             return true;
         }
     }
@@ -201,8 +218,55 @@ Bool is_offscreen(Transform t) {
     }
 }
 
+Entity *first_invalid_entity(Entity *entity) {
+    Entity *res = 0;
+    for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
+        if(!entity[i].shared.valid) {
+            res = &entity[i];
+            break; // for
+        }
+
+    }
+
+    return res;
+}
+
+Entity *find_first_entity(Entity *entity, pp_Type type) {
+    Entity *res = 0;
+    for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
+        if(entity[i].shared.valid && entity[i].shared.type == type) {
+            res = &entity[i];
+            break; // for
+        }
+    }
+
+    return res;
+}
+
+Entity *find_next_entity(Entity *entity, pp_Type type) {
+    Entity *res = 0;
+    for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
+        if(entity[i].shared.valid && entity[i].shared.type == type) {
+            res = &entity[i];
+            break; // for
+        }
+    }
+
+    return res;
+}
+
+Bool is_entity_type(Entity *entity, pp_Type type) {
+    Bool res = false;
+    if(entity && entity->shared.valid && entity->shared.type == type) {
+        res = true;
+    }
+
+    return res;
+}
+
 // TODO - When this function draws text it'd be good if it made sure the text was always onscreen.
 void draw_debug_information(sglp_API *api, Game_State *gs) {
+#if 0
 #if INTERNAL
 
     V2 mouse_pos = v2(api->mouse_x, api->mouse_y);
@@ -228,26 +292,37 @@ void draw_debug_information(sglp_API *api, Game_State *gs) {
             api->os_free(buffer);
         }
     }
+
+    // Mouse position
+    if(0) {
+        int buf_size = 256 * 256;
+        char *buffer = api->os_malloc(sizeof(*buffer) * buf_size);
+        pp_serialize_struct(&mouse_pos, V2, buffer, buf_size);
+        draw_word(buffer, api, gs, mouse_pos, word_size);
+        api->os_free(buffer);
+    }
+#endif
 #endif
 }
 
 void render(sglp_API *api, Game_State *gs) {
     sglp_clear_screen_for_frame();
+    Entity *player = find_first_entity(gs->entity, pp_Type_Player);
 
     // Player
     {
-        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->player.trans.pos.x, gs->player.trans.pos.y,
-                                                          gs->player.trans.scale.x, gs->player.trans.scale.y,
-                                                          gs->player.trans.rot);
+        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(player->shared.trans.pos.x, player->shared.trans.pos.y,
+                                                          player->shared.trans.scale.x, player->shared.trans.scale.y,
+                                                          player->shared.trans.rot);
         Float tform[16] = {0};
         sglm_mat4x4_as_float_arr(tform, &mat);
 
-        sglp_draw_sprite(gs->player_sprite, gs->player.current_frame, tform);
+        sglp_draw_sprite(gs->player_sprite, player->player.current_frame, tform);
     }
 
     // Player's Bullet
-    if(gs->player.is_shooting) {
-        Bullet *b = &gs->player.bullet;
+    if(player->player.is_shooting) {
+        Bullet *b = &player->player.bullet;
         sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(b->trans.pos.x, b->trans.pos.y,
                                                           b->trans.scale.x, b->trans.scale.y,
                                                           b->trans.rot);
@@ -258,11 +333,12 @@ void render(sglp_API *api, Game_State *gs) {
     }
 
     // Enemies
-    for(int i = 0; (i < NUMBER_OF_ENEMIES); ++i) {
-        if(gs->enemy[i].valid) {
-            sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->enemy[i].trans.pos.x, gs->enemy[i].trans.pos.y,
-                                                              gs->enemy[i].trans.scale.x, gs->enemy[i].trans.scale.y,
-                                                              gs->enemy[i].trans.rot);
+    for(int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
+        Entity *entity = &gs->entity[i];
+        if(is_entity_type(entity, pp_Type_Entity)) {
+            sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(entity->shared.trans.pos.x, entity->shared.trans.pos.y,
+                                                              entity->shared.trans.scale.x, entity->shared.trans.scale.y,
+                                                              entity->shared.trans.rot);
             Float tform[16] = {0};
             sglm_mat4x4_as_float_arr(tform, &mat);
 
@@ -274,33 +350,35 @@ void render(sglp_API *api, Game_State *gs) {
     draw_debug_information(api, gs);
 }
 
-Enemy create_enemy(float x, float y) {
-    Enemy res = {0};
+Entity create_enemy(float x, float y) {
+    Entity res = {0};
 
-    res.trans.scale.x = 0.1f;
-    res.trans.scale.y = 0.1f;
+    res.shared.type = pp_Type_Entity;
+    res.shared.valid = true;
 
-    res.trans.pos.x = x;
-    res.trans.pos.y = y;
+    res.shared.trans.scale.x = 0.1f;
+    res.shared.trans.scale.y = 0.1f;
 
-    res.valid = true;
+    res.shared.trans.pos.x = x;
+    res.shared.trans.pos.y = y;
 
     return(res);
 }
 
-Player create_player(float x, float y) {
-    Player res = {0};
+Entity create_player(float x, float y) {
+    Entity res = {0};
 
-    res.trans.scale.x = 0.1f;
-    res.trans.scale.y = 0.1f;
+    res.shared.type = pp_Type_Player;
+    res.shared.valid = true;
 
-    res.trans.pos.x = x;
-    res.trans.pos.y = y;
+    res.shared.trans.scale.x = 0.1f;
+    res.shared.trans.scale.y = 0.1f;
 
-    res.start_pos = res.trans.pos;
-    res.dir = Player_Direction_left;
+    res.shared.trans.pos.x = x;
+    res.shared.trans.pos.y = y;
 
-    res.some_variable = "hello Lauren";
+    res.player.start_pos = res.shared.trans.pos;
+    res.player.dir = Player_Direction_left;
 
     return(res);
 }
@@ -313,7 +391,11 @@ void init(sglp_API *api, Game_State *gs) {
         gs->player_sprite = sglp_load_image(api, img_data, 12, 1, ID_sprite_player, width, height, number_of_components);
         stbi_image_free(img_data);
 
-        gs->player = create_player(0.5f, 0.7f);
+        Entity player = create_player(0.5f, 0.7f);
+        Entity *free = first_invalid_entity(gs->entity);
+        if(free) {
+            *free = player;
+        }
     }
 
     // Load the enemy.
@@ -325,7 +407,11 @@ void init(sglp_API *api, Game_State *gs) {
 
         Float x = 0.1f;
         for(Int i = 0; (i < 4); ++i) {
-            gs->enemy[i] = create_enemy(x, 0.5f);
+            Entity enemy = create_enemy(x, 0.5f);
+            Entity *free = first_invalid_entity(gs->entity);
+            if(free) {
+                *free = enemy;
+            }
             x += 0.2f;
         }
     }
@@ -345,7 +431,10 @@ void init(sglp_API *api, Game_State *gs) {
         gs->bullet_sprite = sglp_load_image(api, img_data, 1, 1, ID_sprite_bullet, width, height, number_of_components);
         stbi_image_free(img_data);
 
-        gs->player.bullet = bullet();
+        Entity *player = find_first_entity(gs->entity, pp_Type_Player);
+        if(player) {
+            player->player.bullet = bullet();
+        }
     }
 
     // Load background music.
@@ -373,17 +462,18 @@ void update(sglp_API *api, Game_State *gs) {
     V2 max_speed = v2(0.01f, 0.01f);
     V2 acceleration = v2(0.006f, 0.006f);
     V2 friction = v2(0.005f, 0.005f);
+    Entity *player = find_first_entity(gs->entity, pp_Type_Player);
 
-    V2 current_speed = gs->player.current_speed;
+    V2 current_speed = player->player.current_speed;
     if(api->key['W']) {
         current_speed.y += accelerate(current_speed.y, max_speed.y, acceleration.y * api->dt, false);
-        gs->player.dir = Player_Direction_up;
-        gs->player.current_frame = Player_Direction_up;
+        player->player.dir = Player_Direction_up;
+        player->player.current_frame = Player_Direction_up;
     }
     else if(api->key['S']) {
         current_speed.y += accelerate(current_speed.y, max_speed.y, acceleration.y * api->dt, true);
-        gs->player.dir = Player_Direction_down;
-        gs->player.current_frame = Player_Direction_down;
+        player->player.dir = Player_Direction_down;
+        player->player.current_frame = Player_Direction_down;
     }
     else {
         if(current_speed.y > friction.y * 0.5f) {
@@ -399,13 +489,13 @@ void update(sglp_API *api, Game_State *gs) {
 
     if(api->key['A']) {
         current_speed.x += accelerate(current_speed.x, max_speed.x, acceleration.x * api->dt, false);
-        gs->player.dir = Player_Direction_left;
-        gs->player.current_frame = Player_Direction_left;
+        player->player.dir = Player_Direction_left;
+        player->player.current_frame = Player_Direction_left;
     }
     else if(api->key['D']) {
         current_speed.x += accelerate(current_speed.x, max_speed.x, acceleration.x * api->dt, true);
-        gs->player.dir = Player_Direction_right;
-        gs->player.current_frame = Player_Direction_right;
+        player->player.dir = Player_Direction_right;
+        player->player.current_frame = Player_Direction_right;
     }
     else {
         if(current_speed.x > friction.x * 0.5f) {
@@ -419,64 +509,71 @@ void update(sglp_API *api, Game_State *gs) {
         }
     }
 
-    gs->player.current_speed = current_speed;
-    gs->player.trans.pos.x += gs->player.current_speed.x;
-    gs->player.trans.pos.y += gs->player.current_speed.y;
+    player->player.current_speed = current_speed;
+    player->shared.trans.pos.x += player->player.current_speed.x;
+    player->shared.trans.pos.y += player->player.current_speed.y;
 
     if(api->key[sglp_key_space]) {
-        if(!gs->player.is_shooting) {
+        if(!player->player.is_shooting) {
             sglp_play_audio(api, ID_sound_bloop);
 
-            gs->player.is_shooting = true;
-            gs->player.bullet.dir = player_direction_to_direction(gs->player.dir);
-            gs->player.bullet.trans = gs->player.trans;
+            player->player.is_shooting = true;
+            player->player.bullet.dir = player_direction_to_direction(player->player.dir);
+            player->player.bullet.trans = player->shared.trans;
         }
     }
 
-    if(gs->player.is_shooting) {
+    if(player->player.is_shooting) {
         Float bullet_speed = 0.02f;
 
-        if(gs->player.bullet.dir == Direction_left)       gs->player.bullet.trans.pos.x -= bullet_speed;
-        else if(gs->player.bullet.dir == Direction_right) gs->player.bullet.trans.pos.x += bullet_speed;
+        if(player->player.bullet.dir == Direction_left)       player->player.bullet.trans.pos.x -= bullet_speed;
+        else if(player->player.bullet.dir == Direction_right) player->player.bullet.trans.pos.x += bullet_speed;
 
-        if(gs->player.bullet.dir == Direction_up)         gs->player.bullet.trans.pos.y -= bullet_speed;
-        else if(gs->player.bullet.dir == Direction_down)  gs->player.bullet.trans.pos.y += bullet_speed;
+        if(player->player.bullet.dir == Direction_up)         player->player.bullet.trans.pos.y -= bullet_speed;
+        else if(player->player.bullet.dir == Direction_down)  player->player.bullet.trans.pos.y += bullet_speed;
 
-        for(int i = 0; (i < NUMBER_OF_ENEMIES); ++i) {
-            if(gs->enemy[i].valid && overlap(gs->player.bullet.trans, gs->enemy[i].trans)) {
-                gs->enemy[i].valid = false;
-                gs->player.is_shooting = false;
-                // TODO - Hacky way to move the bullet offsreen
-                gs->player.bullet.trans.pos = v2(400, 400);
+        for(int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
+            Entity *entity = &gs->entity[i];
+            if(is_entity_type(entity, pp_Type_Enemy) && overlap(player->player.bullet.trans, entity->shared.trans)) {
+                entity->shared.valid = false;
+                player->player.is_shooting = false;
+                player->player.bullet.trans.pos = v2(400, 400);
             }
+            /*if(gs->enemy[i].valid && overlap(player->player.bullet.trans, gs->enemy[i].trans)) {
+                gs->enemy[i].valid = false;
+                player->player.is_shooting = false;
+                // TODO - Hacky way to move the bullet offsreen
+                player->player.bullet.trans.pos = v2(400, 400);
+            }*/
         }
 
-        if(is_offscreen(gs->player.bullet.trans)) {
-            gs->player.is_shooting = false;
+        if(is_offscreen(player->player.bullet.trans)) {
+            player->player.is_shooting = false;
         }
     }
 
     float rot_speed = 5.0f;
-    if(api->key[sglp_key_left])  { gs->player.trans.rot += rot_speed; }
-    if(api->key[sglp_key_right]) { gs->player.trans.rot -= rot_speed; }
+    if(api->key[sglp_key_left])  { player->shared.trans.rot += rot_speed; }
+    if(api->key[sglp_key_right]) { player->shared.trans.rot -= rot_speed; }
 
     float scaling_speed = 0.01f;
-    if(api->key['I']) { gs->player.trans.scale.y += scaling_speed; }
-    if(api->key['K']) { gs->player.trans.scale.y -= scaling_speed; }
-    if(api->key['J']) { gs->player.trans.scale.x -= scaling_speed; }
-    if(api->key['L']) { gs->player.trans.scale.x += scaling_speed; }
+    if(api->key['I']) { player->shared.trans.scale.y += scaling_speed; }
+    if(api->key['K']) { player->shared.trans.scale.y -= scaling_speed; }
+    if(api->key['J']) { player->shared.trans.scale.x -= scaling_speed; }
+    if(api->key['L']) { player->shared.trans.scale.x += scaling_speed; }
 
-    for(int i = 0; (i < NUMBER_OF_ENEMIES); ++i) {
-        if(gs->enemy[i].valid) {
-            if(overlap(gs->player.trans, gs->enemy[i].trans)) {
-                gs->player.trans.pos = gs->player.start_pos;
+    for(int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
+        Entity *entity = &gs->entity[i];
+        if(is_entity_type(entity, pp_Type_Entity)) {
+            if(overlap(player->shared.trans, entity->shared.trans)) {
+                player->shared.trans.pos = player->player.start_pos;
             }
         }
     }
 
-    gs->player.current_frame += 0.5f;
-    if(gs->player.current_frame >= gs->player.dir + 2.0f) {
-        gs->player.current_frame = gs->player.dir;
+    player->player.current_frame += 0.5f;
+    if(player->player.current_frame >= player->player.dir + 2.0f) {
+        player->player.current_frame = player->player.dir;
     }
 }
 

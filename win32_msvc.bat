@@ -6,7 +6,7 @@ call "C:\Program Files (x86)\Microsoft Visual Studio\2017\community\VC\Auxiliary
 cd %~dp0
 
 rem Variables to set.
-set RELEASE=true
+set RELEASE=false
 set BUILD_GAME=true
 
 rem Warnings to ignore.

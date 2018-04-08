@@ -9,6 +9,7 @@
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
 
+#if COMPILER_MSVC
 int _fltused;
 
 #pragma function(memset)
@@ -32,6 +33,7 @@ void *memcpy(void *dest, void const *src, size_t count) {
 
     return(dest);
 }
+#endif
 
 Uint64 system_get_performance_counter(void) {
     Uint64 res = 0;

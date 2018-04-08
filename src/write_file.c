@@ -51,6 +51,18 @@ Bool is_primitive(String str) {
     return(res);
 }
 
+// TODO - Hacky as fuck.
+Bool is_pp_type(String str) {
+    Bool res = false;
+    if(str.len > 3) {
+        if(str.e[0] == 'p' && str.e[1] == 'p' && str.e[2] == '_') {
+            res = true;
+        }
+    }
+
+    return(res);
+}
+
 Struct_Data *find_struct(String str, Structs structs) {
     Struct_Data *res = 0;
 
@@ -173,9 +185,11 @@ Void write_get_size_from_type(OutputBuffer *ob, String *types, Int type_count, T
         if(!string_cstring_comp(types[i], "void") && !is_typedef_for_void(types[i], typedefs)) {
             String cpy = (is_unsized_enum(types[i], enums)) ? create_string("int") : types[i];
 
-            write_ob(ob,
-                     "        case pp_Type_%.*s: { return sizeof(pp_%.*s); } break;\n",
-                     types[i].len, types[i].e, cpy.len, cpy.e);
+            if(!is_pp_type(types[i])) {
+                write_ob(ob,
+                         "        case pp_Type_%.*s: { return sizeof(pp_%.*s); } break;\n",
+                         types[i].len, types[i].e, cpy.len, cpy.e);
+            }
         }
     }
 
@@ -396,7 +410,8 @@ File write_data(Parse_Result pr) {
 
                 if(ed->type.len) {
                     write_ob(&ob, "enum %.*s : %.*s;\n", ed->name.len, ed->name.e, ed->type.len, ed->type.e);
-                } else {
+                }
+                else {
                     write_ob(&ob, "typedef enum %.*s %.*s;\n", ed->name.len, ed->name.e, ed->name.len, ed->name.e);
                 }
             }
@@ -566,7 +581,8 @@ File write_data(Parse_Result pr) {
                              "enum pp_%.*s : %.*s;\n",
                              ed->name.len, ed->name.e,
                              ed->type.len, ed->type.e);
-                } else {
+                }
+                else {
                     write_ob(&ob,
                              "typedef int pp_%.*s;\n",
                              ed->name.len, ed->name.e);
@@ -609,16 +625,30 @@ File write_data(Parse_Result pr) {
 
                     write_ob(&ob, " {\n    ");
 
-                    Bool is_inside_anonymous_struct = false;
+                    /* This won't work for
+                        struct Foo {
+                            struct { union {}; }
+                        }
+
+                        but should work for just one level.
+                    */
+                    AnonymousStruct anonymous_struct = AnonymousStruct_none;
                     for(Int j = 0; (j < sd->member_count); ++j) {
                         Variable *md = sd->members + j;
 
-                        if(md->is_inside_anonymous_struct != is_inside_anonymous_struct) {
-                            is_inside_anonymous_struct = !is_inside_anonymous_struct;
+                        if(md->anonymous_struct != anonymous_struct) {
+                            if(anonymous_struct) {
+                                anonymous_struct = AnonymousStruct_none;
+                            }
+                            else {
+                                anonymous_struct = md->anonymous_struct;
+                            }
 
-                            if(is_inside_anonymous_struct) {
-                                write_ob(&ob, " struct {");
-                            } else {
+                            if(anonymous_struct) {
+                                Char *s = anonymous_struct_to_type(anonymous_struct);
+                                write_ob(&ob, " %s {", s);
+                            }
+                            else {
                                 write_ob(&ob, "};");
                             }
                         }
@@ -663,8 +693,8 @@ File write_data(Parse_Result pr) {
                             }
                         }
 
-                        // If the type is not a primitive, prepend "pp_" onto the front of it.
-                        if(!is_primitive(md->type)) {
+                        // If the type is not a primitive or pp_type, prepend "pp_" onto the front of it.
+                        if(!is_primitive(md->type) && !is_pp_type(md->type)) {
                             write_ob(&ob, "pp_");
                         }
 
@@ -678,7 +708,7 @@ File write_data(Parse_Result pr) {
 
                     }
 
-                    if(is_inside_anonymous_struct) {
+                    if(anonymous_struct) {
                         write_ob(&ob, " };");
                     }
 
