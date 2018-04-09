@@ -227,11 +227,10 @@ Entity *first_invalid_entity(Entity *entity) {
 }
 
 Void *find_first_entity(Entity *entity, pp_Type type) {
-    Int i, j;
-    for(i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
+    for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
         if(entity[i].valid && entity[i].type == type) {
-            Int number_of_members = (Int)pp_get_number_of_members(pp_Type_Entity);
-            for(j = 0; (j < number_of_members); ++j) {
+            Uintptr number_of_members = pp_get_number_of_members(pp_Type_Entity);
+            for(Uintptr j = 0; (j < number_of_members); ++j) {
                 pp_MemberDefinition mem = pp_get_members_from_type(pp_Type_Entity, j);
                 if(mem.type == type) {
                     Void *res = (Byte *)entity + mem.offset;
@@ -462,15 +461,12 @@ void init(sglp_API *api, Game_State *gs) {
     }
 }
 
-void update(sglp_API *api, Game_State *gs) {
-    // Update
+Void handle_player_movement(Player *player, sglp_API *api) {
+    V2 current_speed = player->current_speed;
     V2 max_speed = v2(0.01f, 0.01f);
     V2 acceleration = v2(0.006f, 0.006f);
     V2 friction = v2(0.005f, 0.005f);
-    Player *player = find_first_entity(gs->entity, pp_Type_Player);
-    assert(player);
 
-    V2 current_speed = player->current_speed;
     if(api->key['W']) {
         current_speed.y += accelerate(current_speed.y, max_speed.y, acceleration.y * api->dt, false);
         player->dir = Player_Direction_up;
@@ -518,7 +514,12 @@ void update(sglp_API *api, Game_State *gs) {
     player->current_speed = current_speed;
     player->trans.pos.x += player->current_speed.x;
     player->trans.pos.y += player->current_speed.y;
+}
 
+Void update_player(Player *player, sglp_API *api, Game_State *gs) {
+    handle_player_movement(player, api);
+
+    // Shooting.
     if(api->key[sglp_key_space]) {
         if(!player->is_shooting) {
             sglp_play_audio(api, ID_sound_bloop);
@@ -529,6 +530,8 @@ void update(sglp_API *api, Game_State *gs) {
         }
     }
 
+    // Bullet movement
+    // TODO - Make the bullet an entity.
     if(player->is_shooting) {
         Float bullet_speed = 0.02f;
 
@@ -538,52 +541,62 @@ void update(sglp_API *api, Game_State *gs) {
         if(player->bullet.dir == Direction_up)         player->bullet.trans.pos.y -= bullet_speed;
         else if(player->bullet.dir == Direction_down)  player->bullet.trans.pos.y += bullet_speed;
 
-        for(int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
-            Entity *entity = &gs->entity[i];
-            if(is_entity_type(entity, pp_Type_Enemy)) {
-                Enemy *enemy = &entity->enemy;
-                if(overlap(player->bullet.trans, enemy->trans)) {
-                    entity->valid = false;
-                    player->is_shooting = false;
-                    player->bullet.trans.pos = v2(400, 400);
-                }
-            }
-            /*if(gs->enemy[i].valid && overlap(player->bullet.trans, gs->enemy[i].trans)) {
-                gs->enemy[i].valid = false;
-                player->is_shooting = false;
-                // TODO - Hacky way to move the bullet offsreen
-                player->bullet.trans.pos = v2(400, 400);
-            }*/
-        }
-
         if(is_offscreen(player->bullet.trans)) {
             player->is_shooting = false;
         }
     }
 
-    float rot_speed = 5.0f;
-    if(api->key[sglp_key_left])  { player->trans.rot += rot_speed; }
-    if(api->key[sglp_key_right]) { player->trans.rot -= rot_speed; }
-
-    float scaling_speed = 0.01f;
-    if(api->key['I']) { player->trans.scale.y += scaling_speed; }
-    if(api->key['K']) { player->trans.scale.y -= scaling_speed; }
-    if(api->key['J']) { player->trans.scale.x -= scaling_speed; }
-    if(api->key['L']) { player->trans.scale.x += scaling_speed; }
-
-    for(int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
-        Entity *entity = &gs->entity[i];
-        if(is_entity_type(entity, pp_Type_Enemy)) {
-            Enemy *enemy = &entity->enemy;
-            if(overlap(player->trans, enemy->trans)) {
-                player->trans.pos = player->start_pos;
-            }
-        }
-    }
-
+    // Update frame.
     player->current_frame += 0.5f;
     if(player->current_frame >= player->dir + 2.0f) {
         player->current_frame = player->dir;
+    }
+
+    // Destroy the bullet when it's offscreen.
+    if(is_offscreen(player->bullet.trans)) {
+        player->is_shooting = false;
+    }
+
+    // DEBUG - Rotation
+    float rot_speed = 5.0f;
+    if(api->key[sglp_key_left])  player->trans.rot += rot_speed;
+    if(api->key[sglp_key_right]) player->trans.rot -= rot_speed;
+
+    // DEBUG - scaling
+    float scaling_speed = 0.01f;
+    if(api->key['I']) player->trans.scale.y += scaling_speed;
+    if(api->key['K']) player->trans.scale.y -= scaling_speed;
+    if(api->key['J']) player->trans.scale.x -= scaling_speed;
+    if(api->key['L']) player->trans.scale.x += scaling_speed;
+}
+
+Void update_enemy(Enemy *enemy, Game_State *gs) {
+    Player *player = find_first_entity(gs->entity, pp_Type_Player);
+    assert(player);
+
+    // Set the player to the start if they touch an enemy.
+    if(overlap(player->trans, enemy->trans)) {
+        player->trans.pos = player->start_pos;
+    }
+
+    // Kill the enemy if they touch the player's bullet.
+    if(overlap(player->bullet.trans, enemy->trans)) {
+        // entity->valid = false; // TODO - Can't set to invalid right now.
+        player->is_shooting = false;
+        player->bullet.trans.pos = v2(400, 400); // TODO - Hacky way to move the bullet offscreen.
+    }
+}
+
+Void update(sglp_API *api, Game_State *gs) {
+    for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
+        if(gs->entity[i].valid) {
+            switch(gs->entity[i].type) {
+                case pp_Type_Player: update_player(&gs->entity[i].player, api, gs); break;
+                case pp_Type_Enemy:  update_enemy(&gs->entity[i].enemy, gs);        break;
+
+                default: assert(0); break;
+            }
+        }
     }
 }
 
