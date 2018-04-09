@@ -456,7 +456,7 @@ struct pp_Enemy {
     pp_Transform trans; 
 };
 struct pp_Entity {
-    pp_Type type; pp_Bool valid;  union {pp_Enemy enemy; pp_Player player;  };
+    pp_Type type; pp_Bool valid;  union {pp_Player player; pp_Enemy enemy;  };
 };
 struct pp_Game_State {
     pp_sglp_Sprite player_sprite; pp_sglp_Sprite enemy_one_sprite; pp_sglp_Sprite bitmap_sprite; pp_sglp_Sprite bullet_sprite; pp_Entity entity[16]; 
@@ -1143,11 +1143,11 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 return(res);
             } break; 
             case 2: {
-                pp_MemberDefinition res = {pp_Type_Enemy, "enemy", PP_OFFSETOF(pp_Entity, enemy), 0, 0};
+                pp_MemberDefinition res = {pp_Type_Player, "player", PP_OFFSETOF(pp_Entity, player), 0, 0};
                 return(res);
             } break; 
             case 3: {
-                pp_MemberDefinition res = {pp_Type_Player, "player", PP_OFFSETOF(pp_Entity, player), 0, 0};
+                pp_MemberDefinition res = {pp_Type_Enemy, "enemy", PP_OFFSETOF(pp_Entity, enemy), 0, 0};
                 return(res);
             } break; 
         }
@@ -1533,7 +1533,8 @@ PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
 }
 PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t index);
 // uintptr_t pp_serialize_struct(TYPE *var, TYPE, buffer, buffer_size);
-#define pp_serialize_struct(var, Type, buf, size) pp_serialize_struct_(var, PP_CONCAT(pp_Type_, Type), PP_TO_STRING(var), 0, buf, size, 0)
+#define pp_serialize_struct(var, Type, buf, size) pp_serialize_struct_type(var, PP_CONCAT(pp_Type_, Type), buf, size)
+#define pp_serialize_struct_type(var, Type, buf, size) pp_serialize_struct_(var, Type, PP_TO_STRING(var), 0, buf, size, 0)
 PP_STATIC uintptr_t
 pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent, char *buffer, uintptr_t buf_size, uintptr_t bytes_written) {
     char indent_buf[256] = {0};

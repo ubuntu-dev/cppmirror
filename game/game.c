@@ -98,8 +98,8 @@ struct Entity {
     Bool valid;
 
     union {
-        Enemy enemy;
         Player player;
+        Enemy enemy;
     };
 };
 
@@ -267,44 +267,37 @@ Bool is_entity_type(Entity *entity, pp_Type type) {
     return res;
 }
 
-// TODO - When this function draws text it'd be good if it made sure the text was always onscreen.
-void draw_debug_information(sglp_API *api, Game_State *gs) {
-#if 0
-#if INTERNAL
 
-    V2 mouse_pos = v2(api->mouse_x, api->mouse_y);
-    Player *player = &gs->player;
-    V2 word_size = v2(0.025f, 0.025f);
+Void draw_entity_text(sglp_API *api, Game_State *gs, Entity *entity, V2 mouse_position, Transform trans) {
+    if(point_overlap(mouse_position, trans)) {
+        V2 word_size = v2(0.025f, 0.025f);
 
-    // Player
-    if(point_overlap(mouse_pos, player->trans)) {
-        int buf_size = 256 * 256;
-        char *buffer = api->os_malloc(sizeof(*buffer) * buf_size);
-        pp_serialize_struct(player, Player, buffer, buf_size);
-        draw_word(buffer, api, gs, player->trans.pos, word_size);
+        Void *data = &entity->player; // Just need the address.
+        Int buffer_size = 256 * 256;
+        Char *buffer = api->os_malloc(sizeof(*buffer) * buffer_size);
+        pp_serialize_struct_type(data, entity->type, buffer, buffer_size);
+        draw_word(buffer, api, gs, trans.pos, word_size);
         api->os_free(buffer);
     }
+}
 
-    // Enemeies
-    for(int i = 0; (i < NUMBER_OF_ENEMIES); ++i) {
-        if(gs->enemy[i].valid && point_overlap(mouse_pos, gs->enemy[i].trans)) {
-            int buf_size = 256 * 256;
-            char *buffer = api->os_malloc(sizeof(*buffer) * buf_size);
-            pp_serialize_struct(&gs->enemy[i], Enemy, buffer, buf_size);
-            draw_word(buffer, api, gs, gs->enemy[i].trans.pos, word_size);
-            api->os_free(buffer);
+// TODO - When this function draws text it'd be good if it made sure the text was always onscreen.
+Void draw_debug_information(sglp_API *api, Game_State *gs) {
+#if INTERNAL
+    V2 mouse_position = v2(api->mouse_x, api->mouse_y);
+
+    for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
+        if(gs->entity[i].valid) {
+            V2 position_to_draw = {0};
+            Transform trans = {0};
+            switch(gs->entity[i].type) {
+                case pp_Type_Player: trans = gs->entity[i].player.trans; break;
+                case pp_Type_Enemy:  trans = gs->entity[i].enemy.trans;  break;
+            }
+
+            draw_entity_text(api, gs, &gs->entity[i], mouse_position, trans);
         }
     }
-
-    // Mouse position
-    if(0) {
-        int buf_size = 256 * 256;
-        char *buffer = api->os_malloc(sizeof(*buffer) * buf_size);
-        pp_serialize_struct(&mouse_pos, V2, buffer, buf_size);
-        draw_word(buffer, api, gs, mouse_pos, word_size);
-        api->os_free(buffer);
-    }
-#endif
 #endif
 }
 
