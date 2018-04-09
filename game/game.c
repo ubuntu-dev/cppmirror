@@ -14,7 +14,6 @@
 
 #include <math.h>
 
-#define PP_IGNORE
 PP_IGNORE
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
@@ -67,7 +66,7 @@ enum Player_Direction {
     Player_Direction_down = 6,
 };
 struct Player {
-    // Transform trans;
+    Transform trans;
     V2 start_pos;
     Player_Direction dir;
     Float current_frame;
@@ -89,18 +88,14 @@ Direction player_direction_to_direction(Player_Direction pd) {
 }
 
 struct Enemy {
-    // Transform trans;
-    char *name;
-};
-
-struct Shared {
-    pp_Type type;
-    Bool valid;
     Transform trans;
 };
 
+// TODO - The shared part of this _may_ be making it more complicated than it needs to be. Maybe try it
+//        without and see if it's better?
 struct Entity {
-    Shared shared;
+    pp_Type type;
+    Bool valid;
 
     union {
         Enemy enemy;
@@ -221,7 +216,7 @@ Bool is_offscreen(Transform t) {
 Entity *first_invalid_entity(Entity *entity) {
     Entity *res = 0;
     for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
-        if(!entity[i].shared.valid) {
+        if(!entity[i].valid) {
             res = &entity[i];
             break; // for
         }
@@ -231,22 +226,31 @@ Entity *first_invalid_entity(Entity *entity) {
     return res;
 }
 
-Entity *find_first_entity(Entity *entity, pp_Type type) {
-    Entity *res = 0;
-    for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
-        if(entity[i].shared.valid && entity[i].shared.type == type) {
-            res = &entity[i];
+Void *find_first_entity(Entity *entity, pp_Type type) {
+    Int i, j;
+    for(i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
+        if(entity[i].valid && entity[i].type == type) {
+            Int number_of_members = (Int)pp_get_number_of_members(pp_Type_Entity);
+            for(j = 0; (j < number_of_members); ++j) {
+                pp_MemberDefinition mem = pp_get_members_from_type(pp_Type_Entity, j);
+                if(mem.type == type) {
+                    Void *res = (Byte *)entity + mem.offset;
+                    return res;
+                }
+            }
+
             break; // for
         }
     }
 
-    return res;
+    return 0;
 }
 
-Entity *find_next_entity(Entity *entity, pp_Type type) {
+// TODO - This doesn't work.
+Entity *find_next_entity(Entity *entity, pp_Type type, Void *prev) {
     Entity *res = 0;
     for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
-        if(entity[i].shared.valid && entity[i].shared.type == type) {
+        if(entity[i].valid && entity[i].type == type) {
             res = &entity[i];
             break; // for
         }
@@ -257,7 +261,7 @@ Entity *find_next_entity(Entity *entity, pp_Type type) {
 
 Bool is_entity_type(Entity *entity, pp_Type type) {
     Bool res = false;
-    if(entity && entity->shared.valid && entity->shared.type == type) {
+    if(entity && entity->valid && entity->type == type) {
         res = true;
     }
 
@@ -307,22 +311,22 @@ void draw_debug_information(sglp_API *api, Game_State *gs) {
 
 void render(sglp_API *api, Game_State *gs) {
     sglp_clear_screen_for_frame();
-    Entity *player = find_first_entity(gs->entity, pp_Type_Player);
+    Player *player = find_first_entity(gs->entity, pp_Type_Player);
 
     // Player
     {
-        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(player->shared.trans.pos.x, player->shared.trans.pos.y,
-                                                          player->shared.trans.scale.x, player->shared.trans.scale.y,
-                                                          player->shared.trans.rot);
+        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(player->trans.pos.x, player->trans.pos.y,
+                                                          player->trans.scale.x, player->trans.scale.y,
+                                                          player->trans.rot);
         Float tform[16] = {0};
         sglm_mat4x4_as_float_arr(tform, &mat);
 
-        sglp_draw_sprite(gs->player_sprite, player->player.current_frame, tform);
+        sglp_draw_sprite(gs->player_sprite, player->current_frame, tform);
     }
 
     // Player's Bullet
-    if(player->player.is_shooting) {
-        Bullet *b = &player->player.bullet;
+    if(player->is_shooting) {
+        Bullet *b = &player->bullet;
         sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(b->trans.pos.x, b->trans.pos.y,
                                                           b->trans.scale.x, b->trans.scale.y,
                                                           b->trans.rot);
@@ -335,10 +339,11 @@ void render(sglp_API *api, Game_State *gs) {
     // Enemies
     for(int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
         Entity *entity = &gs->entity[i];
-        if(is_entity_type(entity, pp_Type_Entity)) {
-            sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(entity->shared.trans.pos.x, entity->shared.trans.pos.y,
-                                                              entity->shared.trans.scale.x, entity->shared.trans.scale.y,
-                                                              entity->shared.trans.rot);
+        if(is_entity_type(entity, pp_Type_Enemy)) {
+            Enemy *enemy = &entity->enemy;
+            sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(enemy->trans.pos.x, enemy->trans.pos.y,
+                                                              enemy->trans.scale.x, enemy->trans.scale.y,
+                                                              enemy->trans.rot);
             Float tform[16] = {0};
             sglm_mat4x4_as_float_arr(tform, &mat);
 
@@ -353,14 +358,14 @@ void render(sglp_API *api, Game_State *gs) {
 Entity create_enemy(float x, float y) {
     Entity res = {0};
 
-    res.shared.type = pp_Type_Entity;
-    res.shared.valid = true;
+    res.type = pp_Type_Enemy;
+    res.valid = true;
 
-    res.shared.trans.scale.x = 0.1f;
-    res.shared.trans.scale.y = 0.1f;
+    res.enemy.trans.scale.x = 0.1f;
+    res.enemy.trans.scale.y = 0.1f;
 
-    res.shared.trans.pos.x = x;
-    res.shared.trans.pos.y = y;
+    res.enemy.trans.pos.x = x;
+    res.enemy.trans.pos.y = y;
 
     return(res);
 }
@@ -368,16 +373,16 @@ Entity create_enemy(float x, float y) {
 Entity create_player(float x, float y) {
     Entity res = {0};
 
-    res.shared.type = pp_Type_Player;
-    res.shared.valid = true;
+    res.type = pp_Type_Player;
+    res.valid = true;
 
-    res.shared.trans.scale.x = 0.1f;
-    res.shared.trans.scale.y = 0.1f;
+    res.player.trans.scale.x = 0.1f;
+    res.player.trans.scale.y = 0.1f;
 
-    res.shared.trans.pos.x = x;
-    res.shared.trans.pos.y = y;
+    res.player.trans.pos.x = x;
+    res.player.trans.pos.y = y;
 
-    res.player.start_pos = res.shared.trans.pos;
+    res.player.start_pos = res.player.trans.pos;
     res.player.dir = Player_Direction_left;
 
     return(res);
@@ -431,9 +436,9 @@ void init(sglp_API *api, Game_State *gs) {
         gs->bullet_sprite = sglp_load_image(api, img_data, 1, 1, ID_sprite_bullet, width, height, number_of_components);
         stbi_image_free(img_data);
 
-        Entity *player = find_first_entity(gs->entity, pp_Type_Player);
+        Player *player = find_first_entity(gs->entity, pp_Type_Player);
         if(player) {
-            player->player.bullet = bullet();
+            player->bullet = bullet();
         }
     }
 
@@ -462,18 +467,19 @@ void update(sglp_API *api, Game_State *gs) {
     V2 max_speed = v2(0.01f, 0.01f);
     V2 acceleration = v2(0.006f, 0.006f);
     V2 friction = v2(0.005f, 0.005f);
-    Entity *player = find_first_entity(gs->entity, pp_Type_Player);
+    Player *player = find_first_entity(gs->entity, pp_Type_Player);
+    assert(player);
 
-    V2 current_speed = player->player.current_speed;
+    V2 current_speed = player->current_speed;
     if(api->key['W']) {
         current_speed.y += accelerate(current_speed.y, max_speed.y, acceleration.y * api->dt, false);
-        player->player.dir = Player_Direction_up;
-        player->player.current_frame = Player_Direction_up;
+        player->dir = Player_Direction_up;
+        player->current_frame = Player_Direction_up;
     }
     else if(api->key['S']) {
         current_speed.y += accelerate(current_speed.y, max_speed.y, acceleration.y * api->dt, true);
-        player->player.dir = Player_Direction_down;
-        player->player.current_frame = Player_Direction_down;
+        player->dir = Player_Direction_down;
+        player->current_frame = Player_Direction_down;
     }
     else {
         if(current_speed.y > friction.y * 0.5f) {
@@ -489,13 +495,13 @@ void update(sglp_API *api, Game_State *gs) {
 
     if(api->key['A']) {
         current_speed.x += accelerate(current_speed.x, max_speed.x, acceleration.x * api->dt, false);
-        player->player.dir = Player_Direction_left;
-        player->player.current_frame = Player_Direction_left;
+        player->dir = Player_Direction_left;
+        player->current_frame = Player_Direction_left;
     }
     else if(api->key['D']) {
         current_speed.x += accelerate(current_speed.x, max_speed.x, acceleration.x * api->dt, true);
-        player->player.dir = Player_Direction_right;
-        player->player.current_frame = Player_Direction_right;
+        player->dir = Player_Direction_right;
+        player->current_frame = Player_Direction_right;
     }
     else {
         if(current_speed.x > friction.x * 0.5f) {
@@ -509,71 +515,75 @@ void update(sglp_API *api, Game_State *gs) {
         }
     }
 
-    player->player.current_speed = current_speed;
-    player->shared.trans.pos.x += player->player.current_speed.x;
-    player->shared.trans.pos.y += player->player.current_speed.y;
+    player->current_speed = current_speed;
+    player->trans.pos.x += player->current_speed.x;
+    player->trans.pos.y += player->current_speed.y;
 
     if(api->key[sglp_key_space]) {
-        if(!player->player.is_shooting) {
+        if(!player->is_shooting) {
             sglp_play_audio(api, ID_sound_bloop);
 
-            player->player.is_shooting = true;
-            player->player.bullet.dir = player_direction_to_direction(player->player.dir);
-            player->player.bullet.trans = player->shared.trans;
+            player->is_shooting = true;
+            player->bullet.dir = player_direction_to_direction(player->dir);
+            player->bullet.trans = player->trans;
         }
     }
 
-    if(player->player.is_shooting) {
+    if(player->is_shooting) {
         Float bullet_speed = 0.02f;
 
-        if(player->player.bullet.dir == Direction_left)       player->player.bullet.trans.pos.x -= bullet_speed;
-        else if(player->player.bullet.dir == Direction_right) player->player.bullet.trans.pos.x += bullet_speed;
+        if(player->bullet.dir == Direction_left)       player->bullet.trans.pos.x -= bullet_speed;
+        else if(player->bullet.dir == Direction_right) player->bullet.trans.pos.x += bullet_speed;
 
-        if(player->player.bullet.dir == Direction_up)         player->player.bullet.trans.pos.y -= bullet_speed;
-        else if(player->player.bullet.dir == Direction_down)  player->player.bullet.trans.pos.y += bullet_speed;
+        if(player->bullet.dir == Direction_up)         player->bullet.trans.pos.y -= bullet_speed;
+        else if(player->bullet.dir == Direction_down)  player->bullet.trans.pos.y += bullet_speed;
 
         for(int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
             Entity *entity = &gs->entity[i];
-            if(is_entity_type(entity, pp_Type_Enemy) && overlap(player->player.bullet.trans, entity->shared.trans)) {
-                entity->shared.valid = false;
-                player->player.is_shooting = false;
-                player->player.bullet.trans.pos = v2(400, 400);
+            if(is_entity_type(entity, pp_Type_Enemy)) {
+                Enemy *enemy = &entity->enemy;
+                if(overlap(player->bullet.trans, enemy->trans)) {
+                    entity->valid = false;
+                    player->is_shooting = false;
+                    player->bullet.trans.pos = v2(400, 400);
+                }
             }
-            /*if(gs->enemy[i].valid && overlap(player->player.bullet.trans, gs->enemy[i].trans)) {
+            /*if(gs->enemy[i].valid && overlap(player->bullet.trans, gs->enemy[i].trans)) {
                 gs->enemy[i].valid = false;
-                player->player.is_shooting = false;
+                player->is_shooting = false;
                 // TODO - Hacky way to move the bullet offsreen
-                player->player.bullet.trans.pos = v2(400, 400);
+                player->bullet.trans.pos = v2(400, 400);
             }*/
         }
 
-        if(is_offscreen(player->player.bullet.trans)) {
-            player->player.is_shooting = false;
+        if(is_offscreen(player->bullet.trans)) {
+            player->is_shooting = false;
         }
     }
 
     float rot_speed = 5.0f;
-    if(api->key[sglp_key_left])  { player->shared.trans.rot += rot_speed; }
-    if(api->key[sglp_key_right]) { player->shared.trans.rot -= rot_speed; }
+    if(api->key[sglp_key_left])  { player->trans.rot += rot_speed; }
+    if(api->key[sglp_key_right]) { player->trans.rot -= rot_speed; }
 
     float scaling_speed = 0.01f;
-    if(api->key['I']) { player->shared.trans.scale.y += scaling_speed; }
-    if(api->key['K']) { player->shared.trans.scale.y -= scaling_speed; }
-    if(api->key['J']) { player->shared.trans.scale.x -= scaling_speed; }
-    if(api->key['L']) { player->shared.trans.scale.x += scaling_speed; }
+    if(api->key['I']) { player->trans.scale.y += scaling_speed; }
+    if(api->key['K']) { player->trans.scale.y -= scaling_speed; }
+    if(api->key['J']) { player->trans.scale.x -= scaling_speed; }
+    if(api->key['L']) { player->trans.scale.x += scaling_speed; }
 
     for(int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
         Entity *entity = &gs->entity[i];
-        if(is_entity_type(entity, pp_Type_Entity)) {
-            if(overlap(player->shared.trans, entity->shared.trans)) {
-                player->shared.trans.pos = player->player.start_pos;
+        if(is_entity_type(entity, pp_Type_Enemy)) {
+            Enemy *enemy = &entity->enemy;
+            if(overlap(player->trans, enemy->trans)) {
+                player->trans.pos = player->start_pos;
             }
         }
     }
 
-    player->player.current_frame += 0.5f;
-    if(player->player.current_frame >= player->player.dir + 2.0f) {
-        player->player.current_frame = player->player.dir;
+    player->current_frame += 0.5f;
+    if(player->current_frame >= player->dir + 2.0f) {
+        player->current_frame = player->dir;
     }
 }
 
