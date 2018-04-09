@@ -207,16 +207,16 @@ void write_enum_size_data(OutputBuffer *ob, Enums enums) {
              "//\n"
              "// Number of members in an enum.\n"
              "//\n");
-#if 0
+#if 1
     // Constant version.
     {
-        write_ob(ob, "#define pp_get_enum_size(type) pp_get_enum_size_##type\n");
+        write_ob(ob, "#define pp_get_enum_size_const(type) pp_get_enum_size_##type\n");
 
-        for(Int i = 0; (i < pr.enums.cnt); ++i) {
-            Enum_Data *ed = pr.enums.e + i;
+        for(Int i = 0; (i < enums.cnt); ++i) {
+            Enum_Data *ed = enums.e + i;
 
             write_ob(ob,
-                     "#define pp_get_enum_size_%.*s %d",
+                     "#define pp_get_enum_size_%.*s %d\n",
                      ed->name.len, ed->name.e,
                      ed->no_of_values);
         }

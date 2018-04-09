@@ -85,7 +85,8 @@ PP_STATIC void *PP_MEMSET(void *dst, uint8_t v, uintptr_t size) {
 typedef enum sglp_Key sglp_Key;
 typedef enum Direction Direction;
 typedef enum Player_Direction Player_Direction;
-typedef enum ID ID;
+typedef enum Sprite_ID Sprite_ID;
+typedef enum Sound_ID Sound_ID;
 
 /* Forward declared structs. */
 typedef struct sglp_Sprite sglp_Sprite;
@@ -231,7 +232,8 @@ typedef enum pp_Type {
     pp_Type_sglp_Key,
     pp_Type_Direction,
     pp_Type_Player_Direction,
-    pp_Type_ID,
+    pp_Type_Sprite_ID,
+    pp_Type_Sound_ID,
     pp_Type_sglp_Sprite,
     pp_Type_sglp_PlayingSound,
     pp_Type_sglp_OpenGlFunctions,
@@ -294,7 +296,8 @@ typedef struct pp_Game_State pp_Game_State;    typedef struct pp_Game_State pp_p
 typedef int pp_sglp_Key;
 typedef int pp_Direction;
 typedef int pp_Player_Direction;
-typedef int pp_ID;
+typedef int pp_Sprite_ID;
+typedef int pp_Sound_ID;
 
 //
 // Create typedefs.
@@ -459,7 +462,7 @@ struct pp_Entity {
     pp_Type type; pp_Bool valid;  union {pp_Player player; pp_Enemy enemy;  };
 };
 struct pp_Game_State {
-    pp_sglp_Sprite player_sprite; pp_sglp_Sprite enemy_one_sprite; pp_sglp_Sprite bitmap_sprite; pp_sglp_Sprite bullet_sprite; pp_Entity entity[16]; 
+    pp_Entity entity[16]; 
 };
 
 // Turn a typedef'd type into it's original type.
@@ -1155,22 +1158,6 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
     else if(real_type == pp_Type_Game_State) {
         switch(index) {
             case 0: {
-                pp_MemberDefinition res = {pp_Type_sglp_Sprite, "player_sprite", PP_OFFSETOF(pp_Game_State, player_sprite), 0, 0};
-                return(res);
-            } break; 
-            case 1: {
-                pp_MemberDefinition res = {pp_Type_sglp_Sprite, "enemy_one_sprite", PP_OFFSETOF(pp_Game_State, enemy_one_sprite), 0, 0};
-                return(res);
-            } break; 
-            case 2: {
-                pp_MemberDefinition res = {pp_Type_sglp_Sprite, "bitmap_sprite", PP_OFFSETOF(pp_Game_State, bitmap_sprite), 0, 0};
-                return(res);
-            } break; 
-            case 3: {
-                pp_MemberDefinition res = {pp_Type_sglp_Sprite, "bullet_sprite", PP_OFFSETOF(pp_Game_State, bullet_sprite), 0, 0};
-                return(res);
-            } break; 
-            case 4: {
                 pp_MemberDefinition res = {pp_Type_Entity, "entity", PP_OFFSETOF(pp_Game_State, entity), 0, 16};
                 return(res);
             } break; 
@@ -1207,7 +1194,7 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_Player: { return(7); } break;
         case pp_Type_Enemy: { return(1); } break;
         case pp_Type_Entity: { return(4); } break;
-        case pp_Type_Game_State: { return(5); } break;
+        case pp_Type_Game_State: { return(1); } break;
     }
 
     PP_ASSERT(0);
@@ -1230,7 +1217,7 @@ PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {
             return(pp_StructureType_primitive);
         } break;
 
-        case pp_Type_sglp_Key: case pp_Type_Direction: case pp_Type_Player_Direction: case pp_Type_ID: {
+        case pp_Type_sglp_Key: case pp_Type_Direction: case pp_Type_Player_Direction: case pp_Type_Sprite_ID: case pp_Type_Sound_ID: {
             return(pp_StructureType_enum);
         } break;
 
@@ -1357,7 +1344,8 @@ PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_sglp_Key: { return("sglp_Key"); } break;
         case pp_Type_Direction: { return("Direction"); } break;
         case pp_Type_Player_Direction: { return("Player_Direction"); } break;
-        case pp_Type_ID: { return("ID"); } break;
+        case pp_Type_Sprite_ID: { return("Sprite_ID"); } break;
+        case pp_Type_Sound_ID: { return("Sound_ID"); } break;
         case pp_Type_sglp_Sprite: { return("sglp_Sprite"); } break;
         case pp_Type_sglp_PlayingSound: { return("sglp_PlayingSound"); } break;
         case pp_Type_sglp_OpenGlFunctions: { return("sglp_OpenGlFunctions"); } break;
@@ -1501,7 +1489,8 @@ PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
         case pp_Type_sglp_Key: { return sizeof(pp_int); } break;
         case pp_Type_Direction: { return sizeof(pp_int); } break;
         case pp_Type_Player_Direction: { return sizeof(pp_int); } break;
-        case pp_Type_ID: { return sizeof(pp_int); } break;
+        case pp_Type_Sprite_ID: { return sizeof(pp_int); } break;
+        case pp_Type_Sound_ID: { return sizeof(pp_int); } break;
         case pp_Type_sglp_Sprite: { return sizeof(pp_sglp_Sprite); } break;
         case pp_Type_sglp_PlayingSound: { return sizeof(pp_sglp_PlayingSound); } break;
         case pp_Type_sglp_OpenGlFunctions: { return sizeof(pp_sglp_OpenGlFunctions); } break;
@@ -1692,6 +1681,12 @@ pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent
 //
 // Number of members in an enum.
 //
+#define pp_get_enum_size_const(type) pp_get_enum_size_##type
+#define pp_get_enum_size_sglp_Key 55
+#define pp_get_enum_size_Direction 5
+#define pp_get_enum_size_Player_Direction 4
+#define pp_get_enum_size_Sprite_ID 5
+#define pp_get_enum_size_Sound_ID 3
 
 //
 // Number of members in an enum.
@@ -1701,7 +1696,8 @@ PP_STATIC uintptr_t pp_get_enum_size_from_type(pp_Type type) {
         case pp_Type_sglp_Key: { return(55); } break;
         case pp_Type_Direction: { return(5); } break;
         case pp_Type_Player_Direction: { return(4); } break;
-        case pp_Type_ID: { return(7); } break;
+        case pp_Type_Sprite_ID: { return(5); } break;
+        case pp_Type_Sound_ID: { return(3); } break;
     }
 
     PP_ASSERT(0);
@@ -1783,14 +1779,17 @@ PP_STATIC intptr_t pp_string_to_enum(pp_Type type, char const *str) {
             else if(pp_string_compare(str, "Player_Direction_up")) { return(4); }
             else if(pp_string_compare(str, "Player_Direction_down")) { return(6); }
         } break;
-        case pp_Type_ID: {
+        case pp_Type_Sprite_ID: {
+            if(pp_string_compare(str, "Sprite_ID_unknown")) { return(0); }
+            else if(pp_string_compare(str, "Sprite_ID_player")) { return(1); }
+            else if(pp_string_compare(str, "Sprite_ID_enemy_one")) { return(2); }
+            else if(pp_string_compare(str, "Sprite_ID_bitmap_font")) { return(3); }
+            else if(pp_string_compare(str, "Sprite_ID_bullet")) { return(4); }
+        } break;
+        case pp_Type_Sound_ID: {
             if(pp_string_compare(str, "ID_unknown")) { return(0); }
             else if(pp_string_compare(str, "ID_sound_bloop")) { return(1); }
             else if(pp_string_compare(str, "ID_sound_background")) { return(2); }
-            else if(pp_string_compare(str, "ID_sprite_player")) { return(3); }
-            else if(pp_string_compare(str, "ID_sprite_enemy_one")) { return(4); }
-            else if(pp_string_compare(str, "ID_sprite_bitmap_font")) { return(5); }
-            else if(pp_string_compare(str, "ID_sprite_bullet")) { return(6); }
         } break;
     }
 
@@ -1879,15 +1878,20 @@ PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t index) {
                 case 6: { return("Player_Direction_down"); } break;
             }
         } break;
-        case pp_Type_ID: {
+        case pp_Type_Sprite_ID: {
+            switch(index) {
+                case 0: { return("Sprite_ID_unknown"); } break;
+                case 1: { return("Sprite_ID_player"); } break;
+                case 2: { return("Sprite_ID_enemy_one"); } break;
+                case 3: { return("Sprite_ID_bitmap_font"); } break;
+                case 4: { return("Sprite_ID_bullet"); } break;
+            }
+        } break;
+        case pp_Type_Sound_ID: {
             switch(index) {
                 case 0: { return("ID_unknown"); } break;
                 case 1: { return("ID_sound_bloop"); } break;
                 case 2: { return("ID_sound_background"); } break;
-                case 3: { return("ID_sprite_player"); } break;
-                case 4: { return("ID_sprite_enemy_one"); } break;
-                case 5: { return("ID_sprite_bitmap_font"); } break;
-                case 6: { return("ID_sprite_bullet"); } break;
             }
         } break;
     }

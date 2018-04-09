@@ -381,6 +381,7 @@ typedef struct sglp_API {
     sglp_Settings settings;
     sglp_OpenGlFunctions gl;
     void *permanent_memory;
+    // TODO - Add temp memory which is cleared every frame. Also, add some functions to push to it.
     float key[256];
     float dt;
     sglp_Bool init_game;

@@ -91,8 +91,6 @@ struct Enemy {
     Transform trans;
 };
 
-// TODO - The shared part of this _may_ be making it more complicated than it needs to be. Maybe try it
-//        without and see if it's better?
 struct Entity {
     pp_Type type;
     Bool valid;
@@ -103,29 +101,29 @@ struct Entity {
     };
 };
 
-// #define NUMBER_OF_ENEMIES 4
-#define MAX_NUMBER_OF_ENTITIES 16
-struct Game_State {
-    sglp_Sprite player_sprite;
-    sglp_Sprite enemy_one_sprite;
-    sglp_Sprite bitmap_sprite;
-    sglp_Sprite bullet_sprite;
+enum Sprite_ID {
+    Sprite_ID_unknown,
 
-    Entity entity[MAX_NUMBER_OF_ENTITIES];
-    // Player player;
-    // Enemy enemy[NUMBER_OF_ENEMIES];
+    Sprite_ID_player,
+    Sprite_ID_enemy_one,
+    Sprite_ID_bitmap_font,
+    Sprite_ID_bullet,
 };
 
-enum ID {
+#define MAX_NUMBER_OF_ENTITIES 16
+struct Game_State {
+    sglp_Sprite sprite[pp_get_enum_size_const(Sprite_ID)];
+
+    // TODO - Once I add permanent memory and temp memory into the platform layer maybe I could make this
+    //        a long list.
+    Entity entity[MAX_NUMBER_OF_ENTITIES];
+};
+
+enum Sound_ID {
     ID_unknown,
 
     ID_sound_bloop,
     ID_sound_background,
-
-    ID_sprite_player,
-    ID_sprite_enemy_one,
-    ID_sprite_bitmap_font,
-    ID_sprite_bullet,
 };
 
 void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
@@ -157,11 +155,11 @@ Float accelerate(Float cur, Float max, Float acc, Bool forward) {
 V2 get_letter_position(char Letter);
 void draw_word(char const *str, sglp_API *api, Game_State *gs, V2 pos, V2 scale) {
     scale.x *= 0.5f;
-    int string_length = sgl_string_len(str);
+    Int string_length = sgl_string_len(str);
     Float running_x = pos.x;
     Float running_y = pos.y;
-    for(int i = 0; (i < string_length - 1); ++i) {
-        char letter = str[i];
+    for(Int i = 0; (i < string_length - 1); ++i) {
+        Char letter = str[i];
 
         if(letter == '\n') {
             running_y += scale.y;
@@ -174,7 +172,7 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, V2 pos, V2 scale)
                 float tform[16] = {0};
 
                 sglm_mat4x4_as_float_arr(tform, &mat);
-                sglp_draw_sprite_frame_matrix(gs->bitmap_sprite, pos_in_table.x, pos_in_table.y, tform);
+                sglp_draw_sprite_frame_matrix(gs->sprite[Sprite_ID_bitmap_font], pos_in_table.x, pos_in_table.y, tform);
 
                 running_x += scale.x;
             }
@@ -193,8 +191,8 @@ Bool overlap(Transform a, Transform b) {
 }
 
 Bool point_overlap(V2 p, Transform t) {
-    float x = t.pos.x - (t.scale.x * 0.5f);
-    float y = t.pos.y - (t.scale.y * 0.5f);
+    Float x = t.pos.x - (t.scale.x * 0.5f);
+    Float y = t.pos.y - (t.scale.y * 0.5f);
     if((p.x > x && p.x < x + t.scale.x)) {
         if((p.y > y && p.y < y + t.scale.y)) {
             return true;
@@ -276,7 +274,7 @@ Void draw_entity_text(sglp_API *api, Game_State *gs, Entity *entity, V2 mouse_po
         Int buffer_size = 256 * 256;
         Char *buffer = api->os_malloc(sizeof(*buffer) * buffer_size);
         pp_serialize_struct_type(data, entity->type, buffer, buffer_size);
-        draw_word(buffer, api, gs, trans.pos, word_size);
+        draw_word(buffer, api, gs, mouse_position, word_size);
         api->os_free(buffer);
     }
 }
@@ -303,20 +301,9 @@ Void draw_debug_information(sglp_API *api, Game_State *gs) {
 
 void render(sglp_API *api, Game_State *gs) {
     sglp_clear_screen_for_frame();
-    Player *player = find_first_entity(gs->entity, pp_Type_Player);
-
-    // Player
-    {
-        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(player->trans.pos.x, player->trans.pos.y,
-                                                          player->trans.scale.x, player->trans.scale.y,
-                                                          player->trans.rot);
-        Float tform[16] = {0};
-        sglm_mat4x4_as_float_arr(tform, &mat);
-
-        sglp_draw_sprite(gs->player_sprite, player->current_frame, tform);
-    }
 
     // Player's Bullet
+    Player *player = find_first_entity(gs->entity, pp_Type_Player);
     if(player->is_shooting) {
         Bullet *b = &player->bullet;
         sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(b->trans.pos.x, b->trans.pos.y,
@@ -325,21 +312,38 @@ void render(sglp_API *api, Game_State *gs) {
         Float tform[16] = {0};
         sglm_mat4x4_as_float_arr(tform, &mat);
 
-        sglp_draw_sprite(gs->bullet_sprite, 0, tform);
+        sglp_draw_sprite(gs->sprite[Sprite_ID_bullet], 0, tform);
     }
 
-    // Enemies
-    for(int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
-        Entity *entity = &gs->entity[i];
-        if(is_entity_type(entity, pp_Type_Enemy)) {
-            Enemy *enemy = &entity->enemy;
-            sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(enemy->trans.pos.x, enemy->trans.pos.y,
-                                                              enemy->trans.scale.x, enemy->trans.scale.y,
-                                                              enemy->trans.rot);
+    // Render all entities.
+    for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
+        if(gs->entity[i].valid) {
+            Int current_frame = 0;
+            Transform trans = {0};
+            Sprite_ID id = Sprite_ID_unknown;
+
+            switch(gs->entity[i].type) {
+                case pp_Type_Player: {
+                    trans = gs->entity[i].player.trans;
+                    id = Sprite_ID_player;
+                    current_frame = player->current_frame;
+                } break;
+
+                case pp_Type_Enemy: {
+                    trans = gs->entity[i].enemy.trans;
+                    id = Sprite_ID_enemy_one;
+                } break;
+
+                default: assert(0); break;
+            }
+
+            sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(trans.pos.x, trans.pos.y,
+                                                              trans.scale.x, trans.scale.y,
+                                                              trans.rot);
             Float tform[16] = {0};
             sglm_mat4x4_as_float_arr(tform, &mat);
 
-            sglp_draw_sprite(gs->enemy_one_sprite, 0, tform);
+            sglp_draw_sprite(gs->sprite[id], current_frame, tform);
         }
     }
 
@@ -385,7 +389,7 @@ void init(sglp_API *api, Game_State *gs) {
     {
         int width, height, number_of_components;
         uint8_t *img_data = stbi_load("player.png", &width, &height, &number_of_components, 0);
-        gs->player_sprite = sglp_load_image(api, img_data, 12, 1, ID_sprite_player, width, height, number_of_components);
+        gs->sprite[Sprite_ID_player] = sglp_load_image(api, img_data, 12, 1, Sprite_ID_player, width, height, number_of_components);
         stbi_image_free(img_data);
 
         Entity player = create_player(0.5f, 0.7f);
@@ -399,7 +403,7 @@ void init(sglp_API *api, Game_State *gs) {
     {
         int width, height, number_of_components;
         uint8_t *img_data = stbi_load("enemy_one.png", &width, &height, &number_of_components, 0);
-        gs->enemy_one_sprite = sglp_load_image(api, img_data, 8, 1, ID_sprite_enemy_one, width, height, number_of_components);
+        gs->sprite[Sprite_ID_enemy_one] = sglp_load_image(api, img_data, 8, 1, Sprite_ID_enemy_one, width, height, number_of_components);
         stbi_image_free(img_data);
 
         Float x = 0.1f;
@@ -417,7 +421,7 @@ void init(sglp_API *api, Game_State *gs) {
     {
         int width, height, number_of_components;
         uint8_t *img_data = stbi_load("freemono.png", &width, &height, &number_of_components, 0);
-        gs->bitmap_sprite = sglp_load_image(api, img_data, 16, 16, ID_sprite_bitmap_font, width, height, number_of_components);
+        gs->sprite[Sprite_ID_bitmap_font] = sglp_load_image(api, img_data, 16, 16, Sprite_ID_bitmap_font, width, height, number_of_components);
         stbi_image_free(img_data);
     }
 
@@ -425,7 +429,7 @@ void init(sglp_API *api, Game_State *gs) {
     {
         Int width, height, number_of_components;
         uint8_t *img_data = stbi_load("bullet.png", &width, &height, &number_of_components, 0);
-        gs->bullet_sprite = sglp_load_image(api, img_data, 1, 1, ID_sprite_bullet, width, height, number_of_components);
+        gs->sprite[Sprite_ID_bullet] = sglp_load_image(api, img_data, 1, 1, Sprite_ID_bullet, width, height, number_of_components);
         stbi_image_free(img_data);
 
         Player *player = find_first_entity(gs->entity, pp_Type_Player);
