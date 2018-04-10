@@ -49,6 +49,7 @@ enum Direction {
 struct Bullet {
     Transform trans;
     Direction dir;
+    Entity *parent;
 };
 Bullet bullet(void) {
     Bullet res = {0};
@@ -72,17 +73,17 @@ struct Player {
     Float current_frame;
     V2 current_speed;
 
-    Bullet bullet;
-    Bool is_shooting;
+    Bool can_shoot;
+    Int shot_timer;
 };
 
 Direction player_direction_to_direction(Player_Direction pd) {
     Direction d = 0;
     if(0) {}
-    else if(pd == Player_Direction_left)  { d = Direction_left;  }
-    else if(pd == Player_Direction_right) { d = Direction_right; }
-    else if(pd == Player_Direction_up)    { d = Direction_up;    }
-    else if(pd == Player_Direction_down)  { d = Direction_down;  }
+    else if(pd == Player_Direction_left)  d = Direction_left;
+    else if(pd == Player_Direction_right) d = Direction_right;
+    else if(pd == Player_Direction_up)    d = Direction_up;
+    else if(pd == Player_Direction_down)  d = Direction_down;
 
     return(d);
 }
@@ -98,9 +99,118 @@ struct Entity {
     union {
         Player player;
         Enemy enemy;
+        Bullet bullet;
     };
+
+    Entity *next;
 };
 
+Entity *find_end_entity(Entity *root) {
+    Entity *next = root;
+    if(!root) {
+        next = root;
+    }
+    else {
+        while(next->next) {
+            next = next->next;
+        }
+    }
+
+    return next;
+}
+
+Void *find_first_entity(Entity *root, pp_Type type) {
+    Entity *next = root;
+
+    while(next->next) {
+        if(next->type == type) {
+            Uintptr number_of_members = pp_get_number_of_members(pp_Type_Entity);
+            for(Uintptr j = 0; (j < number_of_members); ++j) {
+                pp_MemberDefinition mem = pp_get_members_from_type(pp_Type_Entity, j);
+                if(mem.type == type) {
+                    Void *res = (Byte *)next + mem.offset;
+                    return res;
+                }
+            }
+        }
+
+        next = next->next;
+    }
+
+    return 0;
+}
+
+Void *find_next_entity(Entity *root, pp_Type type, Entity *previous) {
+    Entity *next = root;
+    Bool passed_previous = false;
+
+    while(next->next) {
+        if((Uintptr)&next->player == (Uintptr)previous) {
+            passed_previous = true;
+        }
+        else if(passed_previous && next->type == type) {
+            Uintptr number_of_members = pp_get_number_of_members(pp_Type_Entity);
+            for(Uintptr j = 0; (j < number_of_members); ++j) {
+                pp_MemberDefinition mem = pp_get_members_from_type(pp_Type_Entity, j);
+                if(mem.type == type) {
+                    Void *res = (Byte *)next + mem.offset;
+                    return res;
+                }
+            }
+        }
+
+        next = next->next;
+    }
+
+    return 0;
+}
+
+#if 0
+Entity *first_invalid_entity(Entity *entity) {
+    Entity *res = 0;
+    for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
+        if(!entity[i].valid) {
+            res = &entity[i];
+            break; // for
+        }
+
+    }
+
+    return res;
+}
+
+Void *find_first_entity(Entity entity[], pp_Type type) {
+    for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
+        if(entity[i].valid && entity[i].type == type) {
+            Uintptr number_of_members = pp_get_number_of_members(pp_Type_Entity);
+            for(Uintptr j = 0; (j < number_of_members); ++j) {
+                pp_MemberDefinition mem = pp_get_members_from_type(pp_Type_Entity, j);
+                if(mem.type == type) {
+                    Void *res = (Byte *)&entity[i] + mem.offset;
+                    return res;
+                }
+            }
+
+            break; // for
+        }
+    }
+
+    return 0;
+}
+
+// TODO - This doesn't work.
+Entity *find_next_entity(Entity *entity, pp_Type type, Void *prev) {
+    Entity *res = 0;
+    for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
+        if(entity[i].valid && entity[i].type == type) {
+            res = &entity[i];
+            break; // for
+        }
+    }
+
+    return res;
+}
+#endif
 enum Sprite_ID {
     Sprite_ID_unknown,
 
@@ -110,13 +220,11 @@ enum Sprite_ID {
     Sprite_ID_bullet,
 };
 
-#define MAX_NUMBER_OF_ENTITIES 16
+// #define MAX_NUMBER_OF_ENTITIES 16
 struct Game_State {
     sglp_Sprite sprite[pp_get_enum_size_const(Sprite_ID)];
 
-    // TODO - Once I add permanent memory and temp memory into the platform layer maybe I could make this
-    //        a long list.
-    Entity entity[MAX_NUMBER_OF_ENTITIES];
+    Entity *entity;
 };
 
 enum Sound_ID {
@@ -136,6 +244,7 @@ void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
 
     settings->frame_rate = 30;
     settings->permanent_memory_size = sizeof(Game_State);
+    settings->temp_memory_size = SGL_MEGABYTES(16);
     // TODO - settings->disable_sound = true;
     settings->max_no_of_sounds = 10;
     settings->window_title = "Game stuff";
@@ -211,71 +320,17 @@ Bool is_offscreen(Transform t) {
     }
 }
 
-Entity *first_invalid_entity(Entity *entity) {
-    Entity *res = 0;
-    for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
-        if(!entity[i].valid) {
-            res = &entity[i];
-            break; // for
-        }
-
-    }
-
-    return res;
-}
-
-Void *find_first_entity(Entity *entity, pp_Type type) {
-    for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
-        if(entity[i].valid && entity[i].type == type) {
-            Uintptr number_of_members = pp_get_number_of_members(pp_Type_Entity);
-            for(Uintptr j = 0; (j < number_of_members); ++j) {
-                pp_MemberDefinition mem = pp_get_members_from_type(pp_Type_Entity, j);
-                if(mem.type == type) {
-                    Void *res = (Byte *)entity + mem.offset;
-                    return res;
-                }
-            }
-
-            break; // for
-        }
-    }
-
-    return 0;
-}
-
-// TODO - This doesn't work.
-Entity *find_next_entity(Entity *entity, pp_Type type, Void *prev) {
-    Entity *res = 0;
-    for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
-        if(entity[i].valid && entity[i].type == type) {
-            res = &entity[i];
-            break; // for
-        }
-    }
-
-    return res;
-}
-
-Bool is_entity_type(Entity *entity, pp_Type type) {
-    Bool res = false;
-    if(entity && entity->valid && entity->type == type) {
-        res = true;
-    }
-
-    return res;
-}
-
-
 Void draw_entity_text(sglp_API *api, Game_State *gs, Entity *entity, V2 mouse_position, Transform trans) {
     if(point_overlap(mouse_position, trans)) {
         V2 word_size = v2(0.025f, 0.025f);
 
         Void *data = &entity->player; // Just need the address.
         Int buffer_size = 256 * 256;
-        Char *buffer = api->os_malloc(sizeof(*buffer) * buffer_size);
+        sglp_TempMemory tm = sglp_push_temp_memory(api, buffer_size);
+        Char *buffer = sglp_push_off_temp_memory(&tm, buffer_size);
         pp_serialize_struct_type(data, entity->type, buffer, buffer_size);
         draw_word(buffer, api, gs, mouse_position, word_size);
-        api->os_free(buffer);
+        sglp_pop_temp_memory(api, &tm);
     }
 }
 
@@ -284,24 +339,29 @@ Void draw_debug_information(sglp_API *api, Game_State *gs) {
 #if INTERNAL
     V2 mouse_position = v2(api->mouse_x, api->mouse_y);
 
-    for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
-        if(gs->entity[i].valid) {
+    Entity *next = gs->entity;
+    while(next) {
+        if(next->valid) {
             V2 position_to_draw = {0};
             Transform trans = {0};
-            switch(gs->entity[i].type) {
-                case pp_Type_Player: trans = gs->entity[i].player.trans; break;
-                case pp_Type_Enemy:  trans = gs->entity[i].enemy.trans;  break;
+            switch(next->type) {
+                case pp_Type_Player: trans = next->player.trans; break;
+                case pp_Type_Enemy:  trans = next->enemy.trans;  break;
+                case pp_Type_Bullet: trans = next->bullet.trans; break;
             }
 
-            draw_entity_text(api, gs, &gs->entity[i], mouse_position, trans);
+            draw_entity_text(api, gs, next, mouse_position, trans);
         }
+
+        next = next->next;
     }
+
 #endif
 }
 
 void render(sglp_API *api, Game_State *gs) {
     sglp_clear_screen_for_frame();
-
+#if 0
     // Player's Bullet
     Player *player = find_first_entity(gs->entity, pp_Type_Player);
     if(player->is_shooting) {
@@ -314,24 +374,30 @@ void render(sglp_API *api, Game_State *gs) {
 
         sglp_draw_sprite(gs->sprite[Sprite_ID_bullet], 0, tform);
     }
-
+#endif
     // Render all entities.
-    for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
-        if(gs->entity[i].valid) {
+    Entity *next = gs->entity;
+    while(next) {
+        if(next->valid) {
             Int current_frame = 0;
             Transform trans = {0};
             Sprite_ID id = Sprite_ID_unknown;
 
-            switch(gs->entity[i].type) {
+            switch(next->type) {
                 case pp_Type_Player: {
-                    trans = gs->entity[i].player.trans;
+                    trans = next->player.trans;
                     id = Sprite_ID_player;
-                    current_frame = player->current_frame;
+                    current_frame = next->player.current_frame;
                 } break;
 
                 case pp_Type_Enemy: {
-                    trans = gs->entity[i].enemy.trans;
+                    trans = next->enemy.trans;
                     id = Sprite_ID_enemy_one;
+                } break;
+
+                case pp_Type_Bullet: {
+                    trans = next->bullet.trans;
+                    id = Sprite_ID_bullet;
                 } break;
 
                 default: assert(0); break;
@@ -345,6 +411,8 @@ void render(sglp_API *api, Game_State *gs) {
 
             sglp_draw_sprite(gs->sprite[id], current_frame, tform);
         }
+
+        next = next->next;
     }
 
     // TODO - Read the mouse position from sgl_platform.
@@ -384,7 +452,20 @@ Entity create_player(float x, float y) {
     return(res);
 }
 
+Entity create_bullet(void) {
+    Entity res = {0};
+
+    res.type = pp_Type_Bullet;
+    res.valid = true;
+
+    res.bullet.trans.pos = v2(400, 400);
+
+    return res;
+}
+
 void init(sglp_API *api, Game_State *gs) {
+    gs->entity = api->os_malloc(sizeof(*gs->entity));
+
     // Load the player.
     {
         int width, height, number_of_components;
@@ -392,11 +473,10 @@ void init(sglp_API *api, Game_State *gs) {
         gs->sprite[Sprite_ID_player] = sglp_load_image(api, img_data, 12, 1, Sprite_ID_player, width, height, number_of_components);
         stbi_image_free(img_data);
 
-        Entity player = create_player(0.5f, 0.7f);
-        Entity *free = first_invalid_entity(gs->entity);
-        if(free) {
-            *free = player;
-        }
+        Entity *player = api->os_malloc(sizeof(*player));
+        *player = create_player(0.5f, 0.7f);
+        Entity *end = find_end_entity(gs->entity);
+        end->next = player;
     }
 
     // Load the enemy.
@@ -408,11 +488,10 @@ void init(sglp_API *api, Game_State *gs) {
 
         Float x = 0.1f;
         for(Int i = 0; (i < 4); ++i) {
-            Entity enemy = create_enemy(x, 0.5f);
-            Entity *free = first_invalid_entity(gs->entity);
-            if(free) {
-                *free = enemy;
-            }
+            Entity *enemy = api->os_malloc(sizeof(*enemy));
+            *enemy = create_enemy(x, 0.5f);
+            Entity *end = find_end_entity(gs->entity);
+            end->next = enemy;
             x += 0.2f;
         }
     }
@@ -425,16 +504,18 @@ void init(sglp_API *api, Game_State *gs) {
         stbi_image_free(img_data);
     }
 
-    // Load bullet
+    // Load bullets
     {
         Int width, height, number_of_components;
         uint8_t *img_data = stbi_load("bullet.png", &width, &height, &number_of_components, 0);
         gs->sprite[Sprite_ID_bullet] = sglp_load_image(api, img_data, 1, 1, Sprite_ID_bullet, width, height, number_of_components);
         stbi_image_free(img_data);
 
-        Player *player = find_first_entity(gs->entity, pp_Type_Player);
-        if(player) {
-            player->bullet = bullet();
+        for(Int i = 0; (i < 4); ++i) {
+            Entity *bullet = api->os_malloc(sizeof(*bullet));
+            *bullet = create_bullet();
+            Entity *end = find_end_entity(gs->entity);
+            end->next = bullet;
         }
     }
 
@@ -513,33 +594,25 @@ Void handle_player_movement(Player *player, sglp_API *api) {
     player->trans.pos.y += player->current_speed.y;
 }
 
-Void update_player(Player *player, sglp_API *api, Game_State *gs) {
+Void update_player(Player *player, Entity *player_entity, sglp_API *api, Game_State *gs) {
     handle_player_movement(player, api);
 
     // Shooting.
-    if(api->key[sglp_key_space]) {
-        if(!player->is_shooting) {
-            sglp_play_audio(api, ID_sound_bloop);
+    if(api->key[sglp_key_space] && player->can_shoot) {
+        player->shot_timer = 200;
+        player->can_shoot = false;
+        sglp_play_audio(api, ID_sound_bloop);
 
-            player->is_shooting = true;
-            player->bullet.dir = player_direction_to_direction(player->dir);
-            player->bullet.trans = player->trans;
-        }
+        Bullet *bullet = find_first_entity(gs->entity, pp_Type_Bullet);
+        bullet->dir = player_direction_to_direction(player->dir);
+        bullet->trans = player->trans;
+        bullet->parent = player_entity;
     }
 
-    // Bullet movement
-    // TODO - Make the bullet an entity.
-    if(player->is_shooting) {
-        Float bullet_speed = 0.02f;
-
-        if(player->bullet.dir == Direction_left)       player->bullet.trans.pos.x -= bullet_speed;
-        else if(player->bullet.dir == Direction_right) player->bullet.trans.pos.x += bullet_speed;
-
-        if(player->bullet.dir == Direction_up)         player->bullet.trans.pos.y -= bullet_speed;
-        else if(player->bullet.dir == Direction_down)  player->bullet.trans.pos.y += bullet_speed;
-
-        if(is_offscreen(player->bullet.trans)) {
-            player->is_shooting = false;
+    if(!player->can_shoot) {
+        player->shot_timer -= api->dt;
+        if(player->shot_timer <= 0) {
+            player->can_shoot = true;
         }
     }
 
@@ -547,11 +620,6 @@ Void update_player(Player *player, sglp_API *api, Game_State *gs) {
     player->current_frame += 0.5f;
     if(player->current_frame >= player->dir + 2.0f) {
         player->current_frame = player->dir;
-    }
-
-    // Destroy the bullet when it's offscreen.
-    if(is_offscreen(player->bullet.trans)) {
-        player->is_shooting = false;
     }
 
     // DEBUG - Rotation
@@ -577,23 +645,66 @@ Void update_enemy(Enemy *enemy, Game_State *gs) {
     }
 
     // Kill the enemy if they touch the player's bullet.
-    if(overlap(player->bullet.trans, enemy->trans)) {
-        // entity->valid = false; // TODO - Can't set to invalid right now.
-        player->is_shooting = false;
-        player->bullet.trans.pos = v2(400, 400); // TODO - Hacky way to move the bullet offscreen.
+    Entity *next = gs->entity;
+    while(next) {
+        if(next->valid && next->type == pp_Type_Bullet) {
+            Bullet *bullet = &next->bullet;
+            if(overlap(bullet->trans, enemy->trans)) {
+                // next->valid = false; // TODO - Can't set to invalid right now.
+                bullet->dir = Direction_unknown;
+            }
+        }
+
+        next = next->next;
+    }
+}
+
+void update_bullet(Bullet *bullet, Game_State *gs) {
+    // Bullet movement
+    // TODO - Make the bullet an entity.
+    if(bullet->dir != Direction_unknown) {
+        Float bullet_speed = 0.02f;
+
+        if(bullet->dir == Direction_left)       bullet->trans.pos.x -= bullet_speed;
+        else if(bullet->dir == Direction_right) bullet->trans.pos.x += bullet_speed;
+
+        if(bullet->dir == Direction_up)         bullet->trans.pos.y -= bullet_speed;
+        else if(bullet->dir == Direction_down)  bullet->trans.pos.y += bullet_speed;
+
+        if(is_offscreen(bullet->trans)) {
+            bullet->dir = Direction_unknown;
+        }
+    }
+
+    if(bullet->dir == Direction_unknown) {
+        bullet->trans.pos = v2(400, 400);
+        Entity *parent = bullet->parent;
+        if(parent) {
+            switch(parent->type) {
+                case pp_Type_Player: parent->player.can_shoot = true; break;
+
+                default: assert(0); break;
+            }
+
+            bullet->parent = 0;
+        }
     }
 }
 
 Void update(sglp_API *api, Game_State *gs) {
-    for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
-        if(gs->entity[i].valid) {
-            switch(gs->entity[i].type) {
-                case pp_Type_Player: update_player(&gs->entity[i].player, api, gs); break;
-                case pp_Type_Enemy:  update_enemy(&gs->entity[i].enemy, gs);        break;
+    Entity *next = gs->entity;
+    while(next) {
+        if(next->valid) {
+            switch(next->type) {
+                case pp_Type_Player: update_player(&next->player, next, api, gs); break;
+                case pp_Type_Enemy:  update_enemy(&next->enemy, gs);        break;
+                case pp_Type_Bullet: update_bullet(&next->bullet, gs);      break;
 
                 default: assert(0); break;
             }
         }
+
+        next = next->next;
     }
 }
 

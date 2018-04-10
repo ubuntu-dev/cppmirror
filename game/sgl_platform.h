@@ -133,6 +133,73 @@ void sglp_change_pitch(sglp_PlayingSound *snd, float dsample);
 sglp_Bool sglp_load_wav(struct sglp_API *api, int32_t id, void *e, uintptr_t size);
 
 //
+// Memory
+//
+typedef struct sglp_TempMemory {
+    void *memory;
+    uintptr_t size;
+    uintptr_t used;
+    uintptr_t alignment_offset;
+} sglp_TempMemory;
+
+// Can be defined by the user
+#if !defined(SGLP_DEFAULT_MEMORY_ALIGNMENT)
+    #define SGLP_DEFAULT_MEMORY_ALIGNMENT 8
+#endif
+
+#define sglp_push_temp_memory(api, size) sglp_push_temp_memory_with_alignment(api, size, SGLP_DEFAULT_MEMORY_ALIGNMENT)
+sglp_TempMemory sglp_push_temp_memory_with_alignment(sglp_API *api, uintptr_t size, uintptr_t alignment);
+void sglp_pop_temp_memory(sglp_API *api, sglp_TempMemory *tm);
+#define sglp_push_off_temp_memory(tm, size) sglp_push_off_temp_memory_align(tm, size, SGLP_DEFAULT_MEMORY_ALIGNMENT)
+void *sglp_push_off_temp_memory_align(sglp_TempMemory *tm, uintptr_t size, uintptr_t alignment);
+
+#if 0
+// Temp memory.
+internal temp_memory
+PushTempMemory(game_memory *GameMemory, size_t Size, size_t Alignment = DefaultMemoryAlignment) {
+    Assert((GameMemory) && (Size > 0));
+
+    size_t AlignmentOffset = GetAlignmentOffset(GameMemory->TempMemory, GameMemory->TempIndex, Alignment);
+    Assert(GameMemory->TempIndex + AlignmentOffset + Size <= GameMemory->TempSize);
+
+    temp_memory Result;
+    Result.GameMemory = GameMemory;
+    Result.AlignmentOffset = AlignmentOffset;
+    Result.Block = GameMemory->TempMemory + (GameMemory->TempIndex + Result.AlignmentOffset);
+
+    Result.Size = Size;
+    Result.Used = 0;
+    GameMemory->TempIndex += Size + Result.AlignmentOffset;
+    ZeroMemoryBlock(Result.Block, Result.Size);
+
+    return(Result);
+}
+
+internal void
+PopTempMemory(temp_memory *TempMemory) {
+    Assert((TempMemory) && (TempMemory->GameMemory) && (TempMemory->Block) && (TempMemory->Size > 0));
+
+    TempMemory->GameMemory->TempIndex -= TempMemory->Size + TempMemory->AlignmentOffset;
+    ZeroMemoryBlock(TempMemory, sizeof(*TempMemory));
+}
+
+#define PushStructOffTempMemory(TempMemory, type, ...) cast(type *)PushOffTempMemory(TempMemory, sizeof(type), ##__VA_ARGS__)
+#define PushArrayOffTempMemory(TempMemory, type, Length, ...) cast(type *)PushOffTempMemory(TempMemory, sizeof(type) * Length, ##__VA_ARGS__)
+internal void *
+PushOffTempMemory(temp_memory *TempMemory, size_t Size, size_t Alignment = DefaultMemoryAlignment) {
+    Assert((TempMemory) && (Size > 0));
+
+    size_t AlignmentOffset = GetAlignmentOffset(TempMemory->Block, TempMemory->Used, Alignment);
+    void *Result = TempMemory->Block + TempMemory->Used + AlignmentOffset;
+    Assert(TempMemory->Used + AlignmentOffset <= TempMemory->Size);
+
+    TempMemory->Used += Size + AlignmentOffset;
+
+    return(Result);
+}
+#endif
+
+//
 // Keyboard.
 //
 typedef enum sglp_Key {
@@ -359,6 +426,11 @@ float sglp_gl_coord_to_screen_y(float gly);
 float sglp_screen_to_gl_x(float x);
 float sglp_screen_to_gl_y(float y);
 
+typedef struct sglp_File {
+    uint8_t *e;
+    uintptr_t size;
+} sglp_File;
+
 //
 // Settings.
 typedef struct sglp_Settings {
@@ -366,21 +438,19 @@ typedef struct sglp_Settings {
     int32_t win_width, win_height;
     int32_t frame_rate;
     uintptr_t permanent_memory_size;
+    uintptr_t temp_memory_size;
     int32_t max_no_of_sounds;
     char const *window_title;
     int32_t thread_cnt;
     sglp_Bool allow_sound;
 } sglp_Settings;
 
-typedef struct sglp_File {
-    uint8_t *e;
-    uintptr_t size;
-} sglp_File;
-
+//
+// API
 typedef struct sglp_API {
     sglp_Settings settings;
     sglp_OpenGlFunctions gl;
-    void *permanent_memory;
+    void *permanent_memory; // Permanent memory is never cleared.
     // TODO - Add temp memory which is cleared every frame. Also, add some functions to push to it.
     float key[256];
     float dt;
@@ -388,6 +458,12 @@ typedef struct sglp_API {
     sglp_Bool quit;
 
     float mouse_x, mouse_y;
+
+    //
+    // Internal
+    //
+    void *temp_memory; // Temp memory is cleared to zero every frame.
+    uintptr_t temp_memory_index;
 
     //
     // Platform
@@ -1271,6 +1347,55 @@ static void sglp_free_file(sglp_API *api, sglp_File *file) {
     if(file->e) {
         api->os_free(file->e);
     }
+}
+
+//
+// Temp memory
+//
+static uintptr_t sglp_get_alignment_offset(void *memory, uintptr_t current_index, uintptr_t alignment) {
+    SGLP_ASSERT(memory);
+
+    uintptr_t res = 0;
+
+    uintptr_t result_pointer = (uintptr_t)memory + current_index;
+    uintptr_t alignment_mask = alignment - 1;
+    if(result_pointer & alignment_mask) {
+        res = alignment - (result_pointer & alignment_mask);
+    }
+
+    return(res);
+}
+
+sglp_TempMemory sglp_push_temp_memory_with_alignment(sglp_API *api, uintptr_t size, uintptr_t alignment) {
+    SGLP_ASSERT(api);
+
+    uintptr_t alignment_offset = sglp_get_alignment_offset(api->temp_memory, api->temp_memory_index, alignment);
+    SGLP_ASSERT(api->temp_memory_index + alignment_offset + size < api->settings.temp_memory_size);
+
+    sglp_TempMemory res = {0};
+    res.alignment_offset = alignment_offset;
+    res.memory = (uint8_t *)api->temp_memory + (api->temp_memory_index + alignment_offset);
+
+    api->temp_memory_index += (size + alignment_offset);
+
+    return res;
+}
+
+void sglp_pop_temp_memory(sglp_API *api, sglp_TempMemory *tm) {
+    SGLP_ASSERT(api && tm);
+
+    api->temp_memory_index -= (tm->size + tm->alignment_offset);
+}
+
+void *sglp_push_off_temp_memory_align(sglp_TempMemory *tm, uintptr_t size, uintptr_t alignment) {
+    SGLP_ASSERT(tm);
+
+    uintptr_t alignment_offset = sglp_get_alignment_offset(tm->memory, tm->used, alignment);
+    void *res = (uint8_t *)tm->memory + tm->used + alignment_offset;
+
+    tm->used += size + alignment_offset;
+
+    return res;
 }
 
 //
@@ -2690,7 +2815,9 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 
                 if(sglp_win32_init_opengl(win)) {
                     api.permanent_memory = sglp_win32_malloc(api.settings.permanent_memory_size);
-                    if(!api.permanent_memory) {
+                    api.temp_memory = sglp_win32_malloc(api.settings.temp_memory_size);
+
+                    if(!api.permanent_memory || !api.temp_memory) {
                         SGLP_ASSERT(0);
                     }
                     else {
@@ -2762,6 +2889,11 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 
                             api.dt = ms_per_frame;
                             sglp_platform_update_and_render_callback(&api);
+
+                            // Reset temp memory
+                            sglp_memset(api.temp_memory, 0, api.temp_memory_index);
+                            api.temp_memory_index = 0;
+
                             api.init_game = SGLP_FALSE;
 
                             // Get mouse position.

@@ -101,31 +101,31 @@ typedef int sgl_Bool;
 
 // Use #define SGL_NO_BOOL to avoid create Bool typedef here.
 #if !defined(SGL_NO_TYPES)
-typedef sgl_Uint64 Uint64;
-typedef sgl_Uint32 Uint32;
-typedef sgl_Uint16 Uint16;
-typedef sgl_Uint8 Uint8;
-typedef sgl_Int64 Int64;
-typedef sgl_Int32 Int32;
-typedef sgl_Int16 Int16;
-typedef sgl_Int8 Int8;
-typedef sgl_Int Int;
-typedef sgl_Uint Uint;
-typedef sgl_Byte Byte;
-typedef sgl_Uintptr Uintptr;
-typedef sgl_Intptr Intptr;
-typedef sgl_Float32 Float32;
-typedef sgl_Float64 Float64;
-typedef sgl_Float Float;
-typedef sgl_Void Void;
-typedef sgl_Char Char;
+    typedef sgl_Uint64 Uint64;
+    typedef sgl_Uint32 Uint32;
+    typedef sgl_Uint16 Uint16;
+    typedef sgl_Uint8 Uint8;
+    typedef sgl_Int64 Int64;
+    typedef sgl_Int32 Int32;
+    typedef sgl_Int16 Int16;
+    typedef sgl_Int8 Int8;
+    typedef sgl_Int Int;
+    typedef sgl_Uint Uint;
+    typedef sgl_Byte Byte;
+    typedef sgl_Uintptr Uintptr;
+    typedef sgl_Intptr Intptr;
+    typedef sgl_Float32 Float32;
+    typedef sgl_Float64 Float64;
+    typedef sgl_Float Float;
+    typedef sgl_Void Void;
+    typedef sgl_Char Char;
 
-#if defined(Bool)
-    #undef Bool
-#endif
-typedef sgl_Bool Bool;
-#define true SGL_TRUE
-#define false SGL_FALSE
+    #if defined(Bool)
+        #undef Bool
+    #endif
+    typedef sgl_Bool Bool;
+    #define true SGL_TRUE
+    #define false SGL_FALSE
 #endif //!defined(SGL_NO_TYPES)
 
 //
@@ -149,6 +149,10 @@ int sgl_string_len(char const *str);
 char sgl_to_upper(char c);
 sgl_Bool sgl_is_letter(char c);
 sgl_Bool sgl_is_number(char c);
+
+#define SGL_KILOBYTES(v) ((v)                * (1024LL))
+#define SGL_MEGABYTES(v) ((SGL_KILOBYTES(v)) * (1024LL))
+#define SGL_GIGABYTES(v) ((SGL_MEGABYTES(v)) * (1024LL))
 
 #if defined(SGL_IMPLEMENTATION)
 
@@ -177,7 +181,8 @@ char sgl_to_upper(char c) {
 sgl_Bool sgl_is_letter(char c) {
     if((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
         return SGL_TRUE;
-    } else {
+    }
+    else {
         return SGL_FALSE;
     }
 }
@@ -185,7 +190,8 @@ sgl_Bool sgl_is_letter(char c) {
 sgl_Bool sgl_is_number(char c) {
     if(c >= '0' && c <= '9') {
         return SGL_TRUE;
-    } else {
+    }
+    else {
         return SGL_FALSE;
     }
 }
