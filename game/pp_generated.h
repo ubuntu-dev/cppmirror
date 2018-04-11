@@ -417,10 +417,10 @@ struct pp_sglp_File {
     uint8_t *e; uintptr_t size; 
 };
 struct pp_sglp_Settings {
-    pp_sglp_Bool fullscreen; int32_t win_width; int32_t win_height; int32_t frame_rate; uintptr_t permanent_memory_size; uintptr_t temp_memory_size; int32_t max_no_of_sounds; char const *window_title; int32_t thread_cnt; pp_sglp_Bool allow_sound; 
+    pp_sglp_Bool fullscreen; int32_t win_width; int32_t win_height; int32_t frame_rate; uintptr_t game_state_memory_size; uintptr_t permanent_memory_size; uintptr_t temp_memory_size; int32_t max_no_of_sounds; char const *window_title; int32_t thread_cnt; pp_sglp_Bool allow_sound; 
 };
 struct pp_sglp_API {
-    pp_sglp_Settings settings; pp_sglp_OpenGlFunctions gl; pp_void *permanent_memory; float key[256]; float dt; pp_sglp_Bool init_game; pp_sglp_Bool quit; float mouse_x; float mouse_y; pp_void *temp_memory; uintptr_t temp_memory_index; 
+    pp_sglp_Settings settings; pp_sglp_OpenGlFunctions gl; pp_void *game_state_memory; float key[256]; float dt; pp_sglp_Bool init_game; pp_sglp_Bool quit; float mouse_x; float mouse_y; pp_void *permanent_memory; uintptr_t permanent_memory_index; pp_void *temp_memory; uintptr_t temp_memory_index; 
 };
 struct pp_sglp_LoadedSound {
     uint32_t sample_cnt; uint32_t no_channels; int16_t *samples[2]; int32_t id; 
@@ -864,26 +864,30 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 return(res);
             } break; 
             case 4: {
-                pp_MemberDefinition res = {pp_Type_uintptr_t, "permanent_memory_size", PP_OFFSETOF(pp_sglp_Settings, permanent_memory_size), 0, 0};
+                pp_MemberDefinition res = {pp_Type_uintptr_t, "game_state_memory_size", PP_OFFSETOF(pp_sglp_Settings, game_state_memory_size), 0, 0};
                 return(res);
             } break; 
             case 5: {
-                pp_MemberDefinition res = {pp_Type_uintptr_t, "temp_memory_size", PP_OFFSETOF(pp_sglp_Settings, temp_memory_size), 0, 0};
+                pp_MemberDefinition res = {pp_Type_uintptr_t, "permanent_memory_size", PP_OFFSETOF(pp_sglp_Settings, permanent_memory_size), 0, 0};
                 return(res);
             } break; 
             case 6: {
-                pp_MemberDefinition res = {pp_Type_int32_t, "max_no_of_sounds", PP_OFFSETOF(pp_sglp_Settings, max_no_of_sounds), 0, 0};
+                pp_MemberDefinition res = {pp_Type_uintptr_t, "temp_memory_size", PP_OFFSETOF(pp_sglp_Settings, temp_memory_size), 0, 0};
                 return(res);
             } break; 
             case 7: {
-                pp_MemberDefinition res = {pp_Type_char, "window_title", PP_OFFSETOF(pp_sglp_Settings, window_title), 1, 0};
+                pp_MemberDefinition res = {pp_Type_int32_t, "max_no_of_sounds", PP_OFFSETOF(pp_sglp_Settings, max_no_of_sounds), 0, 0};
                 return(res);
             } break; 
             case 8: {
-                pp_MemberDefinition res = {pp_Type_int32_t, "thread_cnt", PP_OFFSETOF(pp_sglp_Settings, thread_cnt), 0, 0};
+                pp_MemberDefinition res = {pp_Type_char, "window_title", PP_OFFSETOF(pp_sglp_Settings, window_title), 1, 0};
                 return(res);
             } break; 
             case 9: {
+                pp_MemberDefinition res = {pp_Type_int32_t, "thread_cnt", PP_OFFSETOF(pp_sglp_Settings, thread_cnt), 0, 0};
+                return(res);
+            } break; 
+            case 10: {
                 pp_MemberDefinition res = {pp_Type_sglp_Bool, "allow_sound", PP_OFFSETOF(pp_sglp_Settings, allow_sound), 0, 0};
                 return(res);
             } break; 
@@ -900,7 +904,7 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 return(res);
             } break; 
             case 2: {
-                pp_MemberDefinition res = {pp_Type_void, "permanent_memory", PP_OFFSETOF(pp_sglp_API, permanent_memory), 1, 0};
+                pp_MemberDefinition res = {pp_Type_void, "game_state_memory", PP_OFFSETOF(pp_sglp_API, game_state_memory), 1, 0};
                 return(res);
             } break; 
             case 3: {
@@ -928,10 +932,18 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 return(res);
             } break; 
             case 9: {
-                pp_MemberDefinition res = {pp_Type_void, "temp_memory", PP_OFFSETOF(pp_sglp_API, temp_memory), 1, 0};
+                pp_MemberDefinition res = {pp_Type_void, "permanent_memory", PP_OFFSETOF(pp_sglp_API, permanent_memory), 1, 0};
                 return(res);
             } break; 
             case 10: {
+                pp_MemberDefinition res = {pp_Type_uintptr_t, "permanent_memory_index", PP_OFFSETOF(pp_sglp_API, permanent_memory_index), 0, 0};
+                return(res);
+            } break; 
+            case 11: {
+                pp_MemberDefinition res = {pp_Type_void, "temp_memory", PP_OFFSETOF(pp_sglp_API, temp_memory), 1, 0};
+                return(res);
+            } break; 
+            case 12: {
                 pp_MemberDefinition res = {pp_Type_uintptr_t, "temp_memory_index", PP_OFFSETOF(pp_sglp_API, temp_memory_index), 0, 0};
                 return(res);
             } break; 
@@ -1228,8 +1240,8 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_sglp_TempMemory: { return(4); } break;
         case pp_Type_sglp_OpenGlFunctions: { return(34); } break;
         case pp_Type_sglp_File: { return(2); } break;
-        case pp_Type_sglp_Settings: { return(10); } break;
-        case pp_Type_sglp_API: { return(11); } break;
+        case pp_Type_sglp_Settings: { return(11); } break;
+        case pp_Type_sglp_API: { return(13); } break;
         case pp_Type_sglp_LoadedSound: { return(4); } break;
         case pp_Type_sglp_SoundOutputBuffer: { return(3); } break;
         case pp_Type_sglp_AudioState: { return(2); } break;

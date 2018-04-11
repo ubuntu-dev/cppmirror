@@ -49,7 +49,7 @@ enum Direction {
 struct Bullet {
     Transform trans;
     Direction dir;
-    Entity *parent;
+    Entity *parent; // TODO - For some reason Mirror doesn't link having this.
 };
 Bullet bullet(void) {
     Bullet res = {0};
@@ -243,8 +243,9 @@ void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
     //settings->win_height = 480;
 
     settings->frame_rate = 30;
-    settings->permanent_memory_size = sizeof(Game_State);
-    settings->temp_memory_size = SGL_MEGABYTES(16);
+    settings->game_state_memory_size = sizeof(Game_State);
+    settings->permanent_memory_size = SGL_MEGABYTES(128);
+    settings->temp_memory_size = SGL_MEGABYTES(128);
     // TODO - settings->disable_sound = true;
     settings->max_no_of_sounds = 10;
     settings->window_title = "Game stuff";
@@ -464,7 +465,8 @@ Entity create_bullet(void) {
 }
 
 void init(sglp_API *api, Game_State *gs) {
-    gs->entity = api->os_malloc(sizeof(*gs->entity));
+    // TODO - Link list is sorta crap right now, so need to push a fake "root" onto it.
+    gs->entity = sglp_push_permanent_struct(api, Entity);
 
     // Load the player.
     {
@@ -473,7 +475,7 @@ void init(sglp_API *api, Game_State *gs) {
         gs->sprite[Sprite_ID_player] = sglp_load_image(api, img_data, 12, 1, Sprite_ID_player, width, height, number_of_components);
         stbi_image_free(img_data);
 
-        Entity *player = api->os_malloc(sizeof(*player));
+        Entity *player = sglp_push_permanent_struct(api, Entity);
         *player = create_player(0.5f, 0.7f);
         Entity *end = find_end_entity(gs->entity);
         end->next = player;
@@ -488,7 +490,7 @@ void init(sglp_API *api, Game_State *gs) {
 
         Float x = 0.1f;
         for(Int i = 0; (i < 4); ++i) {
-            Entity *enemy = api->os_malloc(sizeof(*enemy));
+            Entity *enemy = sglp_push_permanent_struct(api, Entity);
             *enemy = create_enemy(x, 0.5f);
             Entity *end = find_end_entity(gs->entity);
             end->next = enemy;
@@ -512,7 +514,7 @@ void init(sglp_API *api, Game_State *gs) {
         stbi_image_free(img_data);
 
         for(Int i = 0; (i < 4); ++i) {
-            Entity *bullet = api->os_malloc(sizeof(*bullet));
+            Entity *bullet = sglp_push_permanent_struct(api, Entity);
             *bullet = create_bullet();
             Entity *end = find_end_entity(gs->entity);
             end->next = bullet;
@@ -709,7 +711,7 @@ Void update(sglp_API *api, Game_State *gs) {
 }
 
 void sglp_platform_update_and_render_callback(sglp_API *api) {
-    Game_State *gs = (Game_State *)api->permanent_memory;
+    Game_State *gs = (Game_State *)api->game_state_memory;
 
     if(api->init_game) {
         init(api, gs);
