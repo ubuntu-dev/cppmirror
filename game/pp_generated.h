@@ -256,9 +256,9 @@ typedef enum pp_Type {
     pp_Type_V2,
     pp_Type_Transform,
     pp_Type_Bullet,
-    pp_Type_Entity,
     pp_Type_Player,
     pp_Type_Enemy,
+    pp_Type_Entity,
     pp_Type_pp_Type,
     pp_Type_Game_State,
     pp_Type___m128i,
@@ -456,7 +456,7 @@ struct pp_Transform {
     pp_V2 pos; pp_V2 scale; pp_Float rot; 
 };
 struct pp_Bullet {
-    pp_Transform trans; pp_Direction dir; pp_Entity *parent; 
+    pp_Transform trans; pp_Direction dir; pp_Void *parent; 
 };
 struct pp_Player {
     pp_Transform trans; pp_V2 start_pos; pp_Player_Direction dir; pp_Float current_frame; pp_V2 current_speed; pp_Bool can_shoot; pp_Int shot_timer; 
@@ -1144,7 +1144,7 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 return(res);
             } break; 
             case 2: {
-                pp_MemberDefinition res = {pp_Type_Entity, "parent", PP_OFFSETOF(pp_Bullet, parent), 1, 0};
+                pp_MemberDefinition res = {pp_Type_Void, "parent", PP_OFFSETOF(pp_Bullet, parent), 1, 0};
                 return(res);
             } break; 
         }
@@ -1276,7 +1276,7 @@ typedef enum pp_StructureType {
 
 PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {
     switch(pp_typedef_to_original(type)) {
-        case pp_Type_char: case pp_Type_short: case pp_Type_int: case pp_Type_long: case pp_Type_float: case pp_Type_double: case pp_Type_uint64_t: case pp_Type_uint32_t: case pp_Type_uint16_t: case pp_Type_uint8_t: case pp_Type_int64_t: case pp_Type_int32_t: case pp_Type_int16_t: case pp_Type_int8_t: case pp_Type_uintptr_t: case pp_Type_intptr_t: case pp_Type_size_t: {
+        case pp_Type_char: case pp_Type_short: case pp_Type_int: case pp_Type_long: case pp_Type_float: case pp_Type_double: case pp_Type_uint64_t: case pp_Type_uint32_t: case pp_Type_uint16_t: case pp_Type_uint8_t: case pp_Type_int64_t: case pp_Type_int32_t: case pp_Type_int16_t: case pp_Type_int8_t: case pp_Type_uintptr_t: case pp_Type_intptr_t: case pp_Type_size_t: case pp_Type_void: {
             return(pp_StructureType_primitive);
         } break;
 
@@ -1430,9 +1430,9 @@ PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_V2: { return("V2"); } break;
         case pp_Type_Transform: { return("Transform"); } break;
         case pp_Type_Bullet: { return("Bullet"); } break;
-        case pp_Type_Entity: { return("Entity"); } break;
         case pp_Type_Player: { return("Player"); } break;
         case pp_Type_Enemy: { return("Enemy"); } break;
+        case pp_Type_Entity: { return("Entity"); } break;
         case pp_Type_pp_Type: { return("pp_Type"); } break;
         case pp_Type_Game_State: { return("Game_State"); } break;
         case pp_Type___m128i: { return("__m128i"); } break;
@@ -1575,9 +1575,9 @@ PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
         case pp_Type_V2: { return sizeof(pp_V2); } break;
         case pp_Type_Transform: { return sizeof(pp_Transform); } break;
         case pp_Type_Bullet: { return sizeof(pp_Bullet); } break;
-        case pp_Type_Entity: { return sizeof(pp_Entity); } break;
         case pp_Type_Player: { return sizeof(pp_Player); } break;
         case pp_Type_Enemy: { return sizeof(pp_Enemy); } break;
+        case pp_Type_Entity: { return sizeof(pp_Entity); } break;
         case pp_Type_Game_State: { return sizeof(pp_Game_State); } break;
         case pp_Type___m128i: { return sizeof(pp___m128i); } break;
     }

@@ -869,6 +869,7 @@ File write_data(Parse_Result pr) {
                     for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
                         write_ob(&ob, "case pp_Type_%s: ", global_primitive_types[i]);
                     }
+                    write_ob(&ob, "case pp_Type_void: ");
                     write_ob(&ob,
                              "{\n"
                              "            return(pp_StructureType_primitive);\n"

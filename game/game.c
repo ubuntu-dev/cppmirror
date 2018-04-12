@@ -49,7 +49,7 @@ enum Direction {
 struct Bullet {
     Transform trans;
     Direction dir;
-    Entity *parent; // TODO - For some reason Mirror doesn't link having this.
+    Void *parent;
 };
 Bullet bullet(void) {
     Bullet res = {0};
@@ -665,7 +665,7 @@ void update_bullet(Bullet *bullet, Game_State *gs) {
     // Bullet movement
     // TODO - Make the bullet an entity.
     if(bullet->dir != Direction_unknown) {
-        Float bullet_speed = 0.02f;
+        Float bullet_speed = 0.002f;
 
         if(bullet->dir == Direction_left)       bullet->trans.pos.x -= bullet_speed;
         else if(bullet->dir == Direction_right) bullet->trans.pos.x += bullet_speed;
