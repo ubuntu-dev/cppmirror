@@ -145,6 +145,7 @@ typedef int sgl_Bool;
 // Functions
 //
 void sgl_memset(void *dest, uint8_t x, uintptr_t size);
+void sgl_memcpy(void *dest, const void *src, uintptr_t num);
 int sgl_string_len(char const *str);
 char sgl_to_upper(char c);
 sgl_Bool sgl_is_letter(char c);
@@ -158,8 +159,16 @@ sgl_Bool sgl_is_number(char c);
 
 void sgl_memset(void *dest, uint8_t x, uintptr_t size) {
     uint8_t *dest8 = (uint8_t *)dest;
-    for(int i = 0; (i < size); ++i) {
+    for(uintptr_t i = 0; (i < size); ++i) {
         dest8[i] = x;
+    }
+}
+
+void sgl_memcpy(void *dest, const void *src, uintptr_t num) {
+    uint8_t *dest8 = (uint8_t *)dest;
+    uint8_t *src8 = (uint8_t *)src;
+    for(uintptr_t i = 0; (i < num); ++i) {
+        *dest8++ = *src8++;
     }
 }
 

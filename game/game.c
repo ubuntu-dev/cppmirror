@@ -1,9 +1,14 @@
 #define INTERNAL 1
 
+#define STB_SPRINTF_IMPLEMENTATION
+#include "stb_sprintf.h"
+
+#define PP_ASSERT(x) // TODO - Implement.
+#define PP_SPRINTF stbsp_snprintf
 #include "pp_generated.h"
 
 #define SGLP_IMPLEMENTATION
-//#include <SDL2/SDL.h>
+#define SGLP_NO_CRT
 #include "sgl_platform.h"
 
 #define SGLM_IMPLEMENTATION
@@ -12,16 +17,17 @@
 #define SGL_IMPLEMENTATION
 #include "sgl.h"
 
-#include <math.h>
-
-PP_IGNORE
+#define STBI_NO_STDIO
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
+#define STBI_ASSERT SGL_ASSERT
+#define STBI_MALLOC sglp_malloc
+#define STBI_REALLOC sglp_realloc
+#define STBI_FREE sglp_free
+PP_IGNORE
 #include "stb_image.h"
 
-PP_IGNORE
-#define STB_TRUETYPE_IMPLEMENTATION
-#include "stb_ttf.h"
+#define assert(x) SGL_ASSERT(x)
 
 struct V2 {
     float x, y;
@@ -165,52 +171,7 @@ Void *find_next_entity(Entity *root, pp_Type type, Entity *previous) {
     return 0;
 }
 
-#if 0
-Entity *first_invalid_entity(Entity *entity) {
-    Entity *res = 0;
-    for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
-        if(!entity[i].valid) {
-            res = &entity[i];
-            break; // for
-        }
 
-    }
-
-    return res;
-}
-
-Void *find_first_entity(Entity entity[], pp_Type type) {
-    for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
-        if(entity[i].valid && entity[i].type == type) {
-            Uintptr number_of_members = pp_get_number_of_members(pp_Type_Entity);
-            for(Uintptr j = 0; (j < number_of_members); ++j) {
-                pp_MemberDefinition mem = pp_get_members_from_type(pp_Type_Entity, j);
-                if(mem.type == type) {
-                    Void *res = (Byte *)&entity[i] + mem.offset;
-                    return res;
-                }
-            }
-
-            break; // for
-        }
-    }
-
-    return 0;
-}
-
-// TODO - This doesn't work.
-Entity *find_next_entity(Entity *entity, pp_Type type, Void *prev) {
-    Entity *res = 0;
-    for(Int i = 0; (i < MAX_NUMBER_OF_ENTITIES); ++i) {
-        if(entity[i].valid && entity[i].type == type) {
-            res = &entity[i];
-            break; // for
-        }
-    }
-
-    return res;
-}
-#endif
 enum Sprite_ID {
     Sprite_ID_unknown,
 
@@ -220,7 +181,6 @@ enum Sprite_ID {
     Sprite_ID_bullet,
 };
 
-// #define MAX_NUMBER_OF_ENTITIES 16
 struct Game_State {
     sglp_Sprite sprite[pp_get_enum_size_const(Sprite_ID)];
 
@@ -471,7 +431,10 @@ void init(sglp_API *api, Game_State *gs) {
     // Load the player.
     {
         int width, height, number_of_components;
-        uint8_t *img_data = stbi_load("player.png", &width, &height, &number_of_components, 0);
+        sglp_File file = api->read_file(api, "player.png");
+
+        uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
+        // TODO - Free file?
         gs->sprite[Sprite_ID_player] = sglp_load_image(api, img_data, 12, 1, Sprite_ID_player, width, height, number_of_components);
         stbi_image_free(img_data);
 
@@ -484,7 +447,8 @@ void init(sglp_API *api, Game_State *gs) {
     // Load the enemy.
     {
         int width, height, number_of_components;
-        uint8_t *img_data = stbi_load("enemy_one.png", &width, &height, &number_of_components, 0);
+        sglp_File file = api->read_file(api, "enemy_one.png");
+        uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
         gs->sprite[Sprite_ID_enemy_one] = sglp_load_image(api, img_data, 8, 1, Sprite_ID_enemy_one, width, height, number_of_components);
         stbi_image_free(img_data);
 
@@ -501,7 +465,8 @@ void init(sglp_API *api, Game_State *gs) {
     // Load font.
     {
         int width, height, number_of_components;
-        uint8_t *img_data = stbi_load("freemono.png", &width, &height, &number_of_components, 0);
+        sglp_File file = api->read_file(api, "freemono.png");
+        uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
         gs->sprite[Sprite_ID_bitmap_font] = sglp_load_image(api, img_data, 16, 16, Sprite_ID_bitmap_font, width, height, number_of_components);
         stbi_image_free(img_data);
     }
@@ -509,7 +474,8 @@ void init(sglp_API *api, Game_State *gs) {
     // Load bullets
     {
         Int width, height, number_of_components;
-        uint8_t *img_data = stbi_load("bullet.png", &width, &height, &number_of_components, 0);
+        sglp_File file = api->read_file(api, "bullet.png");
+        uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
         gs->sprite[Sprite_ID_bullet] = sglp_load_image(api, img_data, 1, 1, Sprite_ID_bullet, width, height, number_of_components);
         stbi_image_free(img_data);
 

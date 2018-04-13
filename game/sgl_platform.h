@@ -83,6 +83,16 @@
     #define SGLP_STDCALL __stdcall
 #endif
 
+//
+// If no CRT on windows
+//
+#if SGLP_COMPILER_MSVC && defined(SGLP_NO_CRT)
+    #pragma function(memset)
+    void *memset(void *dest, int c, size_t count);
+    #pragma function(memcpy)
+    void *memcpy(void *dest, void const *src, size_t count);
+#endif SGL_COMPILER_MSVC && defined(SGL_NO_CRT)
+
 #include <stdint.h>
 
 typedef int sglp_Bool;
@@ -135,6 +145,11 @@ sglp_Bool sglp_load_wav(struct sglp_API *api, int32_t id, void *e, uintptr_t siz
 //
 // Memory
 //
+
+void *sglp_malloc(uintptr_t size);
+void *sglp_realloc(void *ptr, uintptr_t size);
+void sglp_free(void *ptr);
+
 
 // Can be redefined by the user
 #if !defined(SGLP_DEFAULT_MEMORY_ALIGNMENT)
@@ -447,11 +462,6 @@ typedef struct sglp_API {
     // Threading.
     void (*add_work_queue_entry)(void *e, void (*callback)(void *data)); // void add_work_queue_entry(void *e, void (*callback)(void *data)));
     void (*complete_all_work)();                                         // void complete_all_work();
-
-    // Memory Allocation.
-    void *(*os_malloc)(uintptr_t size);             // void *platform_malloc(uintptr_t size);
-    void *(*os_realloc)(void *ptr, uintptr_t size); // void *platform_realloc(void *ptr, uintptr_t size);
-    void (*os_free)(void *ptr);                     // void platform_free(void *ptr);
 } sglp_API;
 
 //
@@ -705,7 +715,7 @@ sglp_Sprite sglp_load_image(sglp_API *api, uint8_t *img_data, int32_t frame_cnt_
         // TODO(Jonny): Right now, a 1 component bitmap is converted into a 4 component one and loaded in. Is there
         //              a less-stupid way to do this?
         case 1: {
-            uint8_t *rgba_bitmap = (char unsigned *)api->os_malloc(width * height * 4);
+            uint8_t *rgba_bitmap = (char unsigned *)sglp_malloc(width * height * 4);
             uint8_t *src = img_data;
 
             uint8_t *dst_row = rgba_bitmap;
@@ -722,7 +732,7 @@ sglp_Sprite sglp_load_image(sglp_API *api, uint8_t *img_data, int32_t frame_cnt_
             sglp_global_opengl->glTexImage2D(SGLP_GL_TEXTURE_2D, 0, SGLP_GL_RGBA, width, height, 0, SGLP_GL_RGBA,
                                              SGLP_GL_UNSIGNED_BYTE, rgba_bitmap);
 
-            api->os_free(rgba_bitmap);
+            sglp_free(rgba_bitmap);
         } break;
 
         default: {
@@ -908,11 +918,10 @@ typedef struct sglp_AudioState {
 static sglp_AudioState sglp_global_audio_state;
 
 static void sglp_set_max_no_of_sounds(sglp_API *api, int32_t n) {
-    int i;
     sglp_global_loaded_sound_max = n;
-    sglp_global_loaded_sounds = (sglp_LoadedSound *)api->os_malloc(sizeof(sglp_LoadedSound) * sglp_global_loaded_sound_max);
+    sglp_global_loaded_sounds = (sglp_LoadedSound *)sglp_malloc(sizeof(sglp_LoadedSound) * sglp_global_loaded_sound_max);
 
-    for(i = 0; (i < sglp_global_loaded_sound_max); ++i) {
+    for(int i = 0; (i < sglp_global_loaded_sound_max); ++i) {
         sglp_global_loaded_sounds[i].id = 0xFFFFFFFF;
     }
 }
@@ -933,7 +942,7 @@ sglp_PlayingSound *sglp_get_playing_sound(int32_t id) {
 sglp_PlayingSound *sglp_play_new_audio(sglp_API *api, int32_t id) {
     sglp_PlayingSound *res = 0;
     if(!sglp_global_audio_state.first_free_playing_snd) {
-        sglp_global_audio_state.first_free_playing_snd = (sglp_PlayingSound *)api->os_malloc(sizeof(sglp_PlayingSound));
+        sglp_global_audio_state.first_free_playing_snd = (sglp_PlayingSound *)sglp_malloc(sizeof(sglp_PlayingSound));
     }
 
     res = sglp_global_audio_state.first_free_playing_snd;
@@ -1019,9 +1028,9 @@ static void sglp_output_playing_sounds(sglp_API *api, sglp_SoundOutputBuffer *sn
     float master_vol0 = 1.0f, master_vol1 = 1.0f;
     float seconds_per_sample = 1.0f / (float)snd_buf->samples_per_second;
 
-    // TODO(Jonny): Could I get rid of this memory allocation and use a  buffer?
-    float *float_channel0 = (float *)api->os_malloc(sizeof(float *) * snd_buf->sample_cnt);
-    float *float_channel1 = (float *)api->os_malloc(sizeof(float *) * snd_buf->sample_cnt);
+    // TODO - Use temp memory
+    float *float_channel0 = (float *)sglp_malloc(sizeof(float *) * snd_buf->sample_cnt);
+    float *float_channel1 = (float *)sglp_malloc(sizeof(float *) * snd_buf->sample_cnt);
 
     SGLP_ASSERT((snd_buf->sample_cnt & 3) == 0);
 
@@ -1145,8 +1154,8 @@ static void sglp_output_playing_sounds(sglp_API *api, sglp_SoundOutputBuffer *sn
         }
     }
 
-    api->os_free(float_channel1);
-    api->os_free(float_channel0);
+    sglp_free(float_channel1);
+    sglp_free(float_channel0);
 }
 
 //
@@ -1244,7 +1253,7 @@ sglp_Bool sglp_load_wav(sglp_API *api, int32_t id, void *data, uintptr_t size) {
 
         loaded_snd->id = id;
 
-        header = (sglp_WAVEHeader *)api->os_malloc(size);
+        header = (sglp_WAVEHeader *)sglp_malloc(size);
         sglp_memcpy(header, data, size);
         SGLP_ASSERT((header) && (header->riff_id == SGLP_WAVE_ChunkID_RIFF) && (header->wav_id == SGLP_WAVE_ChunkID_WAVE));
 
@@ -1312,7 +1321,7 @@ static void sglp_setup(sglp_API *api, int32_t max_no_of_sounds) {
 
 static void sglp_free_file(sglp_API *api, sglp_File *file) {
     if(file->e) {
-        api->os_free(file->e);
+        sglp_free(file->e);
     }
 }
 
@@ -2500,7 +2509,7 @@ static sglp_File sglp_win32_read_file(sglp_API *api, char const *fname) {
         LARGE_INTEGER fsize;
         if(GetFileSizeEx(fhandle, &fsize)) {
             DWORD fsize32 = sglp_safe_truncate_64_to_32((uintptr_t)fsize.QuadPart);
-            res.e = (uint8_t *)api->os_malloc(fsize32);
+            res.e = (uint8_t *)sglp_malloc(fsize32);
             if(res.e) {
                 DWORD bytes_read;
                 if((ReadFile(fhandle, res.e, fsize32, &bytes_read, 0)) && (fsize32 == bytes_read)) {
@@ -2523,7 +2532,7 @@ static sglp_File sglp_win32_read_file_and_null_terminate(sglp_API *api, char con
         LARGE_INTEGER fsize;
         if(GetFileSizeEx(fhandle, &fsize)) {
             DWORD fsize32 = sglp_safe_truncate_64_to_32((uintptr_t)fsize.QuadPart);
-            res.e = (uint8_t *)api->os_malloc(fsize32 + 1);
+            res.e = (uint8_t *)sglp_malloc(fsize32 + 1);
             if(res.e) {
                 DWORD bytes_read;
                 if((ReadFile(fhandle, res.e, fsize32, &bytes_read, 0)) && (fsize32 == bytes_read)) {
@@ -2548,13 +2557,13 @@ static uint64_t sglp_win32_get_processor_timestamp(void) {
 //
 // Memory
 //
-static void *sglp_win32_malloc(uintptr_t size) {
+void *sglp_malloc(uintptr_t size) {
     void *res = HeapAlloc(GetProcessHeap(), 0x00000008/*HEAP_ZERO_MEMORY*/, size);
 
     return(res);
 }
 
-static void *sglp_win32_realloc(void *ptr, uintptr_t size) {
+void *sglp_realloc(void *ptr, uintptr_t size) {
     void *res;
 
     if(ptr) {
@@ -2567,7 +2576,7 @@ static void *sglp_win32_realloc(void *ptr, uintptr_t size) {
     return(res);
 }
 
-static void sglp_win32_free(void *ptr) {
+void sglp_free(void *ptr) {
     if(ptr) {
         sglp_Bool success = HeapFree(GetProcessHeap(), 0, ptr);
         SGLP_ASSERT(success);
@@ -2646,6 +2655,40 @@ static void sglp_win32_get_mouse_position(sglp_API *api, HWND win) {
     }
 }
 
+//
+// If no crt
+//
+#if SGLP_COMPILER_MSVC && defined(SGLP_NO_CRT)
+int _fltused;
+
+#pragma function(memset)
+void *memset(void *dest, int c, size_t count) {
+    SGLP_ASSERT(c < 0xFF);
+    uint8_t *dest8 = (uint8_t *)dest;
+    while(count--) {
+        *dest8++ = (uint8_t)c;
+    }
+
+    return(dest);
+}
+
+#pragma function(memcpy)
+void *memcpy(void *dest, void const *src, size_t count) {
+    uint8_t *dst8 = (uint8_t *)dest;
+    uint8_t *src8 = (uint8_t *)src;
+    while (count--) {
+        *dst8++ = *src8++;
+    }
+
+    return(dest);
+}
+int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int show_code);
+void SGLP_STDCALL WinMainCRTStartup(void) {
+    int result = WinMain(GetCurrentProcess(), 0, 0, 0);
+    ExitProcess(result);
+}
+#endif
+
 int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int show_code) {
     int i;
     sglp_API api = {0};
@@ -2659,10 +2702,6 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 
     api.add_work_queue_entry = sglp_win32_add_work_queue_entry;
     api.complete_all_work = sglp_win32_complete_all_work;
-
-    api.os_malloc = sglp_win32_malloc;
-    api.os_realloc = sglp_win32_realloc;
-    api.os_free = sglp_win32_free;
 
     sglp_global_opengl = &api.gl;
 
@@ -2781,7 +2820,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                         IDirectSoundBuffer_Play(secondary_buffer, 0, 0, DSBPLAY_LOOPING);
 
                         // Sample size plus a max possible overrun.
-                        snd_samples = (int16_t *)sglp_win32_malloc(snd_output.secondary_buf_size + ((2 * 8) * sizeof(int16_t)));
+                        snd_samples = (int16_t *)sglp_malloc(snd_output.secondary_buf_size + ((2 * 8) * sizeof(int16_t)));
                     }
                 }
 
@@ -2798,9 +2837,9 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 
                 if(sglp_win32_init_opengl(win)) {
                     // TODO - Collapse these down into one allocation?
-                    api.game_state_memory = sglp_win32_malloc(api.settings.game_state_memory_size);
-                    api.permanent_memory = sglp_win32_malloc(api.settings.permanent_memory_size);
-                    api.temp_memory = sglp_win32_malloc(api.settings.temp_memory_size);
+                    api.game_state_memory = sglp_malloc(api.settings.game_state_memory_size);
+                    api.permanent_memory = sglp_malloc(api.settings.permanent_memory_size);
+                    api.temp_memory = sglp_malloc(api.settings.temp_memory_size);
 
                     if(!api.game_state_memory || !api.permanent_memory || !api.temp_memory) {
                         SGLP_ASSERT(0);

@@ -89,6 +89,7 @@ typedef enum Sprite_ID Sprite_ID;
 typedef enum Sound_ID Sound_ID;
 
 /* Forward declared structs. */
+typedef struct stbsp__context stbsp__context;
 typedef struct sglp_Sprite sglp_Sprite;
 typedef struct sglp_PlayingSound sglp_PlayingSound;
 typedef struct sglp_TempMemory sglp_TempMemory;
@@ -138,6 +139,7 @@ typedef enum pp_Type {
     pp_Type_uintptr_t,
     pp_Type_intptr_t,
     pp_Type_size_t,
+    pp_Type_STBSP_SPRINTFCB,
     pp_Type_sglp_Bool,
     pp_Type_sglp_GLenum,
     pp_Type_sglp_GLbitfield,
@@ -235,6 +237,7 @@ typedef enum pp_Type {
     pp_Type_Player_Direction,
     pp_Type_Sprite_ID,
     pp_Type_Sound_ID,
+    pp_Type_stbsp__context,
     pp_Type_sglp_Sprite,
     pp_Type_sglp_PlayingSound,
     pp_Type_sglp_TempMemory,
@@ -271,6 +274,7 @@ typedef enum pp_Type {
 //
 
 // Forward declared structs.
+typedef struct pp_stbsp__context pp_stbsp__context;    typedef struct pp_stbsp__context pp_pp_stbsp__context;
 typedef struct pp_sglp_Sprite pp_sglp_Sprite;    typedef struct pp_sglp_Sprite pp_pp_sglp_Sprite;
 typedef struct pp_sglp_PlayingSound pp_sglp_PlayingSound;    typedef struct pp_sglp_PlayingSound pp_pp_sglp_PlayingSound;
 typedef struct pp_sglp_TempMemory pp_sglp_TempMemory;    typedef struct pp_sglp_TempMemory pp_pp_sglp_TempMemory;
@@ -305,6 +309,7 @@ typedef int pp_Sound_ID;
 //
 // Create typedefs.
 //
+typedef pp_uintptr_t pp_STBSP_SPRINTFCB;
 typedef pp_int pp_sglp_Bool;
 typedef pp_uint32_t pp_sglp_GLenum;
 typedef pp_uint32_t pp_sglp_GLbitfield;
@@ -401,6 +406,9 @@ typedef pp_sgl_Bool pp_Bool;
 //
 // Recreated structs.
 //
+struct pp_stbsp__context {
+    char *buf; int count; char stbsp__context[512]; 
+};
 struct pp_sglp_Sprite {
     int32_t w; int32_t h; int32_t id; int32_t frame_cnt_x; int32_t frame_cnt_y; uint32_t vbo_arr[2]; uint32_t mesh; 
 };
@@ -474,6 +482,7 @@ struct pp_Game_State {
 // Turn a typedef'd type into it's original type.
 PP_STATIC pp_Type pp_typedef_to_original(pp_Type type) {
     switch(type) {
+        case pp_Type_STBSP_SPRINTFCB: { return(pp_Type_uintptr_t); } break;
         case pp_Type_sglp_Bool: { return(pp_Type_int); } break;
         case pp_Type_sglp_GLenum: { return(pp_Type_uint32_t); } break;
         case pp_Type_sglp_GLbitfield: { return(pp_Type_uint32_t); } break;
@@ -595,6 +604,22 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 pp_MemberDefinition res = {pp_Type_float, "e", PP_OFFSETOF(pp___m128i, e), 0, 4};
                 return(res);
             }
+        }
+    }
+    else if(real_type == pp_Type_stbsp__context) {
+        switch(index) {
+            case 0: {
+                pp_MemberDefinition res = {pp_Type_char, "buf", PP_OFFSETOF(pp_stbsp__context, buf), 1, 0};
+                return(res);
+            } break; 
+            case 1: {
+                pp_MemberDefinition res = {pp_Type_int, "count", PP_OFFSETOF(pp_stbsp__context, count), 0, 0};
+                return(res);
+            } break; 
+            case 2: {
+                pp_MemberDefinition res = {pp_Type_char, "stbsp__context", PP_OFFSETOF(pp_stbsp__context, stbsp__context), 0, 512};
+                return(res);
+            } break; 
         }
     }
     else if(real_type == pp_Type_sglp_Sprite) {
@@ -1235,6 +1260,7 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
 PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
     switch(pp_typedef_to_original(type)) {
         case pp_Type___m128: case pp_Type___m128i: { return(1); }
+        case pp_Type_stbsp__context: { return(3); } break;
         case pp_Type_sglp_Sprite: { return(7); } break;
         case pp_Type_sglp_PlayingSound: { return(10); } break;
         case pp_Type_sglp_TempMemory: { return(4); } break;
@@ -1284,7 +1310,7 @@ PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {
             return(pp_StructureType_enum);
         } break;
 
-        case pp_Type___m128: case pp_Type___m128i: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_TempMemory: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_File: case pp_Type_sglp_Settings: case pp_Type_sglp_API: case pp_Type_sglp_LoadedSound: case pp_Type_sglp_SoundOutputBuffer: case pp_Type_sglp_AudioState: case pp_Type_sglp_WAVEHeader: case pp_Type_sglp_WavChunk: case pp_Type_sglp_WavFormat: case pp_Type_sglp_RiffIter: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_V2: case pp_Type_Transform: case pp_Type_Bullet: case pp_Type_Player: case pp_Type_Enemy: case pp_Type_Entity: case pp_Type_Game_State: {
+        case pp_Type___m128: case pp_Type___m128i: case pp_Type_stbsp__context: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_TempMemory: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_File: case pp_Type_sglp_Settings: case pp_Type_sglp_API: case pp_Type_sglp_LoadedSound: case pp_Type_sglp_SoundOutputBuffer: case pp_Type_sglp_AudioState: case pp_Type_sglp_WAVEHeader: case pp_Type_sglp_WavChunk: case pp_Type_sglp_WavFormat: case pp_Type_sglp_RiffIter: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_V2: case pp_Type_Transform: case pp_Type_Bullet: case pp_Type_Player: case pp_Type_Enemy: case pp_Type_Entity: case pp_Type_Game_State: {
             return(pp_StructureType_struct);
         } break;
     }
@@ -1312,6 +1338,7 @@ PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_uintptr_t: { return("uintptr_t"); } break;
         case pp_Type_intptr_t: { return("intptr_t"); } break;
         case pp_Type_size_t: { return("size_t"); } break;
+        case pp_Type_STBSP_SPRINTFCB: { return("STBSP_SPRINTFCB"); } break;
         case pp_Type_sglp_Bool: { return("sglp_Bool"); } break;
         case pp_Type_sglp_GLenum: { return("sglp_GLenum"); } break;
         case pp_Type_sglp_GLbitfield: { return("sglp_GLbitfield"); } break;
@@ -1409,6 +1436,7 @@ PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_Player_Direction: { return("Player_Direction"); } break;
         case pp_Type_Sprite_ID: { return("Sprite_ID"); } break;
         case pp_Type_Sound_ID: { return("Sound_ID"); } break;
+        case pp_Type_stbsp__context: { return("stbsp__context"); } break;
         case pp_Type_sglp_Sprite: { return("sglp_Sprite"); } break;
         case pp_Type_sglp_PlayingSound: { return("sglp_PlayingSound"); } break;
         case pp_Type_sglp_TempMemory: { return("sglp_TempMemory"); } break;
@@ -1461,6 +1489,7 @@ PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
         case pp_Type_uintptr_t: { return sizeof(pp_uintptr_t); } break;
         case pp_Type_intptr_t: { return sizeof(pp_intptr_t); } break;
         case pp_Type_size_t: { return sizeof(pp_size_t); } break;
+        case pp_Type_STBSP_SPRINTFCB: { return sizeof(pp_STBSP_SPRINTFCB); } break;
         case pp_Type_sglp_Bool: { return sizeof(pp_sglp_Bool); } break;
         case pp_Type_sglp_GLenum: { return sizeof(pp_sglp_GLenum); } break;
         case pp_Type_sglp_GLbitfield: { return sizeof(pp_sglp_GLbitfield); } break;
@@ -1555,6 +1584,7 @@ PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
         case pp_Type_Player_Direction: { return sizeof(pp_int); } break;
         case pp_Type_Sprite_ID: { return sizeof(pp_int); } break;
         case pp_Type_Sound_ID: { return sizeof(pp_int); } break;
+        case pp_Type_stbsp__context: { return sizeof(pp_stbsp__context); } break;
         case pp_Type_sglp_Sprite: { return sizeof(pp_sglp_Sprite); } break;
         case pp_Type_sglp_PlayingSound: { return sizeof(pp_sglp_PlayingSound); } break;
         case pp_Type_sglp_TempMemory: { return sizeof(pp_sglp_TempMemory); } break;
