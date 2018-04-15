@@ -1,5 +1,9 @@
 #if !defined(PP_GENERATED_H)
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 #define PP_IGNORE
 
 #include <stdint.h>
@@ -1994,6 +1998,10 @@ PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t index) {
     PP_ASSERT(0);
     return(0);
 }
+
+#if defined(__cplusplus)
+} // extern "C"
+#endif
 
 #define PP_GENERATED_H
 #endif // #if defined(PP_GENERATED_H)

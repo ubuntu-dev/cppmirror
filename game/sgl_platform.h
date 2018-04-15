@@ -25,6 +25,10 @@
 
 #if !defined(_SGL_PLATFORM_H)
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 #define SGLP_COMPILER_MSVC 0
 #define SGLP_COMPILER_CLANG 0
 #define SGLP_COMPILER_GCC 0
@@ -36,62 +40,52 @@
 #define SGLP_OS_LINUX 0
 
 #if defined(__clang__)
-    #undef SGLP_COMPILER_CLANG
-    #define SGLP_COMPILER_CLANG 1
+#undef SGLP_COMPILER_CLANG
+#define SGLP_COMPILER_CLANG 1
 #elif defined(_MSC_VER)
-    #undef SGLP_COMPILER_MSVC
-    #define SGLP_COMPILER_MSVC 1
+#undef SGLP_COMPILER_MSVC
+#define SGLP_COMPILER_MSVC 1
 #elif (defined(__GNUC__) || defined(__GNUG__)) // This has to be after __clang__, because Clang also defines this.
-    #undef SGLP_COMPILER_GCC
-    #define SGLP_COMPILER_GCC 1
+#undef SGLP_COMPILER_GCC
+#define SGLP_COMPILER_GCC 1
 #else
-    #error "Could not detect compiler."
+#error "Could not detect compiler."
 #endif
 
 #if defined(__linux__)
-    #undef SGLP_OS_LINUX
-    #define SGLP_OS_LINUX 1
+#undef SGLP_OS_LINUX
+#define SGLP_OS_LINUX 1
 #elif defined(_WIN32)
-    #undef SGLP_OS_WIN32
-    #define SGLP_OS_WIN32 1
+#undef SGLP_OS_WIN32
+#define SGLP_OS_WIN32 1
 #else
-    #error "Could not detect OS"
+#error "Could not detect OS"
 #endif
 
 #if SGLP_OS_LINUX
-    #if (__x86_64__ || __ppc64__)
-        #undef SGLP_ENVIRONMENT64
-        #define SGLP_ENVIRONMENT64 1
-    #else
-        #undef SGLP_ENVIRONMENT32
-        #define SGLP_ENVIRONMENT32 1
-    #endif
+#if (__x86_64__ || __ppc64__)
+#undef SGLP_ENVIRONMENT64
+#define SGLP_ENVIRONMENT64 1
+#else
+#undef SGLP_ENVIRONMENT32
+#define SGLP_ENVIRONMENT32 1
+#endif
 #elif SGLP_OS_WIN32
-    #if defined(_WIN64)
-        #undef SGLP_ENVIRONMENT64
-        #define SGLP_ENVIRONMENT64 1
-    #else
-        #undef SGLP_ENVIRONMENT32
-        #define SGLP_ENVIRONMENT32 1
-    #endif
+#if defined(_WIN64)
+#undef SGLP_ENVIRONMENT64
+#define SGLP_ENVIRONMENT64 1
+#else
+#undef SGLP_ENVIRONMENT32
+#define SGLP_ENVIRONMENT32 1
+#endif
 #endif
 
 // stdcall
 #define SGLP_STDCALL
 #if SGLP_COMPILER_MSVC
-    #undef SGLP_STDCALL
-    #define SGLP_STDCALL __stdcall
+#undef SGLP_STDCALL
+#define SGLP_STDCALL __stdcall
 #endif
-
-//
-// If no CRT on windows
-//
-#if SGLP_COMPILER_MSVC && defined(SGLP_NO_CRT)
-    #pragma function(memset)
-    void *memset(void *dest, int c, size_t count);
-    #pragma function(memcpy)
-    void *memcpy(void *dest, void const *src, size_t count);
-#endif SGL_COMPILER_MSVC && defined(SGL_NO_CRT)
 
 #include <stdint.h>
 
@@ -153,7 +147,7 @@ void sglp_free(void *ptr);
 
 // Can be redefined by the user
 #if !defined(SGLP_DEFAULT_MEMORY_ALIGNMENT)
-    #define SGLP_DEFAULT_MEMORY_ALIGNMENT 8
+#define SGLP_DEFAULT_MEMORY_ALIGNMENT 8
 #endif
 
 // Permanent memory
@@ -483,11 +477,11 @@ void sglp_platform_update_and_render_callback(sglp_API *api);
 #if defined(SGLP_IMPLEMENTATION)
 
 #if !defined(SGLP_ASSERT)
-    #if SGLP_COMPILER_MSVC
-        #define SGLP_ASSERT(x) do { if(!(x)) { __debugbreak(); } } while(0)
-    #else
-        #define SGLP_ASSERT(x) do { if(!(x)) { *(uintptr_t volatile *)0 = 0; } } while(0) // TODO(Jonny): Find out what debugbreak is actually on Linux.
-    #endif
+#if SGLP_COMPILER_MSVC
+#define SGLP_ASSERT(x) do { if(!(x)) { __debugbreak(); } } while(0)
+#else
+#define SGLP_ASSERT(x) do { if(!(x)) { *(uintptr_t volatile *)0 = 0; } } while(0) // TODO(Jonny): Find out what debugbreak is actually on Linux.
+#endif
 #endif
 
 //
@@ -1973,9 +1967,6 @@ int main(int argc, char **argv) {
 #include <intrin.h>
 
 // intrin.h
-#if defined(__cplusplus)
-    extern "C"
-#endif
 void _WriteBarrier(void);
 
 // xinput.h
@@ -2655,40 +2646,6 @@ static void sglp_win32_get_mouse_position(sglp_API *api, HWND win) {
     }
 }
 
-//
-// If no crt
-//
-#if SGLP_COMPILER_MSVC && defined(SGLP_NO_CRT)
-int _fltused;
-
-#pragma function(memset)
-void *memset(void *dest, int c, size_t count) {
-    SGLP_ASSERT(c < 0xFF);
-    uint8_t *dest8 = (uint8_t *)dest;
-    while(count--) {
-        *dest8++ = (uint8_t)c;
-    }
-
-    return(dest);
-}
-
-#pragma function(memcpy)
-void *memcpy(void *dest, void const *src, size_t count) {
-    uint8_t *dst8 = (uint8_t *)dest;
-    uint8_t *src8 = (uint8_t *)src;
-    while (count--) {
-        *dst8++ = *src8++;
-    }
-
-    return(dest);
-}
-int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int show_code);
-void SGLP_STDCALL WinMainCRTStartup(void) {
-    int result = WinMain(GetCurrentProcess(), 0, 0, 0);
-    ExitProcess(result);
-}
-#endif
-
 int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int show_code) {
     int i;
     sglp_API api = {0};
@@ -3081,7 +3038,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 #if SGLP_OS_LINUX
 
 #if !defined(_GNU_SOURCE)
-    #define _GNU_SOURCE
+#define _GNU_SOURCE
 #endif
 
 #include <X11/X.h>
@@ -3100,7 +3057,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 #include <stdlib.h>
 
 #if !defined(SGLP_NO_INCLUDE_SDL)
-    #include <SDL2/SDL.h>
+#include <SDL2/SDL.h>
 #endif
 
 //
@@ -3841,6 +3798,10 @@ int main(int argc, char **argv) {
 #endif // SGLP_USE_SDL
 
 #endif // #if defined(SGLP_IMPLEMENTATION)
+
+#if defined(__cplusplus)
+} // extern "C"
+#endif
 
 #define _SGLP_PLATFORM_H
 #endif

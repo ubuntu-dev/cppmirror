@@ -267,6 +267,10 @@ File write_data(Parse_Result pr) {
         write_ob(&ob,
                  "#if !defined(PP_GENERATED_H)\n"
                  "\n"
+                 "#if defined(__cplusplus)\n"
+                 "extern \"C\" {\n"
+                 "#endif\n"
+                 "\n"
                  "#define PP_IGNORE\n"
                  "\n"
                  "#include <stdint.h>\n"
@@ -1232,6 +1236,10 @@ File write_data(Parse_Result pr) {
         // # Guard macro.
         //
         write_ob(&ob,
+                 "\n"
+                 "#if defined(__cplusplus)\n"
+                 "} // extern \"C\"\n"
+                 "#endif\n"
                  "\n"
                  "#define PP_GENERATED_H\n"
                  "#endif // #if defined(PP_GENERATED_H)\n"

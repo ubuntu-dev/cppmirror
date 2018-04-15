@@ -47,13 +47,14 @@ SwitchType get_switch_type(Char *str) {
                 case 'h': case 'H': res = SwitchType_print_help;               break;
                 case 'p': case 'P': res = SwitchType_output_preprocessed_file; break;
                 case 'd': case 'D': res = SwitchType_macro;                    break;
+                case 't': case 'T': res = SwitchType_run_tests;                break;
 #if INTERNAL
                 case 's': case 'S': res = SwitchType_silent;                   break;
-                case 't': case 'T': res = SwitchType_run_tests;                break;
 #endif
                 default: assert(0); break;
             }
-        } else {
+        }
+        else {
             res = SwitchType_source_file;
         }
     }
@@ -96,7 +97,8 @@ Void my_main(Int argc, Char **argv) {
     if(argc <= 1) {
         push_error(ErrorType_no_parameters);
         print_help();
-    } else {
+    }
+    else {
         Bool should_run_tests = false;
         Bool should_write_to_file = true;
         Bool only_output_preprocessed_file = false;
@@ -147,14 +149,17 @@ Void my_main(Int argc, Char **argv) {
 
                 if(!tests_failed) {
                     system_write_to_console("all tests passed...");
-                } else {
+                }
+                else {
                     system_write_to_console("%d tests failed\n", tests_failed);
                 }
 #endif
-            } else {
+            }
+            else {
                 if(!number_of_files) {
                     push_error(ErrorType_no_files_pass_in);
-                } else {
+                }
+                else {
                     Char directory[1024] = {0};
                     get_current_directory(directory, 1024);
                     Uintptr size_of_all_files = system_get_total_size_of_directory(directory);
@@ -167,7 +172,7 @@ Void my_main(Int argc, Char **argv) {
 
                         Bool write_success = system_write_to_file("pp_generated.h", file_to_write);
                         assert(write_success);
-                        
+
 #if INTERNAL
                         system_free(file_to_write.e);
 #endif

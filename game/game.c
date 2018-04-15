@@ -1,5 +1,3 @@
-#define INTERNAL 1
-
 #define STB_SPRINTF_IMPLEMENTATION
 #include "stb_sprintf.h"
 
@@ -8,13 +6,13 @@
 #include "pp_generated.h"
 
 #define SGLP_IMPLEMENTATION
-#define SGLP_NO_CRT
 #include "sgl_platform.h"
 
 #define SGLM_IMPLEMENTATION
 #include "sgl_math.h"
 
 #define SGL_IMPLEMENTATION
+#define SGL_NO_CRT_WINDOW_APP
 #include "sgl.h"
 
 #define STBI_NO_STDIO

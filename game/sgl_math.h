@@ -13,6 +13,10 @@
 
 #if !defined(_SGLM_MATH_H)
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 //
 // Environment.
 //
@@ -28,55 +32,55 @@
 
 // Compiler
 #if defined(__clang__)
-    #undef SGLM_COMPILER_CLANG
-    #define SGLM_COMPILER_CLANG 1
+#undef SGLM_COMPILER_CLANG
+#define SGLM_COMPILER_CLANG 1
 #elif defined(_MSC_VER)
-    #undef SGLM_COMPILER_MSVC
-    #define SGLM_COMPILER_MSVC 1
+#undef SGLM_COMPILER_MSVC
+#define SGLM_COMPILER_MSVC 1
 #elif (defined(__GNUC__) || defined(__GNUG__)) // This has to be after __clang__, because Clang also defines this.
-    #undef SGLM_COMPILER_GCC
-    #define SGLM_COMPILER_GCC 1
+#undef SGLM_COMPILER_GCC
+#define SGLM_COMPILER_GCC 1
 #else
-    #error "Could not detect compiler."
+#error "Could not detect compiler."
 #endif
 
 // OS.
 #if defined(__linux__)
-    #undef SGLM_OS_LINUX
-    #define SGLM_OS_LINUX 1
+#undef SGLM_OS_LINUX
+#define SGLM_OS_LINUX 1
 #elif defined(_WIN32)
-    #undef SGLM_OS_WIN32
-    #define SGLM_OS_WIN32 1
+#undef SGLM_OS_WIN32
+#define SGLM_OS_WIN32 1
 #else
-    #error "Could not detect OS"
+#error "Could not detect OS"
 #endif
 
 // Environment.
 #if SGLM_OS_LINUX
-    #if (__x86_64__ || __ppc64__)
-        #undef SGLM_ENVIRONMENT64
-        #define SGLM_ENVIRONMENT64 1
-    #else
-        #undef SGLM_ENVIRONMENT32
-        #define SGLM_ENVIRONMENT32 1
-    #endif
+#if (__x86_64__ || __ppc64__)
+#undef SGLM_ENVIRONMENT64
+#define SGLM_ENVIRONMENT64 1
+#else
+#undef SGLM_ENVIRONMENT32
+#define SGLM_ENVIRONMENT32 1
+#endif
 #elif SGLM_OS_WIN32
-    #if defined(_WIN64)
-        #undef SGLM_ENVIRONMENT64
-        #define SGLM_ENVIRONMENT64 1
-    #else
-        #undef SGLM_ENVIRONMENT32
-        #define SGLM_ENVIRONMENT32 1
-    #endif
+#if defined(_WIN64)
+#undef SGLM_ENVIRONMENT64
+#define SGLM_ENVIRONMENT64 1
+#else
+#undef SGLM_ENVIRONMENT32
+#define SGLM_ENVIRONMENT32 1
+#endif
 #endif
 
 #if defined(SGLM_IMPLEMENTATION)
 
 #if SGLM_OS_WIN32
-    // TODO(Jonny): Is this specific to MSVC or to Windows?
-    #include <intrin.h>
+// TODO(Jonny): Is this specific to MSVC or to Windows?
+#include <intrin.h>
 #else
-    #include <x86intrin.h>
+#include <x86intrin.h>
 #endif
 
 //
@@ -145,11 +149,11 @@ sglm_Mat4x4 sglm_mat4x4_get_rot_z(int angle);
 float *sglm_mat4x4_as_float_arr(float *arr, sglm_Mat4x4 *mat);
 
 #if !defined(SGLM_ASSERT)
-    #if SGLM_COMPILER_MSVC
-        #define SGLM_ASSERT(x) do { if(!(x)) { __debugbreak(); } } while(0)
-    #else
-        #define SGLM_ASSERT(x) do { if(!(x)) { *(int volatile *)0 = 0; } } while(0) // TODO(Jonny): Find out what debugbreak is actually on Linux.
-    #endif
+#if SGLM_COMPILER_MSVC
+#define SGLM_ASSERT(x) do { if(!(x)) { __debugbreak(); } } while(0)
+#else
+#define SGLM_ASSERT(x) do { if(!(x)) { *(int volatile *)0 = 0; } } while(0) // TODO(Jonny): Find out what debugbreak is actually on Linux.
+#endif
 #endif
 
 __m128 sglm_vec_absolute(__m128 vec) {
@@ -249,7 +253,8 @@ sglm_Bool sglm_v2_compare(sglm_V2 a, sglm_V2 b) {
     sglm_Bool res;
     if((a.x == b.x) && (a.y == b.y)) {
         res = 1; // true
-    } else {
+    }
+    else {
         res = 0; // false
     }
 
@@ -505,6 +510,11 @@ sglm_Mat4x4 sglm_mat4x4_mul(sglm_Mat4x4 *a, sglm_Mat4x4 *b) {
 }
 
 #endif // defined(SGLM_IMPLEMENTATION)
+
+#if defined(__cplusplus)
+} // extern "C"
+#endif
+
 
 #define _SGLM_MATH_H
 #endif // !defined(_SGLM_MATH_H)
