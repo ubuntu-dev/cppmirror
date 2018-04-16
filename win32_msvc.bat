@@ -1,6 +1,6 @@
 @echo off
 
-rem TODO - This part should be setup prior to calling this file.
+rem Setup Visual Studio 2017.
 call "C:\Program Files (x86)\Microsoft Visual Studio\2017\community\VC\Auxiliary\Build\vcvarsall.bat" x64 > NUL
 
 cd %~dp0
@@ -24,9 +24,9 @@ if "%RELEASE%"=="true" (
 rem Compiler flags
 set COMMON_COMPILER_FLAGS=-nologo -Gm- -GR- %COMMON_WARNINGS% -FC -Zi -Oi -GS- -Gs9999999 -Wall %INTERNAL%
 if "%RELEASE%"=="true" (
-    set COMPILER_FLAGS=%COMMON_COMPILER_FLAGS% -MTd -EHsc- -Od
-) else (
     set COMPILER_FLAGS=%COMMON_COMPILER_FLAGS% -MT -fp:fast -EHa- -O2
+) else (
+    set COMPILER_FLAGS=%COMMON_COMPILER_FLAGS% -MTd -EHsc- -Od
 )
 
 rem Linker flags.
