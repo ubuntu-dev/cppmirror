@@ -477,7 +477,7 @@ struct pp_Enemy {
     pp_Transform trans; 
 };
 struct pp_Entity {
-    pp_Type type; pp_Bool valid;  union {pp_Player player; pp_Enemy enemy; pp_Bullet bullet; };pp_Entity *next; 
+     union {pp_Player player; pp_Enemy enemy; pp_Bullet bullet; };pp_Type type; pp_Entity *next; 
 };
 struct pp_Game_State {
     pp_Entity *entity; 
@@ -1221,26 +1221,22 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
     else if(real_type == pp_Type_Entity) {
         switch(index) {
             case 0: {
-                pp_MemberDefinition res = {pp_Type_pp_Type, "type", PP_OFFSETOF(pp_Entity, type), 0, 0};
-                return(res);
-            } break; 
-            case 1: {
-                pp_MemberDefinition res = {pp_Type_Bool, "valid", PP_OFFSETOF(pp_Entity, valid), 0, 0};
-                return(res);
-            } break; 
-            case 2: {
                 pp_MemberDefinition res = {pp_Type_Player, "player", PP_OFFSETOF(pp_Entity, player), 0, 0};
                 return(res);
             } break; 
-            case 3: {
+            case 1: {
                 pp_MemberDefinition res = {pp_Type_Enemy, "enemy", PP_OFFSETOF(pp_Entity, enemy), 0, 0};
                 return(res);
             } break; 
-            case 4: {
+            case 2: {
                 pp_MemberDefinition res = {pp_Type_Bullet, "bullet", PP_OFFSETOF(pp_Entity, bullet), 0, 0};
                 return(res);
             } break; 
-            case 5: {
+            case 3: {
+                pp_MemberDefinition res = {pp_Type_pp_Type, "type", PP_OFFSETOF(pp_Entity, type), 0, 0};
+                return(res);
+            } break; 
+            case 4: {
                 pp_MemberDefinition res = {pp_Type_Entity, "next", PP_OFFSETOF(pp_Entity, next), 1, 0};
                 return(res);
             } break; 
@@ -1286,7 +1282,7 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_Bullet: { return(3); } break;
         case pp_Type_Player: { return(7); } break;
         case pp_Type_Enemy: { return(1); } break;
-        case pp_Type_Entity: { return(6); } break;
+        case pp_Type_Entity: { return(5); } break;
         case pp_Type_Game_State: { return(1); } break;
     }
 

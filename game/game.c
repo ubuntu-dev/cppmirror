@@ -97,19 +97,19 @@ struct Enemy {
 };
 
 struct Entity {
-    pp_Type type;
-    Bool valid;
-
+    // These have to be first in the struct, so I can cast between them.
     union {
         Player player;
         Enemy enemy;
         Bullet bullet;
     };
 
+    pp_Type type;
     Entity *next;
 };
 
-Entity *find_end_entity(Entity *root) {
+
+Entity *get_end_entity(Entity *root) {
     Entity *next = root;
     if(!root) {
         next = root;
@@ -123,10 +123,28 @@ Entity *find_end_entity(Entity *root) {
     return next;
 }
 
+Entity *push_entity(sglp_API *api, Entity *root, Void *var, pp_Type type) {
+    Entity *next = sglp_push_permanent_struct(api, Entity);
+    uintptr_t size = pp_get_size_from_type(type);
+
+    Entity *end = get_end_entity(root);
+    if(!end) {
+        root = next;
+    }
+    else {
+        end->next = next;
+    }
+
+    sgl_memcpy(next, var, size);
+    next->type = type;
+
+    return root;
+}
+
 Void *find_first_entity(Entity *root, pp_Type type) {
     Entity *next = root;
 
-    while(next->next) {
+    while(next) {
         if(next->type == type) {
             Uintptr number_of_members = pp_get_number_of_members(pp_Type_Entity);
             for(Uintptr j = 0; (j < number_of_members); ++j) {
@@ -144,26 +162,11 @@ Void *find_first_entity(Entity *root, pp_Type type) {
     return 0;
 }
 
-Void *find_next_entity(Entity *root, pp_Type type, Entity *previous) {
-    Entity *next = root;
-    Bool passed_previous = false;
-
-    while(next->next) {
-        if((Uintptr)&next->player == (Uintptr)previous) {
-            passed_previous = true;
-        }
-        else if(passed_previous && next->type == type) {
-            Uintptr number_of_members = pp_get_number_of_members(pp_Type_Entity);
-            for(Uintptr j = 0; (j < number_of_members); ++j) {
-                pp_MemberDefinition mem = pp_get_members_from_type(pp_Type_Entity, j);
-                if(mem.type == type) {
-                    Void *res = (Byte *)next + mem.offset;
-                    return res;
-                }
-            }
-        }
-
-        next = next->next;
+// This can take the root to find the first entity.
+Void *find_next_entity(Void *root, pp_Type type) {
+    if(root) {
+        Entity *next = root;
+        return find_first_entity(next->next, type);
     }
 
     return 0;
@@ -283,11 +286,10 @@ Void draw_entity_text(sglp_API *api, Game_State *gs, Entity *entity, V2 mouse_po
     if(point_overlap(mouse_position, trans)) {
         V2 word_size = v2(0.025f, 0.025f);
 
-        Void *data = &entity->player; // Just need the address.
         Int buffer_size = 256 * 256;
         sglp_TempMemory tm = sglp_push_temp_memory(api, buffer_size);
         Char *buffer = sglp_push_off_temp_memory(&tm, buffer_size);
-        pp_serialize_struct_type(data, entity->type, buffer, buffer_size);
+        pp_serialize_struct_type(entity, entity->type, buffer, buffer_size);
         draw_word(buffer, api, gs, mouse_position, word_size);
         sglp_pop_temp_memory(api, &tm);
     }
@@ -300,17 +302,15 @@ Void draw_debug_information(sglp_API *api, Game_State *gs) {
 
     Entity *next = gs->entity;
     while(next) {
-        if(next->valid) {
-            V2 position_to_draw = {0};
-            Transform trans = {0};
-            switch(next->type) {
-                case pp_Type_Player: trans = next->player.trans; break;
-                case pp_Type_Enemy:  trans = next->enemy.trans;  break;
-                case pp_Type_Bullet: trans = next->bullet.trans; break;
-            }
-
-            draw_entity_text(api, gs, next, mouse_position, trans);
+        V2 position_to_draw = {0};
+        Transform trans = {0};
+        switch(next->type) {
+            case pp_Type_Player: trans = next->player.trans; break;
+            case pp_Type_Enemy:  trans = next->enemy.trans;  break;
+            case pp_Type_Bullet: trans = next->bullet.trans; break;
         }
+
+        draw_entity_text(api, gs, next, mouse_position, trans);
 
         next = next->next;
     }
@@ -337,39 +337,37 @@ void render(sglp_API *api, Game_State *gs) {
     // Render all entities.
     Entity *next = gs->entity;
     while(next) {
-        if(next->valid) {
-            Int current_frame = 0;
-            Transform trans = {0};
-            Sprite_ID id = Sprite_ID_unknown;
+        Int current_frame = 0;
+        Transform trans = {0};
+        Sprite_ID id = Sprite_ID_unknown;
 
-            switch(next->type) {
-                case pp_Type_Player: {
-                    trans = next->player.trans;
-                    id = Sprite_ID_player;
-                    current_frame = next->player.current_frame;
-                } break;
+        switch(next->type) {
+            case pp_Type_Player: {
+                trans = next->player.trans;
+                id = Sprite_ID_player;
+                current_frame = next->player.current_frame;
+            } break;
 
-                case pp_Type_Enemy: {
-                    trans = next->enemy.trans;
-                    id = Sprite_ID_enemy_one;
-                } break;
+            case pp_Type_Enemy: {
+                trans = next->enemy.trans;
+                id = Sprite_ID_enemy_one;
+            } break;
 
-                case pp_Type_Bullet: {
-                    trans = next->bullet.trans;
-                    id = Sprite_ID_bullet;
-                } break;
+            case pp_Type_Bullet: {
+                trans = next->bullet.trans;
+                id = Sprite_ID_bullet;
+            } break;
 
-                default: assert(0); break;
-            }
-
-            sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(trans.pos.x, trans.pos.y,
-                                                              trans.scale.x, trans.scale.y,
-                                                              trans.rot);
-            Float tform[16] = {0};
-            sglm_mat4x4_as_float_arr(tform, &mat);
-
-            sglp_draw_sprite(gs->sprite[id], current_frame, tform);
+            default: assert(0); break;
         }
+
+        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(trans.pos.x, trans.pos.y,
+                                                          trans.scale.x, trans.scale.y,
+                                                          trans.rot);
+        Float tform[16] = {0};
+        sglm_mat4x4_as_float_arr(tform, &mat);
+
+        sglp_draw_sprite(gs->sprite[id], current_frame, tform);
 
         next = next->next;
     }
@@ -378,53 +376,42 @@ void render(sglp_API *api, Game_State *gs) {
     draw_debug_information(api, gs);
 }
 
-Entity create_enemy(float x, float y) {
-    Entity res = {0};
+Enemy create_enemy(float x, float y) {
+    Enemy res = {0};
 
-    res.type = pp_Type_Enemy;
-    res.valid = true;
+    res.trans.scale.x = 0.1f;
+    res.trans.scale.y = 0.1f;
 
-    res.enemy.trans.scale.x = 0.1f;
-    res.enemy.trans.scale.y = 0.1f;
-
-    res.enemy.trans.pos.x = x;
-    res.enemy.trans.pos.y = y;
+    res.trans.pos.x = x;
+    res.trans.pos.y = y;
 
     return(res);
 }
 
-Entity create_player(float x, float y) {
-    Entity res = {0};
+Player create_player(float x, float y) {
+    Player res = {0};
 
-    res.type = pp_Type_Player;
-    res.valid = true;
+    res.trans.scale.x = 0.1f;
+    res.trans.scale.y = 0.1f;
 
-    res.player.trans.scale.x = 0.1f;
-    res.player.trans.scale.y = 0.1f;
+    res.trans.pos.x = x;
+    res.trans.pos.y = y;
 
-    res.player.trans.pos.x = x;
-    res.player.trans.pos.y = y;
-
-    res.player.start_pos = res.player.trans.pos;
-    res.player.dir = Player_Direction_left;
+    res.start_pos = res.trans.pos;
+    res.dir = Player_Direction_left;
 
     return(res);
 }
 
-Entity create_bullet(void) {
-    Entity res = {0};
+Bullet create_bullet(void) {
+    Bullet res = {0};
 
-    res.type = pp_Type_Bullet;
-    res.valid = true;
-
-    res.bullet.trans.pos = v2(400, 400);
+    res.trans.pos = v2(400, 400);
 
     return res;
 }
 
 void init(sglp_API *api, Game_State *gs) {
-    // TODO - Link list is sorta crap right now, so need to push a fake "root" onto it.
-    gs->entity = sglp_push_permanent_struct(api, Entity);
 
     // Load the player.
     {
@@ -436,10 +423,8 @@ void init(sglp_API *api, Game_State *gs) {
         gs->sprite[Sprite_ID_player] = sglp_load_image(api, img_data, 12, 1, Sprite_ID_player, width, height, number_of_components);
         stbi_image_free(img_data);
 
-        Entity *player = sglp_push_permanent_struct(api, Entity);
-        *player = create_player(0.5f, 0.7f);
-        Entity *end = find_end_entity(gs->entity);
-        end->next = player;
+        Player player = create_player(0.5f, 0.7f);
+        gs->entity = push_entity(api, gs->entity, &player, pp_Type_Player);
     }
 
     // Load the enemy.
@@ -452,10 +437,9 @@ void init(sglp_API *api, Game_State *gs) {
 
         Float x = 0.1f;
         for(Int i = 0; (i < 4); ++i) {
-            Entity *enemy = sglp_push_permanent_struct(api, Entity);
-            *enemy = create_enemy(x, 0.5f);
-            Entity *end = find_end_entity(gs->entity);
-            end->next = enemy;
+            Enemy enemy = create_enemy(x, 0.5f);
+            gs->entity = push_entity(api, gs->entity, &enemy, pp_Type_Enemy);
+
             x += 0.2f;
         }
     }
@@ -478,10 +462,13 @@ void init(sglp_API *api, Game_State *gs) {
         stbi_image_free(img_data);
 
         for(Int i = 0; (i < 4); ++i) {
-            Entity *bullet = sglp_push_permanent_struct(api, Entity);
-            *bullet = create_bullet();
-            Entity *end = find_end_entity(gs->entity);
-            end->next = bullet;
+            Bullet bullet = create_bullet();
+            gs->entity = push_entity(api, gs->entity, &bullet, pp_Type_Bullet);
+
+            //Entity *bullet = sglp_push_permanent_struct(api, Entity);
+            //*bullet = create_bullet();
+            //Entity *end = get_end_entity(gs->entity);
+            //end->next = bullet;
         }
     }
 
@@ -613,7 +600,7 @@ Void update_enemy(Enemy *enemy, Game_State *gs) {
     // Kill the enemy if they touch the player's bullet.
     Entity *next = gs->entity;
     while(next) {
-        if(next->valid && next->type == pp_Type_Bullet) {
+        if(next->type == pp_Type_Bullet) {
             Bullet *bullet = &next->bullet;
             if(overlap(bullet->trans, enemy->trans)) {
                 // next->valid = false; // TODO - Can't set to invalid right now.
@@ -660,14 +647,12 @@ void update_bullet(Bullet *bullet, Game_State *gs) {
 Void update(sglp_API *api, Game_State *gs) {
     Entity *next = gs->entity;
     while(next) {
-        if(next->valid) {
-            switch(next->type) {
-                case pp_Type_Player: update_player(&next->player, next, api, gs); break;
-                case pp_Type_Enemy:  update_enemy(&next->enemy, gs);        break;
-                case pp_Type_Bullet: update_bullet(&next->bullet, gs);      break;
+        switch(next->type) {
+            case pp_Type_Player: update_player(&next->player, next, api, gs); break;
+            case pp_Type_Enemy:  update_enemy(&next->enemy, gs);        break;
+            case pp_Type_Bullet: update_bullet(&next->bullet, gs);      break;
 
-                default: assert(0); break;
-            }
+            default: assert(0); break;
         }
 
         next = next->next;
