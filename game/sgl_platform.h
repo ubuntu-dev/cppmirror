@@ -153,7 +153,7 @@ void sglp_free(void *ptr);
 // Permanent memory
 #define sglp_push_permanent_struct(api, Type) sglp_push_permanent_memory(api, sizeof(Type))
 #define sglp_push_permanent_memory(api, size) sglp_push_permanent_memory_with_alignment(api, size, SGLP_DEFAULT_MEMORY_ALIGNMENT)
-void *sglp_push_permanent_memory_with_alignment(sglp_API *api, uintptr_t size, uintptr_t alignment);
+void *sglp_push_permanent_memory_with_alignment(struct sglp_API *api, uintptr_t size, uintptr_t alignment);
 
 // Temp Memory
 typedef struct sglp_TempMemory {
@@ -164,8 +164,8 @@ typedef struct sglp_TempMemory {
 } sglp_TempMemory;
 
 #define sglp_push_temp_memory(api, size) sglp_push_temp_memory_with_alignment(api, size, SGLP_DEFAULT_MEMORY_ALIGNMENT)
-sglp_TempMemory sglp_push_temp_memory_with_alignment(sglp_API *api, uintptr_t size, uintptr_t alignment);
-void sglp_pop_temp_memory(sglp_API *api, sglp_TempMemory *tm);
+sglp_TempMemory sglp_push_temp_memory_with_alignment(struct sglp_API *api, uintptr_t size, uintptr_t alignment);
+void sglp_pop_temp_memory(struct sglp_API *api, sglp_TempMemory *tm);
 #define sglp_push_off_temp_memory(tm, size) sglp_push_off_temp_memory_align(tm, size, SGLP_DEFAULT_MEMORY_ALIGNMENT)
 void *sglp_push_off_temp_memory_align(sglp_TempMemory *tm, uintptr_t size, uintptr_t alignment);
 
@@ -402,6 +402,14 @@ typedef struct sglp_File {
 } sglp_File;
 
 //
+// Stuff
+//
+void sglp_free_file(struct sglp_API *api, sglp_File *file);
+sglp_File sglp_read_file(struct sglp_API *api, char const *fname);
+sglp_File sglp_read_file_and_null_terminate(struct sglp_API *api, char const *fname);
+uint64_t sglp_get_processor_timestamp(void);
+
+//
 // Settings.
 typedef struct sglp_Settings {
     sglp_Bool fullscreen;
@@ -442,8 +450,37 @@ typedef struct sglp_API {
 
 
     //
-    // Platform
+    // Functions
     //
+
+    // Images
+    sglp_Sprite (*load_image)(struct sglp_API *api, uint8_t *img_data, int32_t frame_cnt_x, int32_t frame_cnt_y, int32_t id,
+                              int32_t width, int32_t height, int32_t no_components);
+
+    void (*clear_screen_for_frame)(void);
+    void (*draw_sprite)(sglp_Sprite sprite, int32_t cur_frame, float const *tform);
+    void (*draw_sprite_frame_matrix)(sglp_Sprite sprite, int32_t cur_frame_x, int32_t cur_frame_y, float const *tform);
+    void (*draw_black_box)(float const *tform);
+    uint32_t (*load_and_compile_shaders)(char const *fvertex, char const *ffragment);
+
+    // Sound
+    sglp_PlayingSound *(*get_playing_sound)(int32_t id);
+    sglp_PlayingSound *(*play_new_audio)(struct sglp_API *api, int32_t id);
+    sglp_PlayingSound *(*play_audio)(struct sglp_API *api, int32_t id);
+    void (*change_volume)(sglp_PlayingSound *snd, float fade_duration_seconds, float vol0, float vol1);
+    void (*change_pitch)(sglp_PlayingSound *snd, float dsample);
+    sglp_Bool (*load_wav)(struct sglp_API *api, int32_t id, void *e, uintptr_t size);
+
+    // Allocations
+    void *(*os_malloc)(uintptr_t size);
+    void *(*os_realloc)(void *ptr, uintptr_t size);
+    void (*os_free)(void *ptr);
+
+    // Temp/Permanent memory
+    void *(*sglp_push_permanent_memory_with_alignment)(struct sglp_API *api, uintptr_t size, uintptr_t alignment);
+    sglp_TempMemory (*sglp_push_temp_memory_with_alignment)(struct sglp_API *api, uintptr_t size, uintptr_t alignment);
+    void (*pop_temp_memory)(struct sglp_API *api, sglp_TempMemory *tm);
+    void *(*sglp_push_off_temp_memory_align)(sglp_TempMemory *tm, uintptr_t size, uintptr_t alignment);
 
     // sglp_File IO.
     void (*free_file)(struct sglp_API *, sglp_File *);                          // void sglp_free_file(sglp_API *api, sglp_File *file);
@@ -812,7 +849,7 @@ uint32_t sglp_load_and_compile_shaders(char const *fvertex, char const *ffragmen
     return(res);
 }
 
-void sglp_clear_screen_for_frame() {
+void sglp_clear_screen_for_frame(void) {
     sglp_global_opengl->glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
     sglp_global_opengl->glClear(SGLP_GL_COLOR_BUFFER_BIT);
 
@@ -1313,7 +1350,7 @@ static void sglp_setup(sglp_API *api, int32_t max_no_of_sounds) {
     sglp_set_max_no_of_sounds(api, max_no_of_sounds);
 }
 
-static void sglp_free_file(sglp_API *api, sglp_File *file) {
+void sglp_free_file(sglp_API *api, sglp_File *file) {
     if(file->e) {
         sglp_free(file->e);
     }
@@ -1382,6 +1419,40 @@ void *sglp_push_off_temp_memory_align(sglp_TempMemory *tm, uintptr_t size, uintp
     SGLP_ASSERT(tm->used <= tm->size);
 
     return res;
+}
+
+//
+// Setup callbacks
+static void sglp_setup_callbacks(sglp_API *api) {
+    api->load_image = sglp_load_image;
+    api->clear_screen_for_frame = sglp_clear_screen_for_frame;
+    api->draw_sprite = sglp_draw_sprite;
+    api->draw_sprite_frame_matrix = sglp_draw_sprite_frame_matrix;
+    api->draw_black_box = sglp_draw_black_box;
+    api->load_and_compile_shaders = sglp_load_and_compile_shaders;
+
+    api->get_playing_sound = sglp_get_playing_sound;
+    api->play_new_audio = sglp_play_new_audio;
+    api->play_audio = sglp_play_audio;
+    api->change_volume = sglp_change_volume;
+    api->change_pitch = sglp_change_pitch;
+    api->load_wav = sglp_load_wav;
+
+    api->os_malloc = sglp_malloc;
+    api->os_realloc = sglp_realloc;
+    api->os_free = sglp_free;
+
+
+    api->sglp_push_permanent_memory_with_alignment = sglp_push_permanent_memory_with_alignment;
+    api->sglp_push_temp_memory_with_alignment = sglp_push_temp_memory_with_alignment;
+    api->pop_temp_memory = sglp_pop_temp_memory;
+    api->sglp_push_off_temp_memory_align = sglp_push_off_temp_memory_align;
+
+    api->free_file = sglp_free_file;
+    api->read_file = sglp_read_file;
+    api->read_file_and_null_terminate = sglp_read_file_and_null_terminate;
+
+    api->get_processor_timestamp = sglp_get_processor_timestamp;
 }
 
 //
@@ -2492,7 +2563,7 @@ static uint32_t sglp_safe_truncate_64_to_32(uint64_t v) {
     return(res);
 }
 
-static sglp_File sglp_win32_read_file(sglp_API *api, char const *fname) {
+sglp_File sglp_read_file(sglp_API *api, char const *fname) {
     sglp_File res = {0};
 
     HANDLE fhandle = CreateFileA(fname, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
@@ -2515,7 +2586,7 @@ static sglp_File sglp_win32_read_file(sglp_API *api, char const *fname) {
     return(res);
 }
 
-static sglp_File sglp_win32_read_file_and_null_terminate(sglp_API *api, char const *fname) {
+sglp_File sglp_read_file_and_null_terminate(sglp_API *api, char const *fname) {
     sglp_File res = {0};
 
     HANDLE fhandle = CreateFileA(fname, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
@@ -2539,7 +2610,7 @@ static sglp_File sglp_win32_read_file_and_null_terminate(sglp_API *api, char con
     return(res);
 }
 
-static uint64_t sglp_win32_get_processor_timestamp(void) {
+uint64_t sglp_get_processor_timestamp(void) {
     uint64_t res = __rdtsc();
 
     return(res);
@@ -2619,9 +2690,7 @@ static void sglp_win32_process_pending_messages(HWND wnd, float *key, sglp_Bool 
     MSG msg;
     while(sglp_user32_PeekMessageA(&msg, wnd, 0, 0, PM_REMOVE)) {
         switch(msg.message) {
-            case WM_QUIT: {
-                *quit = SGLP_TRUE;
-            }  break;
+            case WM_QUIT: { *quit = SGLP_TRUE; }  break;
 
             case WM_KEYDOWN: { key[sglp_win_key_to_sgl_key(msg.wParam)] = 1.0f; } break;
             case WM_KEYUP:   { key[sglp_win_key_to_sgl_key(msg.wParam)] = 0.0f; } break;
@@ -2646,16 +2715,51 @@ static void sglp_win32_get_mouse_position(sglp_API *api, HWND win) {
     }
 }
 
+typedef void sglp_Win32SetupSettingsCallback(sglp_Settings *);
+typedef void sglp_Win32UpdateAndRenderCallback(sglp_API *);
+
+typedef struct sglp_Win32GameCode {
+    HMODULE game_code_dll;
+
+    sglp_Win32SetupSettingsCallback *setup_settings_callback;
+    sglp_Win32UpdateAndRenderCallback *update_and_render_callback;
+} sglp_Win32GameCode;
+
+static sglp_Win32GameCode sglp_win32_load_game_code(void) {
+    sglp_Win32GameCode res = {0};
+
+#if defined(SGLP_LOAD_GAME_FROM_DLL)
+#define SGLP_TO_STRING_(x) #x
+#define SGLP_TO_STRING(x) SGLP_TO_STRING_(x)
+    char const *str = SGLP_TO_STRING(SGLP_LOAD_GAME_FROM_DLL);
+    res.game_code_dll = LoadLibraryA(str);
+    if(res.game_code_dll) {
+        res.setup_settings_callback = (sglp_Win32SetupSettingsCallback *)GetProcAddress(res.game_code_dll, "sglp_platform_setup_settings_callback");
+        res.update_and_render_callback = (sglp_Win32UpdateAndRenderCallback *)GetProcAddress(res.game_code_dll, "sglp_platform_update_and_render_callback");
+    }
+#else // defined(SGLP_LOAD_GAME_FROM_DLL)
+    res.setup_settings_callback = sglp_platform_setup_settings_callback;
+    res.update_and_render_callback = sglp_platform_update_and_render_callback;
+#endif // defined(SGLP_LOAD_GAME_FROM_DLL)
+
+    return(res);
+}
+
+static void sglp_win32_setup_settings_callback(sglp_Win32GameCode *gamecode, sglp_Settings *settings) {
+    if(gamecode->setup_settings_callback) gamecode->setup_settings_callback(settings);
+}
+
+static void sglp_win32_update_and_render_callback(sglp_Win32GameCode *gamecode, sglp_API *api) {
+    if(gamecode->update_and_render_callback) gamecode->update_and_render_callback(api);
+}
+
 int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int show_code) {
     int i;
     sglp_API api = {0};
 
-    // Setup all the .
-    api.free_file = sglp_free_file;
-    api.read_file = sglp_win32_read_file;
-    api.read_file_and_null_terminate = sglp_win32_read_file_and_null_terminate;
+    sglp_setup_callbacks(&api);
 
-    api.get_processor_timestamp = sglp_win32_get_processor_timestamp;
+    sglp_Win32GameCode game_code = sglp_win32_load_game_code();
 
     api.add_work_queue_entry = sglp_win32_add_work_queue_entry;
     api.complete_all_work = sglp_win32_complete_all_work;
@@ -2685,7 +2789,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 
         api.settings.allow_sound = SGLP_TRUE;
 
-        sglp_platform_setup_settings_callback(&api.settings);
+        sglp_win32_setup_settings_callback(&game_code, &api.settings);
 
         QueryPerformanceFrequency(&perf_cnt_freq_res);
         perf_cnt_freq = perf_cnt_freq_res.QuadPart;
@@ -2869,7 +2973,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                             }
 
                             api.dt = ms_per_frame;
-                            sglp_platform_update_and_render_callback(&api);
+                            sglp_win32_update_and_render_callback(&game_code, &api);
 
                             // Reset temp memory
                             sglp_memset(api.temp_memory, 0, api.temp_memory_index);

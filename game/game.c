@@ -5,23 +5,25 @@
 #define PP_SPRINTF stbsp_snprintf
 #include "pp_generated.h"
 
-#define SGLP_IMPLEMENTATION
+// #define SGLP_IMPLEMENTATION
 #include "sgl_platform.h"
 
 #define SGLM_IMPLEMENTATION
 #include "sgl_math.h"
 
 #define SGL_IMPLEMENTATION
-#define SGL_NO_CRT_WINDOW_APP
+#define SGL_NO_CRT_DLL
 #include "sgl.h"
+
+static sglp_API *global_api;
 
 #define STBI_NO_STDIO
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
 #define STBI_ASSERT SGL_ASSERT
-#define STBI_MALLOC sglp_malloc
-#define STBI_REALLOC sglp_realloc
-#define STBI_FREE sglp_free
+#define STBI_MALLOC global_api->os_malloc
+#define STBI_REALLOC global_api->os_realloc
+#define STBI_FREE global_api->os_free
 PP_IGNORE
 #include "stb_image.h"
 
@@ -124,7 +126,7 @@ Entity *get_end_entity(Entity *root) {
 }
 
 Entity *push_entity(sglp_API *api, Entity *root, Void *var, pp_Type type) {
-    Entity *next = sglp_push_permanent_struct(api, Entity);
+    Entity *next = api->sglp_push_permanent_struct(api, Entity);
     uintptr_t size = pp_get_size_from_type(type);
 
     Entity *end = get_end_entity(root);
@@ -243,7 +245,7 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, V2 pos, V2 scale)
                 float tform[16] = {0};
 
                 sglm_mat4x4_as_float_arr(tform, &mat);
-                sglp_draw_sprite_frame_matrix(gs->sprite[Sprite_ID_bitmap_font], pos_in_table.x, pos_in_table.y, tform);
+                api->draw_sprite_frame_matrix(gs->sprite[Sprite_ID_bitmap_font], pos_in_table.x, pos_in_table.y, tform);
 
                 running_x += scale.x;
             }
@@ -287,11 +289,11 @@ Void draw_entity_text(sglp_API *api, Game_State *gs, Entity *entity, V2 mouse_po
         V2 word_size = v2(0.025f, 0.025f);
 
         Int buffer_size = 256 * 256;
-        sglp_TempMemory tm = sglp_push_temp_memory(api, buffer_size);
-        Char *buffer = sglp_push_off_temp_memory(&tm, buffer_size);
+        sglp_TempMemory tm = api->sglp_push_temp_memory(api, buffer_size);
+        Char *buffer = api->sglp_push_off_temp_memory(&tm, buffer_size);
         pp_serialize_struct_type(entity, entity->type, buffer, buffer_size);
         draw_word(buffer, api, gs, mouse_position, word_size);
-        sglp_pop_temp_memory(api, &tm);
+        api->pop_temp_memory(api, &tm);
     }
 }
 
@@ -319,7 +321,7 @@ Void draw_debug_information(sglp_API *api, Game_State *gs) {
 }
 
 void render(sglp_API *api, Game_State *gs) {
-    sglp_clear_screen_for_frame();
+    api->clear_screen_for_frame();
 #if 0
     // Player's Bullet
     Player *player = find_first_entity(gs->entity, pp_Type_Player);
@@ -331,7 +333,7 @@ void render(sglp_API *api, Game_State *gs) {
         Float tform[16] = {0};
         sglm_mat4x4_as_float_arr(tform, &mat);
 
-        sglp_draw_sprite(gs->sprite[Sprite_ID_bullet], 0, tform);
+        api->draw_sprite(gs->sprite[Sprite_ID_bullet], 0, tform);
     }
 #endif
     // Render all entities.
@@ -367,7 +369,7 @@ void render(sglp_API *api, Game_State *gs) {
         Float tform[16] = {0};
         sglm_mat4x4_as_float_arr(tform, &mat);
 
-        sglp_draw_sprite(gs->sprite[id], current_frame, tform);
+        api->draw_sprite(gs->sprite[id], current_frame, tform);
 
         next = next->next;
     }
@@ -420,7 +422,7 @@ void init(sglp_API *api, Game_State *gs) {
 
         uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
         // TODO - Free file?
-        gs->sprite[Sprite_ID_player] = sglp_load_image(api, img_data, 12, 1, Sprite_ID_player, width, height, number_of_components);
+        gs->sprite[Sprite_ID_player] = api->load_image(api, img_data, 12, 1, Sprite_ID_player, width, height, number_of_components);
         stbi_image_free(img_data);
 
         Player player = create_player(0.5f, 0.7f);
@@ -432,7 +434,7 @@ void init(sglp_API *api, Game_State *gs) {
         int width, height, number_of_components;
         sglp_File file = api->read_file(api, "enemy_one.png");
         uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
-        gs->sprite[Sprite_ID_enemy_one] = sglp_load_image(api, img_data, 8, 1, Sprite_ID_enemy_one, width, height, number_of_components);
+        gs->sprite[Sprite_ID_enemy_one] = api->load_image(api, img_data, 8, 1, Sprite_ID_enemy_one, width, height, number_of_components);
         stbi_image_free(img_data);
 
         Float x = 0.1f;
@@ -449,7 +451,7 @@ void init(sglp_API *api, Game_State *gs) {
         int width, height, number_of_components;
         sglp_File file = api->read_file(api, "freemono.png");
         uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
-        gs->sprite[Sprite_ID_bitmap_font] = sglp_load_image(api, img_data, 16, 16, Sprite_ID_bitmap_font, width, height, number_of_components);
+        gs->sprite[Sprite_ID_bitmap_font] = api->load_image(api, img_data, 16, 16, Sprite_ID_bitmap_font, width, height, number_of_components);
         stbi_image_free(img_data);
     }
 
@@ -458,34 +460,29 @@ void init(sglp_API *api, Game_State *gs) {
         Int width, height, number_of_components;
         sglp_File file = api->read_file(api, "bullet.png");
         uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
-        gs->sprite[Sprite_ID_bullet] = sglp_load_image(api, img_data, 1, 1, Sprite_ID_bullet, width, height, number_of_components);
+        gs->sprite[Sprite_ID_bullet] = api->load_image(api, img_data, 1, 1, Sprite_ID_bullet, width, height, number_of_components);
         stbi_image_free(img_data);
 
         for(Int i = 0; (i < 4); ++i) {
             Bullet bullet = create_bullet();
             gs->entity = push_entity(api, gs->entity, &bullet, pp_Type_Bullet);
-
-            //Entity *bullet = sglp_push_permanent_struct(api, Entity);
-            //*bullet = create_bullet();
-            //Entity *end = get_end_entity(gs->entity);
-            //end->next = bullet;
         }
     }
 
     // Load background music.
     {
         sglp_File background_wav = api->read_file(api, "music_test.wav");
-        Bool success = sglp_load_wav(api, ID_sound_background, background_wav.e, background_wav.size);
+        Bool success = api->load_wav(api, ID_sound_background, background_wav.e, background_wav.size);
         if(success) {
             api->free_file(api, &background_wav);
-            sglp_play_audio(api, ID_sound_background);
+            api->play_audio(api, ID_sound_background);
         }
     }
 
     // Load bloop.
     {
         sglp_File bloop_wav = api->read_file(api, "bloop_00.wav");
-        Bool success = sglp_load_wav(api, ID_sound_bloop, bloop_wav.e, bloop_wav.size);
+        Bool success = api->load_wav(api, ID_sound_bloop, bloop_wav.e, bloop_wav.size);
         if(success) {
             api->free_file(api, &bloop_wav);
         }
@@ -554,7 +551,7 @@ Void update_player(Player *player, Entity *player_entity, sglp_API *api, Game_St
     if(api->key[sglp_key_space] && player->can_shoot) {
         player->shot_timer = 200;
         player->can_shoot = false;
-        sglp_play_audio(api, ID_sound_bloop);
+        api->play_audio(api, ID_sound_bloop);
 
         Bullet *bullet = find_first_entity(gs->entity, pp_Type_Bullet);
         bullet->dir = player_direction_to_direction(player->dir);
@@ -660,6 +657,8 @@ Void update(sglp_API *api, Game_State *gs) {
 }
 
 void sglp_platform_update_and_render_callback(sglp_API *api) {
+    global_api = api;
+
     Game_State *gs = (Game_State *)api->game_state_memory;
 
     if(api->init_game) {
@@ -772,4 +771,3 @@ V2 get_letter_position(char letter) {
 
     return(res);
 }
-

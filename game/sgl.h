@@ -164,7 +164,7 @@ sgl_Bool sgl_is_number(char c);
 //
 #define SGL_NO_CRT 0
 
-#if defined(SGL_NO_CRT_WINDOW_APP) || defined(SGL_NO_CRT_CONSOLE_APP)
+#if defined(SGL_NO_CRT_WINDOW_APP) || defined(SGL_NO_CRT_CONSOLE_APP) || defined(SGL_NO_CRT_DLL)
 #undef SGL_NO_CRT
 #define SGL_NO_CRT 1
 #endif // #if defined(SGL_NO_CRT_WINDOW_APP) || defined(SGL_NO_CRT_CONSOLE_APP)
@@ -274,8 +274,7 @@ void __GSHandlerCheck(void) {}
 void __security_check_cookie(uintptr_t foo) {}
 uintptr_t __security_cookie;
 
-// TODO - I think I'll need to implement _chkstk as well as some stupid security cookie stuff, in case the user isn't compiling
-//        with -gs99999.
+#include <windows.h> // TODO - Get rid of this
 
 // Windows doesn't really let you mix console and window apps. So need to have the user define which one they're using.
 #if defined(SGL_NO_CRT_WINDOW_APP)
@@ -295,6 +294,12 @@ void __stdcall mainCRTStartup(void) {
     ExitProcess(result); // TODO - Is it safe to just return from mainCRTStartup rather than ExitProcess??
 }
 #endif // defined(SGL_NO_CRT_CONSOLE_APP)
+
+#if defined(SGL_NO_CRT_DLL)
+// TODO - I don't think I need to do anything in here?
+void __stdcall _DllMainCRTStartup(void) {}
+BOOL __stdcall DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {}
+#endif // defined(SGL_NO_CRT_DLL)
 
 #endif
 

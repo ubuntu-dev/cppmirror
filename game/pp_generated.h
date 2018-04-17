@@ -101,13 +101,6 @@ typedef struct sglp_OpenGlFunctions sglp_OpenGlFunctions;
 typedef struct sglp_File sglp_File;
 typedef struct sglp_Settings sglp_Settings;
 typedef struct sglp_API sglp_API;
-typedef struct sglp_LoadedSound sglp_LoadedSound;
-typedef struct sglp_SoundOutputBuffer sglp_SoundOutputBuffer;
-typedef struct sglp_AudioState sglp_AudioState;
-typedef struct sglp_WAVEHeader sglp_WAVEHeader;
-typedef struct sglp_WavChunk sglp_WavChunk;
-typedef struct sglp_WavFormat sglp_WavFormat;
-typedef struct sglp_RiffIter sglp_RiffIter;
 typedef union sglm_V2 sglm_V2;
 typedef struct sglm_Mat4x4 sglm_Mat4x4;
 typedef struct V2 V2;
@@ -250,13 +243,6 @@ typedef enum pp_Type {
     pp_Type_sglp_File,
     pp_Type_sglp_Settings,
     pp_Type_sglp_API,
-    pp_Type_sglp_LoadedSound,
-    pp_Type_sglp_SoundOutputBuffer,
-    pp_Type_sglp_AudioState,
-    pp_Type_sglp_WAVEHeader,
-    pp_Type_sglp_WavChunk,
-    pp_Type_sglp_WavFormat,
-    pp_Type_sglp_RiffIter,
     pp_Type_sglm_V2,
     pp_Type_sglm_Mat4x4,
     pp_Type___m128,
@@ -286,13 +272,6 @@ typedef struct pp_sglp_OpenGlFunctions pp_sglp_OpenGlFunctions;    typedef struc
 typedef struct pp_sglp_File pp_sglp_File;    typedef struct pp_sglp_File pp_pp_sglp_File;
 typedef struct pp_sglp_Settings pp_sglp_Settings;    typedef struct pp_sglp_Settings pp_pp_sglp_Settings;
 typedef struct pp_sglp_API pp_sglp_API;    typedef struct pp_sglp_API pp_pp_sglp_API;
-typedef struct pp_sglp_LoadedSound pp_sglp_LoadedSound;    typedef struct pp_sglp_LoadedSound pp_pp_sglp_LoadedSound;
-typedef struct pp_sglp_SoundOutputBuffer pp_sglp_SoundOutputBuffer;    typedef struct pp_sglp_SoundOutputBuffer pp_pp_sglp_SoundOutputBuffer;
-typedef struct pp_sglp_AudioState pp_sglp_AudioState;    typedef struct pp_sglp_AudioState pp_pp_sglp_AudioState;
-typedef struct pp_sglp_WAVEHeader pp_sglp_WAVEHeader;    typedef struct pp_sglp_WAVEHeader pp_pp_sglp_WAVEHeader;
-typedef struct pp_sglp_WavChunk pp_sglp_WavChunk;    typedef struct pp_sglp_WavChunk pp_pp_sglp_WavChunk;
-typedef struct pp_sglp_WavFormat pp_sglp_WavFormat;    typedef struct pp_sglp_WavFormat pp_pp_sglp_WavFormat;
-typedef struct pp_sglp_RiffIter pp_sglp_RiffIter;    typedef struct pp_sglp_RiffIter pp_pp_sglp_RiffIter;
 typedef union pp_sglm_V2 pp_sglm_V2;    typedef union pp_sglm_V2 pp_pp_sglm_V2;
 typedef struct pp_sglm_Mat4x4 pp_sglm_Mat4x4;    typedef struct pp_sglm_Mat4x4 pp_pp_sglm_Mat4x4;
 typedef struct pp_V2 pp_V2;    typedef struct pp_V2 pp_pp_V2;
@@ -433,27 +412,6 @@ struct pp_sglp_Settings {
 };
 struct pp_sglp_API {
     pp_sglp_Settings settings; pp_sglp_OpenGlFunctions gl; pp_void *game_state_memory; float key[256]; float dt; pp_sglp_Bool init_game; pp_sglp_Bool quit; float mouse_x; float mouse_y; pp_void *permanent_memory; uintptr_t permanent_memory_index; pp_void *temp_memory; uintptr_t temp_memory_index; 
-};
-struct pp_sglp_LoadedSound {
-    uint32_t sample_cnt; uint32_t no_channels; int16_t *samples[2]; int32_t id; 
-};
-struct pp_sglp_SoundOutputBuffer {
-    int16_t *samples; int32_t samples_per_second; int32_t sample_cnt; 
-};
-struct pp_sglp_AudioState {
-    pp_sglp_PlayingSound *first_playing_snd; pp_sglp_PlayingSound *first_free_playing_snd; 
-};
-struct pp_sglp_WAVEHeader {
-    uint32_t riff_id; uint32_t size; uint32_t wav_id; 
-};
-struct pp_sglp_WavChunk {
-    uint32_t id; uint32_t size; 
-};
-struct pp_sglp_WavFormat {
-    int16_t wFormatTag; int16_t nChannels; uint32_t nSamplesPerSec; uint32_t nAvgBytesPerSec; int16_t nBlockAlign; int16_t wBitsPerSample; int16_t cbSize; int16_t wValidBitsPerSample; uint32_t dwChannelMask; uint8_t SubFormat[16]; 
-};
-struct pp_sglp_RiffIter {
-    uint8_t *at; uint8_t *stop; 
 };
 union pp_sglm_V2 {
     float e[2];  struct {float x; float y;  };
@@ -978,138 +936,6 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
             } break; 
         }
     }
-    else if(real_type == pp_Type_sglp_LoadedSound) {
-        switch(index) {
-            case 0: {
-                pp_MemberDefinition res = {pp_Type_uint32_t, "sample_cnt", PP_OFFSETOF(pp_sglp_LoadedSound, sample_cnt), 0, 0};
-                return(res);
-            } break; 
-            case 1: {
-                pp_MemberDefinition res = {pp_Type_uint32_t, "no_channels", PP_OFFSETOF(pp_sglp_LoadedSound, no_channels), 0, 0};
-                return(res);
-            } break; 
-            case 2: {
-                pp_MemberDefinition res = {pp_Type_int16_t, "samples", PP_OFFSETOF(pp_sglp_LoadedSound, samples), 1, 2};
-                return(res);
-            } break; 
-            case 3: {
-                pp_MemberDefinition res = {pp_Type_int32_t, "id", PP_OFFSETOF(pp_sglp_LoadedSound, id), 0, 0};
-                return(res);
-            } break; 
-        }
-    }
-    else if(real_type == pp_Type_sglp_SoundOutputBuffer) {
-        switch(index) {
-            case 0: {
-                pp_MemberDefinition res = {pp_Type_int16_t, "samples", PP_OFFSETOF(pp_sglp_SoundOutputBuffer, samples), 1, 0};
-                return(res);
-            } break; 
-            case 1: {
-                pp_MemberDefinition res = {pp_Type_int32_t, "samples_per_second", PP_OFFSETOF(pp_sglp_SoundOutputBuffer, samples_per_second), 0, 0};
-                return(res);
-            } break; 
-            case 2: {
-                pp_MemberDefinition res = {pp_Type_int32_t, "sample_cnt", PP_OFFSETOF(pp_sglp_SoundOutputBuffer, sample_cnt), 0, 0};
-                return(res);
-            } break; 
-        }
-    }
-    else if(real_type == pp_Type_sglp_AudioState) {
-        switch(index) {
-            case 0: {
-                pp_MemberDefinition res = {pp_Type_sglp_PlayingSound, "first_playing_snd", PP_OFFSETOF(pp_sglp_AudioState, first_playing_snd), 1, 0};
-                return(res);
-            } break; 
-            case 1: {
-                pp_MemberDefinition res = {pp_Type_sglp_PlayingSound, "first_free_playing_snd", PP_OFFSETOF(pp_sglp_AudioState, first_free_playing_snd), 1, 0};
-                return(res);
-            } break; 
-        }
-    }
-    else if(real_type == pp_Type_sglp_WAVEHeader) {
-        switch(index) {
-            case 0: {
-                pp_MemberDefinition res = {pp_Type_uint32_t, "riff_id", PP_OFFSETOF(pp_sglp_WAVEHeader, riff_id), 0, 0};
-                return(res);
-            } break; 
-            case 1: {
-                pp_MemberDefinition res = {pp_Type_uint32_t, "size", PP_OFFSETOF(pp_sglp_WAVEHeader, size), 0, 0};
-                return(res);
-            } break; 
-            case 2: {
-                pp_MemberDefinition res = {pp_Type_uint32_t, "wav_id", PP_OFFSETOF(pp_sglp_WAVEHeader, wav_id), 0, 0};
-                return(res);
-            } break; 
-        }
-    }
-    else if(real_type == pp_Type_sglp_WavChunk) {
-        switch(index) {
-            case 0: {
-                pp_MemberDefinition res = {pp_Type_uint32_t, "id", PP_OFFSETOF(pp_sglp_WavChunk, id), 0, 0};
-                return(res);
-            } break; 
-            case 1: {
-                pp_MemberDefinition res = {pp_Type_uint32_t, "size", PP_OFFSETOF(pp_sglp_WavChunk, size), 0, 0};
-                return(res);
-            } break; 
-        }
-    }
-    else if(real_type == pp_Type_sglp_WavFormat) {
-        switch(index) {
-            case 0: {
-                pp_MemberDefinition res = {pp_Type_int16_t, "wFormatTag", PP_OFFSETOF(pp_sglp_WavFormat, wFormatTag), 0, 0};
-                return(res);
-            } break; 
-            case 1: {
-                pp_MemberDefinition res = {pp_Type_int16_t, "nChannels", PP_OFFSETOF(pp_sglp_WavFormat, nChannels), 0, 0};
-                return(res);
-            } break; 
-            case 2: {
-                pp_MemberDefinition res = {pp_Type_uint32_t, "nSamplesPerSec", PP_OFFSETOF(pp_sglp_WavFormat, nSamplesPerSec), 0, 0};
-                return(res);
-            } break; 
-            case 3: {
-                pp_MemberDefinition res = {pp_Type_uint32_t, "nAvgBytesPerSec", PP_OFFSETOF(pp_sglp_WavFormat, nAvgBytesPerSec), 0, 0};
-                return(res);
-            } break; 
-            case 4: {
-                pp_MemberDefinition res = {pp_Type_int16_t, "nBlockAlign", PP_OFFSETOF(pp_sglp_WavFormat, nBlockAlign), 0, 0};
-                return(res);
-            } break; 
-            case 5: {
-                pp_MemberDefinition res = {pp_Type_int16_t, "wBitsPerSample", PP_OFFSETOF(pp_sglp_WavFormat, wBitsPerSample), 0, 0};
-                return(res);
-            } break; 
-            case 6: {
-                pp_MemberDefinition res = {pp_Type_int16_t, "cbSize", PP_OFFSETOF(pp_sglp_WavFormat, cbSize), 0, 0};
-                return(res);
-            } break; 
-            case 7: {
-                pp_MemberDefinition res = {pp_Type_int16_t, "wValidBitsPerSample", PP_OFFSETOF(pp_sglp_WavFormat, wValidBitsPerSample), 0, 0};
-                return(res);
-            } break; 
-            case 8: {
-                pp_MemberDefinition res = {pp_Type_uint32_t, "dwChannelMask", PP_OFFSETOF(pp_sglp_WavFormat, dwChannelMask), 0, 0};
-                return(res);
-            } break; 
-            case 9: {
-                pp_MemberDefinition res = {pp_Type_uint8_t, "SubFormat", PP_OFFSETOF(pp_sglp_WavFormat, SubFormat), 0, 16};
-                return(res);
-            } break; 
-        }
-    }
-    else if(real_type == pp_Type_sglp_RiffIter) {
-        switch(index) {
-            case 0: {
-                pp_MemberDefinition res = {pp_Type_uint8_t, "at", PP_OFFSETOF(pp_sglp_RiffIter, at), 1, 0};
-                return(res);
-            } break; 
-            case 1: {
-                pp_MemberDefinition res = {pp_Type_uint8_t, "stop", PP_OFFSETOF(pp_sglp_RiffIter, stop), 1, 0};
-                return(res);
-            } break; 
-        }
-    }
     else if(real_type == pp_Type_sglm_V2) {
         switch(index) {
             case 0: {
@@ -1268,13 +1094,6 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_sglp_File: { return(2); } break;
         case pp_Type_sglp_Settings: { return(11); } break;
         case pp_Type_sglp_API: { return(13); } break;
-        case pp_Type_sglp_LoadedSound: { return(4); } break;
-        case pp_Type_sglp_SoundOutputBuffer: { return(3); } break;
-        case pp_Type_sglp_AudioState: { return(2); } break;
-        case pp_Type_sglp_WAVEHeader: { return(3); } break;
-        case pp_Type_sglp_WavChunk: { return(2); } break;
-        case pp_Type_sglp_WavFormat: { return(10); } break;
-        case pp_Type_sglp_RiffIter: { return(2); } break;
         case pp_Type_sglm_V2: { return(3); } break;
         case pp_Type_sglm_Mat4x4: { return(1); } break;
         case pp_Type_V2: { return(2); } break;
@@ -1310,7 +1129,7 @@ PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {
             return(pp_StructureType_enum);
         } break;
 
-        case pp_Type___m128: case pp_Type___m128i: case pp_Type_stbsp__context: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_TempMemory: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_File: case pp_Type_sglp_Settings: case pp_Type_sglp_API: case pp_Type_sglp_LoadedSound: case pp_Type_sglp_SoundOutputBuffer: case pp_Type_sglp_AudioState: case pp_Type_sglp_WAVEHeader: case pp_Type_sglp_WavChunk: case pp_Type_sglp_WavFormat: case pp_Type_sglp_RiffIter: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_V2: case pp_Type_Transform: case pp_Type_Bullet: case pp_Type_Player: case pp_Type_Enemy: case pp_Type_Entity: case pp_Type_Game_State: {
+        case pp_Type___m128: case pp_Type___m128i: case pp_Type_stbsp__context: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_TempMemory: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_File: case pp_Type_sglp_Settings: case pp_Type_sglp_API: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_V2: case pp_Type_Transform: case pp_Type_Bullet: case pp_Type_Player: case pp_Type_Enemy: case pp_Type_Entity: case pp_Type_Game_State: {
             return(pp_StructureType_struct);
         } break;
     }
@@ -1445,13 +1264,6 @@ PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_sglp_File: { return("sglp_File"); } break;
         case pp_Type_sglp_Settings: { return("sglp_Settings"); } break;
         case pp_Type_sglp_API: { return("sglp_API"); } break;
-        case pp_Type_sglp_LoadedSound: { return("sglp_LoadedSound"); } break;
-        case pp_Type_sglp_SoundOutputBuffer: { return("sglp_SoundOutputBuffer"); } break;
-        case pp_Type_sglp_AudioState: { return("sglp_AudioState"); } break;
-        case pp_Type_sglp_WAVEHeader: { return("sglp_WAVEHeader"); } break;
-        case pp_Type_sglp_WavChunk: { return("sglp_WavChunk"); } break;
-        case pp_Type_sglp_WavFormat: { return("sglp_WavFormat"); } break;
-        case pp_Type_sglp_RiffIter: { return("sglp_RiffIter"); } break;
         case pp_Type_sglm_V2: { return("sglm_V2"); } break;
         case pp_Type_sglm_Mat4x4: { return("sglm_Mat4x4"); } break;
         case pp_Type___m128: { return("__m128"); } break;
@@ -1592,13 +1404,6 @@ PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
         case pp_Type_sglp_File: { return sizeof(pp_sglp_File); } break;
         case pp_Type_sglp_Settings: { return sizeof(pp_sglp_Settings); } break;
         case pp_Type_sglp_API: { return sizeof(pp_sglp_API); } break;
-        case pp_Type_sglp_LoadedSound: { return sizeof(pp_sglp_LoadedSound); } break;
-        case pp_Type_sglp_SoundOutputBuffer: { return sizeof(pp_sglp_SoundOutputBuffer); } break;
-        case pp_Type_sglp_AudioState: { return sizeof(pp_sglp_AudioState); } break;
-        case pp_Type_sglp_WAVEHeader: { return sizeof(pp_sglp_WAVEHeader); } break;
-        case pp_Type_sglp_WavChunk: { return sizeof(pp_sglp_WavChunk); } break;
-        case pp_Type_sglp_WavFormat: { return sizeof(pp_sglp_WavFormat); } break;
-        case pp_Type_sglp_RiffIter: { return sizeof(pp_sglp_RiffIter); } break;
         case pp_Type_sglm_V2: { return sizeof(pp_sglm_V2); } break;
         case pp_Type_sglm_Mat4x4: { return sizeof(pp_sglm_Mat4x4); } break;
         case pp_Type___m128: { return sizeof(pp___m128); } break;
