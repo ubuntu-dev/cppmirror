@@ -2718,24 +2718,43 @@ static void sglp_win32_get_mouse_position(sglp_API *api, HWND win) {
 typedef void sglp_Win32SetupSettingsCallback(sglp_Settings *);
 typedef void sglp_Win32UpdateAndRenderCallback(sglp_API *);
 
-typedef struct sglp_Win32GameCode {
-    HMODULE game_code_dll;
+#define SGLP_TO_STRING_(x) #x
+#define SGLP_TO_STRING(x) SGLP_TO_STRING_(x)
 
+#define SGLP_CONCAT_(x, y) x##y
+#define SGLP_CONCAT(x, y) SGLP_CONCAT_(x, y)
+
+typedef struct sglp_Win32GameCode {
+    HMODULE dll;
+
+    FILETIME dll_last_write_time;
     sglp_Win32SetupSettingsCallback *setup_settings_callback;
     sglp_Win32UpdateAndRenderCallback *update_and_render_callback;
 } sglp_Win32GameCode;
 
-static sglp_Win32GameCode sglp_win32_load_game_code(void) {
+static FILETIME sglp_win32_get_last_write_time(char const *fname) {
+    FILETIME res = {0};
+    WIN32_FIND_DATA find_data = {0};
+    HANDLE find_handle = FindFirstFileA(fname, &find_data);
+    if(find_handle != INVALID_HANDLE_VALUE) {
+        res = find_data.ftLastWriteTime;
+        FindClose(find_handle);
+    }
+
+    return(res);
+}
+
+static sglp_Win32GameCode sglp_win32_load_game_code(char const *source_fname, char const *temp_fname) {
     sglp_Win32GameCode res = {0};
 
 #if defined(SGLP_LOAD_GAME_FROM_DLL)
-#define SGLP_TO_STRING_(x) #x
-#define SGLP_TO_STRING(x) SGLP_TO_STRING_(x)
-    char const *str = SGLP_TO_STRING(SGLP_LOAD_GAME_FROM_DLL);
-    res.game_code_dll = LoadLibraryA(str);
-    if(res.game_code_dll) {
-        res.setup_settings_callback = (sglp_Win32SetupSettingsCallback *)GetProcAddress(res.game_code_dll, "sglp_platform_setup_settings_callback");
-        res.update_and_render_callback = (sglp_Win32UpdateAndRenderCallback *)GetProcAddress(res.game_code_dll, "sglp_platform_update_and_render_callback");
+    res.dll_last_write_time = sglp_win32_get_last_write_time(source_fname);
+    CopyFile(source_fname, temp_fname, FALSE);
+
+    res.dll = LoadLibraryA(temp_fname);
+    if(res.dll) {
+        res.setup_settings_callback = (sglp_Win32SetupSettingsCallback *)GetProcAddress(res.dll, "sglp_platform_setup_settings_callback");
+        res.update_and_render_callback = (sglp_Win32UpdateAndRenderCallback *)GetProcAddress(res.dll, "sglp_platform_update_and_render_callback");
     }
 #else // defined(SGLP_LOAD_GAME_FROM_DLL)
     res.setup_settings_callback = sglp_platform_setup_settings_callback;
@@ -2753,13 +2772,28 @@ static void sglp_win32_update_and_render_callback(sglp_Win32GameCode *gamecode, 
     if(gamecode->update_and_render_callback) gamecode->update_and_render_callback(api);
 }
 
+static void sglp_win32_unload_game(sglp_Win32GameCode *game) {
+    if(game->dll) {
+        FreeLibrary(game->dll);
+
+        game->dll = 0;
+        game->setup_settings_callback = 0;
+        game->update_and_render_callback = 0;
+    }
+}
+
 int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int show_code) {
     int i;
     sglp_API api = {0};
 
     sglp_setup_callbacks(&api);
 
-    sglp_Win32GameCode game_code = sglp_win32_load_game_code();
+    // TODO - I need to get the directory of the .exe file and concatonate it onto the start of these. Then
+    //        I _should_ be able to recompile while running.
+    char const *source_dll_name = SGLP_TO_STRING(SGLP_LOAD_GAME_FROM_DLL);
+    char const *temp_dll_name = SGLP_TO_STRING(SGLP_CONCAT(temp_, SGLP_LOAD_GAME_FROM_DLL));
+
+    sglp_Win32GameCode game_code = sglp_win32_load_game_code(source_dll_name, temp_dll_name);
 
     api.add_work_queue_entry = sglp_win32_add_work_queue_entry;
     api.complete_all_work = sglp_win32_complete_all_work;
@@ -2916,6 +2950,13 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 
                         api.init_game = SGLP_TRUE;
                         while(!api.quit) {
+                            // For loading/unloading the game code.
+                            FILETIME new_write_time = sglp_win32_get_last_write_time(source_dll_name);
+                            if(CompareFileTime(&new_write_time, &game_code.dll_last_write_time) != 0) {
+                                sglp_win32_unload_game(&game_code);
+                                game_code = sglp_win32_load_game_code(source_dll_name, temp_dll_name);
+                            }
+
                             sglp_win32_process_pending_messages(win, api.key, &api.quit);
 
                             //
