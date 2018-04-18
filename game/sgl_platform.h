@@ -2782,21 +2782,49 @@ static void sglp_win32_unload_game(sglp_Win32GameCode *game) {
     }
 }
 
+static void sglp_win32_concat_strings(uintptr_t source_a_cnt, char const *source_a, uintptr_t source_b_cnt, char const *source_b, char *dest) {
+    for(uintptr_t i = 0; (i < source_a_cnt); ++i) {
+        *dest++ = *source_a++;
+    }
+
+    for(uintptr_t i = 0; (i < source_b_cnt); ++i) {
+        *dest++ = *source_b++;
+    }
+
+    *dest++ = '\0';
+};
+
 int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int show_code) {
     int i;
     sglp_API api = {0};
 
     sglp_setup_callbacks(&api);
 
-    char const *source_dll_name = 0, *temp_dll_name = 0;
+    char source_dll_full[MAX_PATH] = {0};
+    char temp_dll_full[MAX_PATH] = {0};
 
 #if defined(SGLP_LOAD_GAME_FROM_DLL)
-    // TODO - I should use GetModuleFileName and have this be a relative path from the platform EXE. This works for now though.
-    source_dll_name = SGLP_CONCAT(SGLP_TO_STRING(SGLP_LOAD_GAME_FROM_DLL), SGLP_TO_STRING(.dll));
-    temp_dll_name = SGLP_CONCAT(SGLP_TO_STRING(SGLP_CONCAT(SGLP_LOAD_GAME_FROM_DLL, _temp)), SGLP_TO_STRING(.dll));
+    {
+        char exe_fname[MAX_PATH] = {0};
+        DWORD exe_fname_length = GetModuleFileName(instance, exe_fname, MAX_PATH);
+        SGLP_ASSERT(exe_fname_length < MAX_PATH);
+
+        char const *one_past_the_last_slash = exe_fname;
+        for(char *it = exe_fname; (*it != '\0'); ++it) {
+            if(*it == '\\') {
+                one_past_the_last_slash = it + 1;
+            }
+        }
+
+        char source_dll_name[] = SGLP_CONCAT(SGLP_TO_STRING(SGLP_LOAD_GAME_FROM_DLL), SGLP_TO_STRING(.dll));
+        char temp_dll_name[] = SGLP_CONCAT(SGLP_TO_STRING(SGLP_CONCAT(SGLP_LOAD_GAME_FROM_DLL, _temp)), SGLP_TO_STRING(.dll));
+
+        sglp_win32_concat_strings(one_past_the_last_slash - exe_fname, exe_fname, sizeof(source_dll_name), source_dll_name, source_dll_full);
+        sglp_win32_concat_strings(one_past_the_last_slash - exe_fname, exe_fname, sizeof(temp_dll_name), temp_dll_name, temp_dll_full);
+    }
 #endif
 
-    sglp_Win32GameCode game_code = sglp_win32_load_game_code(source_dll_name, temp_dll_name);
+    sglp_Win32GameCode game_code = sglp_win32_load_game_code(source_dll_full, temp_dll_full);
 
     api.add_work_queue_entry = sglp_win32_add_work_queue_entry;
     api.complete_all_work = sglp_win32_complete_all_work;
@@ -2954,10 +2982,10 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                         api.init_game = SGLP_TRUE;
                         while(!api.quit) {
                             // For loading/unloading the game code.
-                            FILETIME new_write_time = sglp_win32_get_last_write_time(source_dll_name);
+                            FILETIME new_write_time = sglp_win32_get_last_write_time(source_dll_full);
                             if(CompareFileTime(&new_write_time, &game_code.dll_last_write_time) != 0) {
                                 sglp_win32_unload_game(&game_code);
-                                game_code = sglp_win32_load_game_code(source_dll_name, temp_dll_name);
+                                game_code = sglp_win32_load_game_code(source_dll_full, temp_dll_full);
                             }
 
                             sglp_win32_process_pending_messages(win, api.key, &api.quit);
