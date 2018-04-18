@@ -322,20 +322,7 @@ Void draw_debug_information(sglp_API *api, Game_State *gs) {
 
 void render(sglp_API *api, Game_State *gs) {
     api->clear_screen_for_frame();
-#if 0
-    // Player's Bullet
-    Player *player = find_first_entity(gs->entity, pp_Type_Player);
-    if(player->is_shooting) {
-        Bullet *b = &player->bullet;
-        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(b->trans.pos.x, b->trans.pos.y,
-                                                          b->trans.scale.x, b->trans.scale.y,
-                                                          b->trans.rot);
-        Float tform[16] = {0};
-        sglm_mat4x4_as_float_arr(tform, &mat);
 
-        api->draw_sprite(gs->sprite[Sprite_ID_bullet], 0, tform);
-    }
-#endif
     // Render all entities.
     Entity *next = gs->entity;
     while(next) {
