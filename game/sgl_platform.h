@@ -2788,10 +2788,13 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 
     sglp_setup_callbacks(&api);
 
-    // TODO - I need to get the directory of the .exe file and concatonate it onto the start of these. Then
-    //        I _should_ be able to recompile while running.
-    char const *source_dll_name = SGLP_TO_STRING(SGLP_LOAD_GAME_FROM_DLL);
-    char const *temp_dll_name = SGLP_TO_STRING(SGLP_CONCAT(temp_, SGLP_LOAD_GAME_FROM_DLL));
+    char const *source_dll_name = 0, *temp_dll_name = 0;
+
+#if defined(SGLP_LOAD_GAME_FROM_DLL)
+    // TODO - I should use GetModuleFileName and have this be a relative path from the platform EXE. This works for now though.
+    source_dll_name = SGLP_CONCAT(SGLP_TO_STRING(SGLP_LOAD_GAME_FROM_DLL), SGLP_TO_STRING(.dll));
+    temp_dll_name = SGLP_CONCAT(SGLP_TO_STRING(SGLP_CONCAT(SGLP_LOAD_GAME_FROM_DLL, _temp)), SGLP_TO_STRING(.dll));
+#endif
 
     sglp_Win32GameCode game_code = sglp_win32_load_game_code(source_dll_name, temp_dll_name);
 
