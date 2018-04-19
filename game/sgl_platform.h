@@ -2797,34 +2797,35 @@ static void sglp_win32_concat_strings(uintptr_t source_a_cnt, char const *source
 int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int show_code) {
     int i;
     sglp_API api = {0};
+    char source_dll_full[MAX_PATH] = {0};
+    char temp_dll_full[MAX_PATH] = {0};
+    sglp_Win32GameCode game_code;
 
     sglp_setup_callbacks(&api);
 
-    char source_dll_full[MAX_PATH] = {0};
-    char temp_dll_full[MAX_PATH] = {0};
-
 #if defined(SGLP_LOAD_GAME_FROM_DLL)
     {
+        char source_dll_name[] = SGLP_CONCAT(SGLP_TO_STRING(SGLP_LOAD_GAME_FROM_DLL), SGLP_TO_STRING(.dll));
+        char temp_dll_name[] = SGLP_CONCAT(SGLP_TO_STRING(SGLP_CONCAT(SGLP_LOAD_GAME_FROM_DLL, _temp)), SGLP_TO_STRING(.dll));
         char exe_fname[MAX_PATH] = {0};
         DWORD exe_fname_length = GetModuleFileName(instance, exe_fname, MAX_PATH);
+        char const *one_past_the_last_slash = exe_fname;
+        char *it;
         SGLP_ASSERT(exe_fname_length < MAX_PATH);
 
-        char const *one_past_the_last_slash = exe_fname;
-        for(char *it = exe_fname; (*it != '\0'); ++it) {
+        for(it = exe_fname; (*it != '\0'); ++it) {
             if(*it == '\\') {
                 one_past_the_last_slash = it + 1;
             }
         }
-
-        char source_dll_name[] = SGLP_CONCAT(SGLP_TO_STRING(SGLP_LOAD_GAME_FROM_DLL), SGLP_TO_STRING(.dll));
-        char temp_dll_name[] = SGLP_CONCAT(SGLP_TO_STRING(SGLP_CONCAT(SGLP_LOAD_GAME_FROM_DLL, _temp)), SGLP_TO_STRING(.dll));
 
         sglp_win32_concat_strings(one_past_the_last_slash - exe_fname, exe_fname, sizeof(source_dll_name), source_dll_name, source_dll_full);
         sglp_win32_concat_strings(one_past_the_last_slash - exe_fname, exe_fname, sizeof(temp_dll_name), temp_dll_name, temp_dll_full);
     }
 #endif
 
-    sglp_Win32GameCode game_code = sglp_win32_load_game_code(source_dll_full, temp_dll_full);
+
+    game_code = sglp_win32_load_game_code(source_dll_full, temp_dll_full);
 
     api.add_work_queue_entry = sglp_win32_add_work_queue_entry;
     api.complete_all_work = sglp_win32_complete_all_work;
@@ -2963,9 +2964,18 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 
                 if(sglp_win32_init_opengl(win)) {
                     // TODO - Collapse these down into one allocation?
-                    api.game_state_memory = sglp_malloc(api.settings.game_state_memory_size);
-                    api.permanent_memory = sglp_malloc(api.settings.permanent_memory_size);
-                    api.temp_memory = sglp_malloc(api.settings.temp_memory_size);
+                    LPVOID base_address = 0;
+#if SGLP_INTERNAL
+                    LPVOID base_address = (LPVOID)Terabytes(2);
+#endif
+
+                    uintptr_t total_size = api.settings.game_state_memory_size + api.settings.permanent_memory_size + api.settings.temp_memory_size;
+                    void *game_memory_block = VirtualAlloc(base_address, total_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+                    void *saved_game_memory_block = VirtualAlloc(0, total_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+
+                    api.game_state_memory = game_memory_block;
+                    api.permanent_memory = (uint8_t *)game_memory_block + api.settings.game_state_memory_size;
+                    api.temp_memory = (uint8_t *)game_memory_block + api.settings.game_state_memory_size + api.settings.permanent_memory_size;
 
                     if(!api.game_state_memory || !api.permanent_memory || !api.temp_memory) {
                         SGLP_ASSERT(0);
@@ -3045,6 +3055,15 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                             }
 
                             api.dt = ms_per_frame;
+
+                            if(api.key[sglp_key_b]) {
+                                sglp_memcpy(saved_game_memory_block, game_memory_block, total_size);
+                            }
+
+                            if(api.key[sglp_key_v]) {
+                                sglp_memcpy(game_memory_block, saved_game_memory_block, total_size);
+                            }
+
                             sglp_win32_update_and_render_callback(&game_code, &api);
 
                             // Reset temp memory
