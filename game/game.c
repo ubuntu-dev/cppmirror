@@ -207,8 +207,8 @@ void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
 
     settings->frame_rate = 60;
     settings->game_state_memory_size = sizeof(Game_State);
-    settings->permanent_memory_size = SGL_MEGABYTES(1024);
-    settings->temp_memory_size = SGL_GIGABYTES(1);
+    settings->permanent_memory_size = SGL_MEGABYTES(1);
+    settings->temp_memory_size = SGL_MEGABYTES(1);
     settings->max_no_of_sounds = 10;
     settings->window_title = "Game stuff";
     settings->thread_cnt = 8;
