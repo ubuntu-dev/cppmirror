@@ -492,7 +492,7 @@ typedef struct sglp_API {
 
     // Threading.
     void (*add_work_queue_entry)(void *e, void (*callback)(void *data)); // void add_work_queue_entry(void *e, void (*callback)(void *data)));
-    void (*complete_all_work)();                                         // void complete_all_work();
+    void (*complete_all_work)(void);                                     // void complete_all_work();
 } sglp_API;
 
 //
@@ -697,12 +697,12 @@ static void sglp_generate_2d_mesh(sglp_Sprite *sprite, float no_frames_x, float 
 
     float tex_height = 1.0f / no_frames_y;
     float tex_width = 1.0f / no_frames_x;
-    sglp_GLfloat tex_coords[SGLP_TEX_COL][SGLP_TEX_ROW] = {
-        {0.0f,      0.0f,       0.0f},
-        {0.0f,      tex_height, 0.0f},
-        {tex_width, 0.0f,       0.0f},
-        {tex_width, tex_height, 0.0f}
-    };
+    sglp_GLfloat tex_coords[SGLP_TEX_COL][SGLP_TEX_ROW] = {0};
+
+    tex_coords[0][0] = 0.0f     ; tex_coords[0][1] = 0.0f;       tex_coords[0][2] = 0.0f;
+    tex_coords[1][0] = 0.0f     ; tex_coords[1][1] = tex_height; tex_coords[1][2] = 0.0f;
+    tex_coords[2][0] = tex_width; tex_coords[2][1] = 0.0f;       tex_coords[2][2] = 0.0f;
+    tex_coords[3][0] = tex_width; tex_coords[3][1] = tex_height; tex_coords[3][2] = 0.0f;
 
     sglp_global_opengl->glGenVertexArrays(1, &sprite->mesh);
     sglp_global_opengl->glBindVertexArray(sprite->mesh);
@@ -861,11 +861,14 @@ void sglp_clear_screen_for_frame(void) {
 void sglp_draw_sprite(sglp_Sprite sprite, int32_t cur_frame, float const *tform) {
     // Convert the x and y into opengl x and y.
 
-    float my_tform[16] = { tform[0], tform[1], tform[2], tform[3],
-                           tform[4], tform[5], tform[6], tform[7],
-                           tform[8], tform[9], tform[10], tform[11],
-                           sglp_screen_to_gl_x(tform[12]), -sglp_screen_to_gl_y(tform[13]), tform[14], tform[15]
-                         };
+    float my_tform[16];
+    my_tform[0] = tform[0]; my_tform[1] = tform[1]; my_tform[ 2] = tform[ 2]; my_tform[ 3] = tform[ 3];
+    my_tform[4] = tform[4]; my_tform[5] = tform[5]; my_tform[ 6] = tform[ 6]; my_tform[ 7] = tform[ 7];
+    my_tform[8] = tform[8]; my_tform[9] = tform[9]; my_tform[10] = tform[10]; my_tform[11] = tform[11];
+    my_tform[12] = sglp_screen_to_gl_x(tform[12]);
+    my_tform[13] = -sglp_screen_to_gl_y(tform[13]);
+    my_tform[14] = tform[14];
+    my_tform[15] = tform[15];
 
     int x_increment = cur_frame;
     int y_increment = 0;
@@ -888,11 +891,14 @@ void sglp_draw_sprite(sglp_Sprite sprite, int32_t cur_frame, float const *tform)
 }
 
 void sglp_draw_sprite_frame_matrix(sglp_Sprite sprite, int32_t cur_frame_x, int32_t cur_frame_y, float const *tform) {
-    float my_tform[16] = { tform[0], tform[1], tform[2], tform[3],
-                           tform[4], tform[5], tform[6], tform[7],
-                           tform[8], tform[9], tform[10], tform[11],
-                           sglp_screen_to_gl_x(tform[12]), -sglp_screen_to_gl_y(tform[13]), tform[14], tform[15]
-                         };
+    float my_tform[16];
+    my_tform[0] = tform[0]; my_tform[1] = tform[1]; my_tform[ 2] = tform[ 2]; my_tform[ 3] = tform[ 3];
+    my_tform[4] = tform[4]; my_tform[5] = tform[5]; my_tform[ 6] = tform[ 6]; my_tform[ 7] = tform[ 7];
+    my_tform[8] = tform[8]; my_tform[9] = tform[9]; my_tform[10] = tform[10]; my_tform[11] = tform[11];
+    my_tform[12] = sglp_screen_to_gl_x(tform[12]);
+    my_tform[13] = -sglp_screen_to_gl_y(tform[13]);
+    my_tform[14] = tform[14];
+    my_tform[15] = tform[15];
 
     sglp_global_opengl->glBindVertexArray(sprite.mesh);
     sglp_global_opengl->glBindTexture(SGLP_GL_TEXTURE_2D, sprite.id);
@@ -907,11 +913,14 @@ void sglp_draw_sprite_frame_matrix(sglp_Sprite sprite, int32_t cur_frame_x, int3
 }
 
 void sglp_draw_black_box(float const *tform) {
-    float my_tform[16] = { tform[0], tform[1], tform[2], tform[3],
-                           tform[4], tform[5], tform[6], tform[7],
-                           tform[8], tform[9], tform[10], tform[11],
-                           sglp_screen_to_gl_x(tform[12]), -sglp_screen_to_gl_y(tform[13]), tform[14], tform[15]
-                         };
+    float my_tform[16];
+    my_tform[0] = tform[0]; my_tform[1] = tform[1]; my_tform[ 2] = tform[ 2]; my_tform[ 3] = tform[ 3];
+    my_tform[4] = tform[4]; my_tform[5] = tform[5]; my_tform[ 6] = tform[ 6]; my_tform[ 7] = tform[ 7];
+    my_tform[8] = tform[8]; my_tform[9] = tform[9]; my_tform[10] = tform[10]; my_tform[11] = tform[11];
+    my_tform[12] = sglp_screen_to_gl_x(tform[12]);
+    my_tform[13] = -sglp_screen_to_gl_y(tform[13]);
+    my_tform[14] = tform[14];
+    my_tform[15] = tform[15];
 
     sglp_global_opengl->glBindVertexArray(sglp_global_black_sprite.mesh);
     sglp_global_opengl->glBindTexture(SGLP_GL_TEXTURE_2D, sglp_global_black_sprite.id);
@@ -2792,7 +2801,7 @@ static void sglp_win32_concat_strings(uintptr_t source_a_cnt, char const *source
     }
 
     *dest++ = '\0';
-};
+}
 
 int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int show_code) {
     int i;
@@ -3056,10 +3065,10 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 
                             api.dt = ms_per_frame;
 
+                            // TODO - These could be a bit smarter. Could also save multiple states, and save them to disk?
                             if(api.key[sglp_key_b]) {
                                 sglp_memcpy(saved_game_memory_block, game_memory_block, total_size);
                             }
-
                             if(api.key[sglp_key_v]) {
                                 sglp_memcpy(game_memory_block, saved_game_memory_block, total_size);
                             }
