@@ -51,6 +51,18 @@ Bool is_primitive(String str) {
     return(res);
 }
 
+// TODO - Hacky as fuck.
+Bool is_pp_type(String str) {
+    Bool res = false;
+    if(str.len > 3) {
+        if(str.e[0] == 'p' && str.e[1] == 'p' && str.e[2] == '_') {
+            res = true;
+        }
+    }
+
+    return(res);
+}
+
 Struct_Data *find_struct(String str, Structs structs) {
     Struct_Data *res = 0;
 
@@ -127,9 +139,23 @@ Int get_actual_type_count(String *types, Structs structs, Enums enums, Typedefs 
     return(res);
 }
 
+String get_original_type_for_typedef(Typedef_Data td, Typedefs typedefs) {
+    String result = td.original;
+
+    for(Int i = 0; (i < typedefs.cnt); ++i) {
+        if(string_comp(typedefs.e[i].fresh, result)) {
+            result = typedefs.e[i].original;
+            i = 0;
+        }
+    }
+
+    return(result);
+}
+
 Bool is_typedef_for_void(String str, Typedefs typedefs) {
     for(Int i = 0; (i < typedefs.cnt); ++i) {
-        if(string_comp(typedefs.e[i].fresh, str) && string_cstring_comp(typedefs.e[i].original, "void")) {
+        String original = get_original_type_for_typedef(typedefs.e[i], typedefs);
+        if(string_comp(typedefs.e[i].fresh, str) && string_cstring_comp(original, "void")) {
             return(true);
         }
     }
@@ -155,12 +181,15 @@ Void write_get_size_from_type(OutputBuffer *ob, String *types, Int type_count, T
              "PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {\n"
              "    switch(pp_typedef_to_original(type)) {\n");
     for(Int i = 0; (i < type_count); ++i) {
+        // TODO - is_typedef_for_void isn't working.
         if(!string_cstring_comp(types[i], "void") && !is_typedef_for_void(types[i], typedefs)) {
             String cpy = (is_unsized_enum(types[i], enums)) ? create_string("int") : types[i];
 
-            write_ob(ob,
-                     "        case pp_Type_%.*s: { return sizeof(pp_%.*s); } break;\n",
-                     types[i].len, types[i].e, cpy.len, cpy.e);
+            if(!is_pp_type(types[i])) {
+                write_ob(ob,
+                         "        case pp_Type_%.*s: { return sizeof(pp_%.*s); } break;\n",
+                         types[i].len, types[i].e, cpy.len, cpy.e);
+            }
         }
     }
 
@@ -178,16 +207,16 @@ void write_enum_size_data(OutputBuffer *ob, Enums enums) {
              "//\n"
              "// Number of members in an enum.\n"
              "//\n");
-#if 0
+#if 1
     // Constant version.
     {
-        write_ob(ob, "#define pp_get_enum_size(type) pp_get_enum_size_##type\n");
+        write_ob(ob, "#define pp_get_enum_size_const(type) pp_get_enum_size_##type\n");
 
-        for(Int i = 0; (i < pr.enums.cnt); ++i) {
-            Enum_Data *ed = pr.enums.e + i;
+        for(Int i = 0; (i < enums.cnt); ++i) {
+            Enum_Data *ed = enums.e + i;
 
             write_ob(ob,
-                     "#define pp_get_enum_size_%.*s %d",
+                     "#define pp_get_enum_size_%.*s %d\n",
                      ed->name.len, ed->name.e,
                      ed->no_of_values);
         }
@@ -228,19 +257,6 @@ void write_enum_size_data(OutputBuffer *ob, Enums enums) {
     }
 }
 
-String get_original_type_for_typedef(Typedef_Data td, Typedefs typedefs) {
-    String result = td.original;
-
-    for(Int i = 0; (i < typedefs.cnt); ++i) {
-        if(string_comp(typedefs.e[i].fresh, result)) {
-            result = typedefs.e[i].original;
-            i = 0;
-        }
-    }
-
-    return(result);
-}
-
 File write_data(Parse_Result pr) {
     File res = {0};
     OutputBuffer ob = {0};
@@ -250,6 +266,10 @@ File write_data(Parse_Result pr) {
     if(ob.buffer) {
         write_ob(&ob,
                  "#if !defined(PP_GENERATED_H)\n"
+                 "\n"
+                 "#if defined(__cplusplus)\n"
+                 "extern \"C\" {\n"
+                 "#endif\n"
                  "\n"
                  "#define PP_IGNORE\n"
                  "\n"
@@ -386,17 +406,24 @@ File write_data(Parse_Result pr) {
                      "#if !defined(PP_NO_FORWARD_DECLARE)\n");
 
             // Forward declare enums
+            write_ob(&ob,
+                     "\n"
+                     "/* Forward declared enums. */\n");
             for(Int i = 0; (i < pr.enums.cnt); ++i) {
                 Enum_Data *ed = pr.enums.e + i;
 
                 if(ed->type.len) {
                     write_ob(&ob, "enum %.*s : %.*s;\n", ed->name.len, ed->name.e, ed->type.len, ed->type.e);
-                } else {
+                }
+                else {
                     write_ob(&ob, "typedef enum %.*s %.*s;\n", ed->name.len, ed->name.e, ed->name.len, ed->name.e);
                 }
             }
 
             // Forward declare structs.
+            write_ob(&ob,
+                     "\n"
+                     "/* Forward declared structs. */\n");
             for(Int i = 0; (i < pr.structs.cnt); ++i) {
                 Struct_Data *sd = pr.structs.e + i;
 
@@ -420,6 +447,9 @@ File write_data(Parse_Result pr) {
             }
 
             // Forward declared functions.
+            write_ob(&ob,
+                     "\n"
+                     "/* Forward declared functions. */\n");
             for(Int i = 0; (i < pr.funcs.cnt); ++i) {
                 Function_Data *fd = pr.funcs.e + i;
 
@@ -555,7 +585,8 @@ File write_data(Parse_Result pr) {
                              "enum pp_%.*s : %.*s;\n",
                              ed->name.len, ed->name.e,
                              ed->type.len, ed->type.e);
-                } else {
+                }
+                else {
                     write_ob(&ob,
                              "typedef int pp_%.*s;\n",
                              ed->name.len, ed->name.e);
@@ -598,16 +629,30 @@ File write_data(Parse_Result pr) {
 
                     write_ob(&ob, " {\n    ");
 
-                    Bool is_inside_anonymous_struct = false;
+                    /* This won't work for
+                        struct Foo {
+                            struct { union {}; }
+                        }
+
+                        but should work for just one level.
+                    */
+                    AnonymousStruct anonymous_struct = AnonymousStruct_none;
                     for(Int j = 0; (j < sd->member_count); ++j) {
                         Variable *md = sd->members + j;
 
-                        if(md->is_inside_anonymous_struct != is_inside_anonymous_struct) {
-                            is_inside_anonymous_struct = !is_inside_anonymous_struct;
+                        if(md->anonymous_struct != anonymous_struct) {
+                            if(anonymous_struct) {
+                                anonymous_struct = AnonymousStruct_none;
+                            }
+                            else {
+                                anonymous_struct = md->anonymous_struct;
+                            }
 
-                            if(is_inside_anonymous_struct) {
-                                write_ob(&ob, " struct {");
-                            } else {
+                            if(anonymous_struct) {
+                                Char *s = anonymous_struct_to_type(anonymous_struct);
+                                write_ob(&ob, " %s {", s);
+                            }
+                            else {
                                 write_ob(&ob, "};");
                             }
                         }
@@ -652,8 +697,8 @@ File write_data(Parse_Result pr) {
                             }
                         }
 
-                        // If the type is not a primitive, prepend "pp_" onto the front of it.
-                        if(!is_primitive(md->type)) {
+                        // If the type is not a primitive or pp_type, prepend "pp_" onto the front of it.
+                        if(!is_primitive(md->type) && !is_pp_type(md->type)) {
                             write_ob(&ob, "pp_");
                         }
 
@@ -667,7 +712,7 @@ File write_data(Parse_Result pr) {
 
                     }
 
-                    if(is_inside_anonymous_struct) {
+                    if(anonymous_struct) {
                         write_ob(&ob, " };");
                     }
 
@@ -828,6 +873,7 @@ File write_data(Parse_Result pr) {
                     for(Int i = 0; (i < array_count(global_primitive_types)); ++i) {
                         write_ob(&ob, "case pp_Type_%s: ", global_primitive_types[i]);
                     }
+                    write_ob(&ob, "case pp_Type_void: ");
                     write_ob(&ob,
                              "{\n"
                              "            return(pp_StructureType_primitive);\n"
@@ -900,7 +946,8 @@ File write_data(Parse_Result pr) {
                                                    "PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t index);"
                                                    "\n"
                                                    "// uintptr_t pp_serialize_struct(TYPE *var, TYPE, buffer, buffer_size);\n"
-                                                   "#define pp_serialize_struct(var, Type, buf, size) pp_serialize_struct_(var, PP_CONCAT(pp_Type_, Type), PP_TO_STRING(var), 0, buf, size, 0)\n"
+                                                   "#define pp_serialize_struct(var, Type, buf, size) pp_serialize_struct_type(var, PP_CONCAT(pp_Type_, Type), buf, size)\n"
+                                                   "#define pp_serialize_struct_type(var, Type, buf, size) pp_serialize_struct_(var, Type, PP_TO_STRING(var), 0, buf, size, 0)\n"
                                                    "PP_STATIC uintptr_t\n"
                                                    "pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent, char *buffer, uintptr_t buf_size, uintptr_t bytes_written) {\n"
                                                    "    char indent_buf[256] = {0};\n"
@@ -1189,6 +1236,10 @@ File write_data(Parse_Result pr) {
         // # Guard macro.
         //
         write_ob(&ob,
+                 "\n"
+                 "#if defined(__cplusplus)\n"
+                 "} // extern \"C\"\n"
+                 "#endif\n"
                  "\n"
                  "#define PP_GENERATED_H\n"
                  "#endif // #if defined(PP_GENERATED_H)\n"

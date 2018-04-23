@@ -1,34 +1,40 @@
-#define INTERNAL 1
+#define STB_SPRINTF_IMPLEMENTATION
+#include "stb_sprintf.h"
 
+#define PP_ASSERT(x) // TODO - Implement.
+#define PP_SPRINTF stbsp_snprintf
 #include "pp_generated.h"
 
-#define SGLP_IMPLEMENTATION
-//#include <SDL2/SDL.h>
+// #define SGLP_IMPLEMENTATION
 #include "sgl_platform.h"
 
 #define SGLM_IMPLEMENTATION
 #include "sgl_math.h"
 
 #define SGL_IMPLEMENTATION
+#define SGL_NO_CRT_DLL
 #include "sgl.h"
 
-#include <math.h>
+static sglp_API *global_api;
 
-#define PP_IGNORE
-PP_IGNORE
+#define STBI_NO_STDIO
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
+#define STBI_ASSERT SGL_ASSERT
+#define STBI_MALLOC global_api->os_malloc
+#define STBI_REALLOC global_api->os_realloc
+#define STBI_FREE global_api->os_free
+PP_IGNORE
 #include "stb_image.h"
 
-PP_IGNORE
-#define STB_TRUETYPE_IMPLEMENTATION
-#include "stb_ttf.h"
+#define assert(x) SGL_ASSERT(x)
 
 struct V2 {
     float x, y;
 };
 V2 v2(Float x, Float y) {
     V2 res = { .x = x, .y = y };
+
     return(res);
 }
 
@@ -38,61 +44,179 @@ struct Transform {
     Float rot;
 };
 
+enum Direction {
+    Direction_unknown,
+    Direction_left,
+    Direction_right,
+    Direction_up,
+    Direction_down,
+};
+
+struct Bullet {
+    Transform trans;
+    Direction dir;
+    Void *parent;
+};
+Bullet bullet(void) {
+    Bullet res = {0};
+    res.trans.scale.x = 0.025f;
+    res.trans.scale.y = 0.025f;
+
+    return(res);
+}
+
+// The player direction is a little complicated because it's used for the animation.
 enum Player_Direction {
     Player_Direction_left = 0,
     Player_Direction_right = 2,
     Player_Direction_up = 4,
     Player_Direction_down = 6,
 };
-
 struct Player {
     Transform trans;
     V2 start_pos;
     Player_Direction dir;
     Float current_frame;
     V2 current_speed;
+
+    Bool can_shoot;
+    Int shot_timer;
 };
+
+Direction player_direction_to_direction(Player_Direction pd) {
+    Direction d = 0;
+    if(0) {}
+    else if(pd == Player_Direction_left)  d = Direction_left;
+    else if(pd == Player_Direction_right) d = Direction_right;
+    else if(pd == Player_Direction_up)    d = Direction_up;
+    else if(pd == Player_Direction_down)  d = Direction_down;
+
+    return(d);
+}
 
 struct Enemy {
     Transform trans;
-    Bool valid;
 };
 
-#define NUMBER_OF_ENEMIES 4
+struct Entity {
+    // These have to be first in the struct, so I can cast between them.
+    union {
+        Player player;
+        Enemy enemy;
+        Bullet bullet;
+    };
+
+    pp_Type type;
+    Entity *next;
+};
+
+
+Entity *get_end_entity(Entity *root) {
+    Entity *next = root;
+    if(!root) {
+        next = root;
+    }
+    else {
+        while(next->next) {
+            next = next->next;
+        }
+    }
+
+    return next;
+}
+
+Entity *push_entity(sglp_API *api, Entity *root, Void *var, pp_Type type) {
+    Entity *next = api->sglp_push_permanent_struct(api, Entity);
+    uintptr_t size = pp_get_size_from_type(type);
+
+    Entity *end = get_end_entity(root);
+    if(!end) {
+        root = next;
+    }
+    else {
+        end->next = next;
+    }
+
+    sgl_memcpy(next, var, size);
+    next->type = type;
+
+    return root;
+}
+
+Void *find_first_entity(Entity *root, pp_Type type) {
+    Entity *next = root;
+
+    while(next) {
+        if(next->type == type) {
+            Uintptr number_of_members = pp_get_number_of_members(pp_Type_Entity);
+            for(Uintptr j = 0; (j < number_of_members); ++j) {
+                pp_MemberDefinition mem = pp_get_members_from_type(pp_Type_Entity, j);
+                if(mem.type == type) {
+                    Void *res = (Byte *)next + mem.offset;
+                    return res;
+                }
+            }
+        }
+
+        next = next->next;
+    }
+
+    return 0;
+}
+
+// This can take the root to find the first entity.
+Void *find_next_entity(Void *root, pp_Type type) {
+    if(root) {
+        Entity *next = root;
+        return find_first_entity(next->next, type);
+    }
+
+    return 0;
+}
+
+
+enum Sprite_ID {
+    Sprite_ID_unknown,
+
+    Sprite_ID_player,
+    Sprite_ID_enemy_one,
+    Sprite_ID_bitmap_font,
+    Sprite_ID_bullet,
+};
+
 struct Game_State {
-    sglp_Sprite player_sprite;
-    sglp_Sprite enemy_one_sprite;
-    sglp_Sprite bitmap_sprite;
+    sglp_Sprite sprite[pp_get_enum_size_const(Sprite_ID)];
 
-    Player player;
-    Enemy enemy[NUMBER_OF_ENEMIES];
+    Entity *entity;
+
+    Bool show_text_box;
+    Char *text_box_input;
+    Bool hide_player;
 };
 
-enum ID {
+enum Sound_ID {
     ID_unknown,
 
     ID_sound_bloop,
     ID_sound_background,
-
-    ID_sprite_player,
-    ID_sprite_enemy_one,
-    ID_sprite_bitmap_font,
 };
 
 void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
     settings->fullscreen = false;
 
+    settings->allow_sound = false;
+
     //settings->win_width  = 640;
     //settings->win_height = 480;
 
-    settings->frame_rate = 30;
-    settings->permanent_memory_size = sizeof(Game_State);
+    settings->frame_rate = 60;
+    settings->game_state_memory_size = sizeof(Game_State);
+    settings->permanent_memory_size = SGL_MEGABYTES(1);
+    settings->temp_memory_size = SGL_MEGABYTES(1);
     settings->max_no_of_sounds = 10;
-    settings->window_title = "Hello, Lauren!";
-    //settings->thread_cnt;
+    settings->window_title = "Game stuff";
+    settings->thread_cnt = 8;
 }
-
-V2 get_letter_position(char Letter);
 
 Float accelerate(Float cur, Float max, Float acc, Bool forward) {
     Float go_forward = (forward) ? 1.0f : -1.0f;
@@ -101,30 +225,32 @@ Float accelerate(Float cur, Float max, Float acc, Bool forward) {
         res = max;
     }
 
-
     return(res);
 }
 
-void draw_word(char const *str, sglp_API *api, Game_State *gs, Float x, Float y, Float scalex, Float scaley) {
-    scalex *= 0.5f;
-    int string_length = sgl_string_len(str);
-    Float running_x = x, running_y = y;
-    for(int i = 0; (i < string_length - 1); ++i) {
-        char letter = str[i];
+V2 get_letter_position(char Letter);
+void draw_word(char const *str, sglp_API *api, Game_State *gs, V2 pos, V2 scale) {
+    scale.x *= 0.5f;
+    Int string_length = sgl_string_len(str);
+    Float running_x = pos.x;
+    Float running_y = pos.y;
+    for(Int i = 0; (i < string_length - 1); ++i) {
+        Char letter = str[i];
 
         if(letter == '\n') {
-            running_y += scaley;
-            running_x = x;
-        } else {
+            running_y += scale.y;
+            running_x = pos.x;
+        }
+        else {
             V2 pos_in_table = get_letter_position(letter);
             if(pos_in_table.x != -1 && pos_in_table.y != -1) {
-                sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale(running_x, running_y, scalex, scaley);
+                sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale(running_x, running_y, scale.x, scale.y);
                 float tform[16] = {0};
-                
-                sglm_mat4x4_as_float_arr(tform, &mat);
-                sglp_draw_sprite_frame_matrix(gs->bitmap_sprite, pos_in_table.x, pos_in_table.y, tform);
 
-                running_x += scalex;
+                sglm_mat4x4_as_float_arr(tform, &mat);
+                api->draw_sprite_frame_matrix(gs->sprite[Sprite_ID_bitmap_font], pos_in_table.x, pos_in_table.y, tform);
+
+                running_x += scale.x;
             }
         }
     }
@@ -133,51 +259,137 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, Float x, Float y,
 Bool overlap(Transform a, Transform b) {
     if((a.pos.x >= b.pos.x && a.pos.x <= b.pos.x + b.scale.x) || (b.pos.x >= a.pos.x && b.pos.x <= a.pos.x + a.scale.x)) {
         if((a.pos.y >= b.pos.y && a.pos.y <= b.pos.y + b.scale.y) || (b.pos.y >= a.pos.y && b.pos.y <= a.pos.y + a.scale.y)) {
-            return(true);
+            return true;
         }
     }
 
-    return(false);
+    return false;
 }
 
-void draw_debug_information(sglp_API *api, Game_State *gs, Float mouse_x, Float mouse_y) {
+Bool point_overlap(V2 p, Transform t) {
+    Float x = t.pos.x - (t.scale.x * 0.5f);
+    Float y = t.pos.y - (t.scale.y * 0.5f);
+    if((p.x > x && p.x < x + t.scale.x)) {
+        if((p.y > y && p.y < y + t.scale.y)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+Bool is_offscreen(Transform t) {
+    if((t.pos.x > 1.0f || t.pos.x < 0.0f) || (t.pos.y > 1.0f || t.pos.y < 0.0f)) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
+Void draw_entity_text(sglp_API *api, Game_State *gs, Entity *entity, V2 mouse_position, Transform trans) {
+    if(point_overlap(mouse_position, trans)) {
+        V2 word_size = v2(0.025f, 0.025f);
+
+        Int buffer_size = 256 * 256;
+        sglp_TempMemory tm = api->sglp_push_temp_memory(api, buffer_size);
+        Char *buffer = api->sglp_push_off_temp_memory(&tm, buffer_size);
+        pp_serialize_struct_type(entity, entity->type, buffer, buffer_size);
+        draw_word(buffer, api, gs, mouse_position, word_size);
+        api->pop_temp_memory(api, &tm);
+    }
+}
+
+// TODO - When this function draws text it'd be good if it made sure the text was always onscreen.
+Void draw_debug_information(sglp_API *api, Game_State *gs) {
 #if INTERNAL
-    int buf_size = 256 * 256;
-    char *buffer = api->os_malloc(sizeof *buffer * buf_size);
-    pp_serialize_struct(&gs->player, Player, buffer, buf_size);
-    Float size = 0.05f;
-    draw_word(buffer, api, gs, 0.0f, 0.0f, size, size);
-    api->os_free(buffer);
+
+    // TODO - This is actually kinda awful (and doesn't work).
+    if(gs->show_text_box) {
+        V2 size = v2(1.0f, 0.25f);
+        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(0.0f + (size.x * 0.5f), 0.0f + (size.y * 0.5f),
+                                                          size.x, size.y,
+                                                          0.0f);
+        Float tform[16] = {0};
+        sglm_mat4x4_as_float_arr(tform, &mat);
+
+        api->draw_black_box(tform);
+
+
+        V2 word_size = v2(0.025f, 0.025f);
+        draw_word(gs->text_box_input, api, gs, v2(0.1f, 0.1f), word_size);
+    }
+
+    V2 mouse_position = v2(api->mouse_x, api->mouse_y);
+
+    Entity *next = gs->entity;
+    while(next) {
+        V2 position_to_draw = {0};
+        Transform trans = {0};
+        switch(next->type) {
+            case pp_Type_Player: trans = next->player.trans; break;
+            case pp_Type_Enemy:  trans = next->enemy.trans;  break;
+            case pp_Type_Bullet: trans = next->bullet.trans; break;
+        }
+
+        draw_entity_text(api, gs, next, mouse_position, trans);
+
+        next = next->next;
+    }
+
 #endif
 }
 
 void render(sglp_API *api, Game_State *gs) {
-    sglp_clear_screen_for_frame(); // TODO(Jonny): Can this be moved into the platform code?
+    api->clear_screen_for_frame();
 
-    // Player
-    {
-        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->player.trans.pos.x, gs->player.trans.pos.y,
-                                                          gs->player.trans.scale.x, gs->player.trans.scale.y,
-                                                          gs->player.trans.rot);
-        Float tform[16] = {0};
-        sglm_mat4x4_as_float_arr(tform, &mat);
+    // Render all entities.
+    Entity *next = gs->entity;
+    while(next) {
+        Int current_frame = 0;
+        Transform trans = {0};
+        Sprite_ID id = Sprite_ID_unknown;
 
-        sglp_draw_sprite(gs->player_sprite, gs->player.current_frame, tform);
-    }
+        switch(next->type) {
+            case pp_Type_Player: {
+                trans = next->player.trans;
+                id = Sprite_ID_player;
+                current_frame = next->player.current_frame;
+                if(gs->hide_player) {
+                    id = Sprite_ID_unknown;
+                }
 
-    // Enemies
-    for(int i = 0; (i < NUMBER_OF_ENEMIES); ++i) {
-        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(gs->enemy[i].trans.pos.x, gs->enemy[i].trans.pos.y,
-                                                          gs->enemy[i].trans.scale.x, gs->enemy[i].trans.scale.y,
-                                                          gs->enemy[i].trans.rot);
-        Float tform[16] = {0};
-        sglm_mat4x4_as_float_arr(tform, &mat);
+            } break;
 
-        sglp_draw_sprite(gs->enemy_one_sprite, 0, tform);
+            case pp_Type_Enemy: {
+                trans = next->enemy.trans;
+                id = Sprite_ID_enemy_one;
+            } break;
+
+            case pp_Type_Bullet: {
+                trans = next->bullet.trans;
+                id = Sprite_ID_bullet;
+            } break;
+
+            default: assert(0); break;
+        }
+
+        if(id) {
+
+            sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(trans.pos.x, trans.pos.y,
+                                                              trans.scale.x, trans.scale.y,
+                                                              trans.rot);
+            Float tform[16] = {0};
+            sglm_mat4x4_as_float_arr(tform, &mat);
+
+            api->draw_sprite(gs->sprite[id], current_frame, tform);
+        }
+
+        next = next->next;
     }
 
     // TODO - Read the mouse position from sgl_platform.
-    draw_debug_information(api, gs, 0.0f, 0.0f);
+    draw_debug_information(api, gs);
 }
 
 Enemy create_enemy(float x, float y) {
@@ -202,31 +414,48 @@ Player create_player(float x, float y) {
     res.trans.pos.y = y;
 
     res.start_pos = res.trans.pos;
+    res.dir = Player_Direction_left;
 
     return(res);
 }
 
+Bullet create_bullet(void) {
+    Bullet res = {0};
+
+    res.trans.pos = v2(400, 400);
+
+    return res;
+}
+
 void init(sglp_API *api, Game_State *gs) {
+
     // Load the player.
     {
         int width, height, number_of_components;
-        uint8_t *img_data = stbi_load("player.png", &width, &height, &number_of_components, 0);
-        gs->player_sprite = sglp_load_image(api, img_data, 12, 1, ID_sprite_player, width, height, number_of_components);
+        sglp_File file = api->read_file(api, "player.png");
+
+        uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
+        // TODO - Free file?
+        gs->sprite[Sprite_ID_player] = api->load_image(api, img_data, 12, 1, Sprite_ID_player, width, height, number_of_components);
         stbi_image_free(img_data);
 
-        gs->player = create_player(0.5f, 0.7f);
+        Player player = create_player(0.5f, 0.7f);
+        gs->entity = push_entity(api, gs->entity, &player, pp_Type_Player);
     }
 
     // Load the enemy.
     {
         int width, height, number_of_components;
-        uint8_t *img_data = stbi_load("enemy_one.png", &width, &height, &number_of_components, 0);
-        gs->enemy_one_sprite = sglp_load_image(api, img_data, 8, 1, ID_sprite_enemy_one, width, height, number_of_components);
+        sglp_File file = api->read_file(api, "enemy_one.png");
+        uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
+        gs->sprite[Sprite_ID_enemy_one] = api->load_image(api, img_data, 8, 1, Sprite_ID_enemy_one, width, height, number_of_components);
         stbi_image_free(img_data);
 
         Float x = 0.1f;
-        for(int i = 0; (i < 4); ++i) {
-            gs->enemy[i] = create_enemy(x, 0.5f);
+        for(Int i = 0; (i < 4); ++i) {
+            Enemy enemy = create_enemy(x, 0.5f);
+            gs->entity = push_entity(api, gs->entity, &enemy, pp_Type_Enemy);
+
             x += 0.2f;
         }
     }
@@ -234,116 +463,259 @@ void init(sglp_API *api, Game_State *gs) {
     // Load font.
     {
         int width, height, number_of_components;
-        uint8_t *img_data = stbi_load("freemono.png", &width, &height, &number_of_components, 0);
-        gs->bitmap_sprite = sglp_load_image(api, img_data, 16, 16, ID_sprite_bitmap_font, width, height, number_of_components);
+        sglp_File file = api->read_file(api, "freemono.png");
+        uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
+        gs->sprite[Sprite_ID_bitmap_font] = api->load_image(api, img_data, 16, 16, Sprite_ID_bitmap_font, width, height, number_of_components);
         stbi_image_free(img_data);
+    }
+
+    // Load bullets
+    {
+        Int width, height, number_of_components;
+        sglp_File file = api->read_file(api, "bullet.png");
+        uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
+        gs->sprite[Sprite_ID_bullet] = api->load_image(api, img_data, 1, 1, Sprite_ID_bullet, width, height, number_of_components);
+        stbi_image_free(img_data);
+
+        for(Int i = 0; (i < 4); ++i) {
+            Bullet bullet = create_bullet();
+            gs->entity = push_entity(api, gs->entity, &bullet, pp_Type_Bullet);
+        }
     }
 
     // Load background music.
     {
         sglp_File background_wav = api->read_file(api, "music_test.wav");
-        Bool success = sglp_load_wav(api, ID_sound_background, background_wav.e, background_wav.size);
+        Bool success = api->load_wav(api, ID_sound_background, background_wav.e, background_wav.size);
         if(success) {
             api->free_file(api, &background_wav);
-            sglp_play_audio(api, ID_sound_background);
+            api->play_audio(api, ID_sound_background);
         }
     }
 
     // Load bloop.
     {
         sglp_File bloop_wav = api->read_file(api, "bloop_00.wav");
-        Bool success = sglp_load_wav(api, ID_sound_bloop, bloop_wav.e, bloop_wav.size);
+        Bool success = api->load_wav(api, ID_sound_bloop, bloop_wav.e, bloop_wav.size);
         if(success) {
             api->free_file(api, &bloop_wav);
         }
     }
+
+#if INTERNAL
+    gs->text_box_input = api->sglp_push_permanent_memory(api, 256 * 256);
+    // sgl_memcpy(gs->text_box_input, "Hello!", 6);
+#endif
 }
 
-void update(sglp_API *api, Game_State *gs) {
-    // Update
-    if(api->key[sglp_key_space]) {
-        sglp_play_audio(api, ID_sound_bloop);
-    }
-
+Void handle_player_movement(Player *player, sglp_API *api) {
+    V2 current_speed = player->current_speed;
     V2 max_speed = v2(0.01f, 0.01f);
     V2 acceleration = v2(0.006f, 0.006f);
     V2 friction = v2(0.005f, 0.005f);
 
-    V2 current_speed = gs->player.current_speed;
     if(api->key['W']) {
         current_speed.y += accelerate(current_speed.y, max_speed.y, acceleration.y * api->dt, false);
-        gs->player.dir = Player_Direction_up;
-        gs->player.current_frame = Player_Direction_up;
-    } else if(api->key['S']) {
+        player->dir = Player_Direction_up;
+        player->current_frame = Player_Direction_up;
+    }
+    else if(api->key['S']) {
         current_speed.y += accelerate(current_speed.y, max_speed.y, acceleration.y * api->dt, true);
-        gs->player.dir = Player_Direction_down;
-        gs->player.current_frame = Player_Direction_down;
-    } else {
+        player->dir = Player_Direction_down;
+        player->current_frame = Player_Direction_down;
+    }
+    else {
         if(current_speed.y > friction.y * 0.5f) {
             current_speed.y += accelerate(current_speed.y, max_speed.y, friction.y * api->dt, false);
-        } else if(current_speed.y < -friction.y * 0.5f) {
+        }
+        else if(current_speed.y < -friction.y * 0.5f) {
             current_speed.y += accelerate(current_speed.y, max_speed.y, friction.y * api->dt, true);
-        } else {
+        }
+        else {
             current_speed.y = 0;
         }
     }
 
     if(api->key['A']) {
         current_speed.x += accelerate(current_speed.x, max_speed.x, acceleration.x * api->dt, false);
-        gs->player.dir = Player_Direction_left;
-        gs->player.current_frame = Player_Direction_left;
-    } else if(api->key['D']) {
+        player->dir = Player_Direction_left;
+        player->current_frame = Player_Direction_left;
+    }
+    else if(api->key['D']) {
         current_speed.x += accelerate(current_speed.x, max_speed.x, acceleration.x * api->dt, true);
-        gs->player.dir = Player_Direction_right;
-        gs->player.current_frame = Player_Direction_right;
-    } else {
+        player->dir = Player_Direction_right;
+        player->current_frame = Player_Direction_right;
+    }
+    else {
         if(current_speed.x > friction.x * 0.5f) {
             current_speed.x += accelerate(current_speed.x, max_speed.x, friction.x * api->dt, false);
-        } else if(current_speed.x < -friction.x * 0.5f) {
+        }
+        else if(current_speed.x < -friction.x * 0.5f) {
             current_speed.x += accelerate(current_speed.x, max_speed.x, friction.x * api->dt, true);
-        } else {
+        }
+        else {
             current_speed.x = 0;
         }
     }
 
-    gs->player.current_speed = current_speed;
-    gs->player.trans.pos.x += gs->player.current_speed.x;
-    gs->player.trans.pos.y += gs->player.current_speed.y;
+    player->current_speed = current_speed;
+    player->trans.pos.x += player->current_speed.x;
+    player->trans.pos.y += player->current_speed.y;
+}
 
+Void update_player(Player *player, Entity *player_entity, sglp_API *api, Game_State *gs) {
+    handle_player_movement(player, api);
 
+    // Shooting.
+    if(api->key[sglp_key_space] && player->can_shoot) {
+        player->shot_timer = 200;
+        player->can_shoot = false;
+        api->play_audio(api, ID_sound_bloop);
 
-    if(api->key[sglp_key_space]) {
-        // TODO - Shoot.
+        Bullet *bullet = find_first_entity(gs->entity, pp_Type_Bullet);
+        bullet->dir = player_direction_to_direction(player->dir);
+        bullet->trans = player->trans;
+        bullet->parent = player_entity;
     }
 
-    float rot_speed = 5.0f;
-    if(api->key[sglp_key_left])  { gs->player.trans.rot += rot_speed; }
-    if(api->key[sglp_key_right]) { gs->player.trans.rot -= rot_speed; }
-
-    float scaling_speed = 0.01f;
-    if(api->key['I']) { gs->player.trans.scale.y += scaling_speed; }
-    if(api->key['K']) { gs->player.trans.scale.y -= scaling_speed; }
-    if(api->key['J']) { gs->player.trans.scale.x -= scaling_speed; }
-    if(api->key['L']) { gs->player.trans.scale.x += scaling_speed; }
-
-    for(int i = 0; (i < NUMBER_OF_ENEMIES); ++i) {
-        if(overlap(gs->player.trans, gs->enemy[i].trans)) {
-            gs->player.trans.pos = gs->player.start_pos;
+    if(!player->can_shoot) {
+        player->shot_timer -= api->dt;
+        if(player->shot_timer <= 0) {
+            player->can_shoot = true;
         }
     }
 
-    gs->player.current_frame += 0.5f;
-    if(gs->player.current_frame >= gs->player.dir + 2.0f) {
-        gs->player.current_frame = gs->player.dir;
+    // Update frame.
+    player->current_frame += 0.5f;
+    if(player->current_frame >= player->dir + 2.0f) {
+        player->current_frame = player->dir;
+    }
+
+    // DEBUG - Rotation
+    float rot_speed = 5.0f;
+    if(api->key[sglp_key_left])  player->trans.rot += rot_speed;
+    if(api->key[sglp_key_right]) player->trans.rot -= rot_speed;
+
+    // DEBUG - scaling
+    float scaling_speed = 0.01f;
+    if(api->key['I']) player->trans.scale.y += scaling_speed;
+    if(api->key['K']) player->trans.scale.y -= scaling_speed;
+    if(api->key['J']) player->trans.scale.x -= scaling_speed;
+    if(api->key['L']) player->trans.scale.x += scaling_speed;
+}
+
+Void update_enemy(Enemy *enemy, Game_State *gs) {
+    Player *player = find_first_entity(gs->entity, pp_Type_Player);
+    assert(player);
+
+    // Set the player to the start if they touch an enemy.
+    if(overlap(player->trans, enemy->trans)) {
+        player->trans.pos = player->start_pos;
+    }
+
+    // Kill the enemy if they touch the player's bullet.
+    Entity *next = gs->entity;
+    while(next) {
+        if(next->type == pp_Type_Bullet) {
+            Bullet *bullet = &next->bullet;
+            if(overlap(bullet->trans, enemy->trans)) {
+                // next->valid = false; // TODO - Can't set to invalid right now.
+                bullet->dir = Direction_unknown;
+            }
+        }
+
+        next = next->next;
+    }
+}
+
+void update_bullet(Bullet *bullet, Game_State *gs) {
+    // Bullet movement
+    // TODO - Make the bullet an entity.
+    if(bullet->dir != Direction_unknown) {
+        Float bullet_speed = 0.002f;
+
+        if(bullet->dir == Direction_left)       bullet->trans.pos.x -= bullet_speed;
+        else if(bullet->dir == Direction_right) bullet->trans.pos.x += bullet_speed;
+
+        if(bullet->dir == Direction_up)         bullet->trans.pos.y -= bullet_speed;
+        else if(bullet->dir == Direction_down)  bullet->trans.pos.y += bullet_speed;
+
+        if(is_offscreen(bullet->trans)) {
+            bullet->dir = Direction_unknown;
+        }
+    }
+
+    if(bullet->dir == Direction_unknown) {
+        bullet->trans.pos = v2(400, 400);
+        Entity *parent = bullet->parent;
+        if(parent) {
+            switch(parent->type) {
+                case pp_Type_Player: parent->player.can_shoot = true; break;
+
+                default: assert(0); break;
+            }
+
+            bullet->parent = 0;
+        }
+    }
+}
+
+Void update(sglp_API *api, Game_State *gs) {
+
+#if INTERNAL
+    if(api->key[sglp_key_ctrl] && api->key[sglp_key_space]) {
+        gs->show_text_box = true;
+    }
+    if(api->key[sglp_key_escape]) { // TODO - Change to "enter" once sgl_platform.h supports it.
+        gs->show_text_box = false;
+
+        if(sgl_string_comp(gs->text_box_input, "PLAYER")) {
+            gs->hide_player = !gs->hide_player;
+        }
+
+        sgl_zero(gs->text_box_input, sgl_string_len(gs->text_box_input));
+    }
+#endif
+
+    if(!gs->show_text_box) {
+        Entity *next = gs->entity;
+        while(next) {
+            switch(next->type) {
+                case pp_Type_Player: update_player(&next->player, next, api, gs); break;
+                case pp_Type_Enemy:  update_enemy(&next->enemy, gs);        break;
+                case pp_Type_Bullet: update_bullet(&next->bullet, gs);      break;
+
+                default: assert(0); break;
+            }
+
+            next = next->next;
+        }
+    }
+    else {
+#if INTERNAL
+        // TODO - This won't let you put in duplicate letters. Or delete letters.
+        for(sglp_Key key = sglp_key_a; key <= sglp_key_z; ++key) {
+            Bool val = api->key[key];
+            if(val) {
+                Int end = sgl_string_len(gs->text_box_input) - 1;
+                if(end == 0 || key != gs->text_box_input[end - 1]) {
+                    gs->text_box_input[end] = key;
+                }
+            }
+        }
+#endif
     }
 }
 
 void sglp_platform_update_and_render_callback(sglp_API *api) {
-    Game_State *gs = (Game_State *)api->permanent_memory;
+    global_api = api;
+
+    Game_State *gs = (Game_State *)api->game_state_memory;
 
     if(api->init_game) {
         init(api, gs);
-    } else {
+    }
+    else {
         update(api, gs);
         render(api, gs);
     }
@@ -450,4 +822,3 @@ V2 get_letter_position(char letter) {
 
     return(res);
 }
-

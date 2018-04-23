@@ -12,6 +12,10 @@
 
 #if !defined(_SGL_H)
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 //
 // Compiler/platform macros.
 //
@@ -26,44 +30,44 @@
 #define SGL_OS_LINUX 0
 
 #if defined(__clang__)
-    #undef SGL_COMPILER_CLANG
-    #define SGL_COMPILER_CLANG 1
+#undef SGL_COMPILER_CLANG
+#define SGL_COMPILER_CLANG 1
 #elif defined(_MSC_VER)
-    #undef SGL_COMPILER_MSVC
-    #define SGL_COMPILER_MSVC 1
+#undef SGL_COMPILER_MSVC
+#define SGL_COMPILER_MSVC 1
 #elif (defined(__GNUC__) || defined(__GNUG__)) // This has to be after __clang__, because Clang also defines this.
-    #undef SGL_COMPILER_GCC
-    #define SGL_COMPILER_GCC 1
+#undef SGL_COMPILER_GCC
+#define SGL_COMPILER_GCC 1
 #else
-    #error "Could not detect compiler."
+#error "Could not detect compiler."
 #endif
 
 #if defined(__linux__)
-    #undef SGL_OS_LINUX
-    #define SGL_OS_LINUX 1
+#undef SGL_OS_LINUX
+#define SGL_OS_LINUX 1
 #elif defined(_WIN32)
-    #undef SGL_OS_WIN32
-    #define SGL_OS_WIN32 1
+#undef SGL_OS_WIN32
+#define SGL_OS_WIN32 1
 #else
-    #error "Could not detect OS"
+#error "Could not detect OS"
 #endif
 
 #if SGL_OS_LINUX
-    #if (__x86_64__ || __ppc64__)
-        #undef SGL_ENVIRONMENT64
-        #define SGL_ENVIRONMENT64 1
-    #else
-        #undef SGL_ENVIRONMENT32
-        #define SGL_ENVIRONMENT32 1
-    #endif
+#if (__x86_64__ || __ppc64__)
+#undef SGL_ENVIRONMENT64
+#define SGL_ENVIRONMENT64 1
+#else
+#undef SGL_ENVIRONMENT32
+#define SGL_ENVIRONMENT32 1
+#endif
 #elif SGL_OS_WIN32
-    #if defined(_WIN64)
-        #undef SGL_ENVIRONMENT64
-        #define SGL_ENVIRONMENT64 1
-    #else
-        #undef SGL_ENVIRONMENT32
-        #define SGL_ENVIRONMENT32 1
-    #endif
+#if defined(_WIN64)
+#undef SGL_ENVIRONMENT64
+#define SGL_ENVIRONMENT64 1
+#else
+#undef SGL_ENVIRONMENT32
+#define SGL_ENVIRONMENT32 1
+#endif
 #endif
 
 //
@@ -84,7 +88,6 @@ typedef int8_t sgl_Int8;
 typedef sgl_Int32 sgl_Int;
 typedef sgl_Uint32 sgl_Uint;
 
-
 typedef sgl_Uint8 sgl_Byte;
 typedef uintptr_t sgl_Uintptr;
 typedef intptr_t sgl_Intptr;
@@ -101,8 +104,7 @@ typedef int sgl_Bool;
 #define SGL_FALSE 0
 
 // Use #define SGL_NO_BOOL to avoid create Bool typedef here.
-// TODO - The preprocessor gets confused at this bit right now.
-//#if !defined(SGL_NO_TYPES)
+#if !defined(SGL_NO_TYPES)
 typedef sgl_Uint64 Uint64;
 typedef sgl_Uint32 Uint32;
 typedef sgl_Uint16 Uint16;
@@ -121,13 +123,14 @@ typedef sgl_Float64 Float64;
 typedef sgl_Float Float;
 typedef sgl_Void Void;
 typedef sgl_Char Char;
+
 #if defined(Bool)
-    #undef Bool
+#undef Bool
 #endif
 typedef sgl_Bool Bool;
 #define true SGL_TRUE
 #define false SGL_FALSE
-//#endif //!defined(SGL_NO_TYPES)
+#endif //!defined(SGL_NO_TYPES)
 
 //
 // Macros
@@ -137,26 +140,89 @@ typedef sgl_Bool Bool;
 
 // A quick and useful assert
 #if SGL_INTERNAL
-    #define SGL_ASSERT(exp) do {static int ignore = 0; if(!ignore) {if(!(exp)) {*(Uintptr volatile *)0 = 0; } } } while(0)
+#define SGL_ASSERT(exp) do {static int ignore = 0; if(!ignore) {if(!(exp)) {*(Uintptr volatile *)0 = 0; } } } while(0)
 #else
-    #define SGL_ASSERT(exp) {}
+#define SGL_ASSERT(exp) {}
 #endif
 
 //
 // Functions
 //
+#define sgl_zero(dest, size) sgl_memset(dest, 0, size)
 void sgl_memset(void *dest, uint8_t x, uintptr_t size);
+void sgl_memcpy(void *dest, const void *src, uintptr_t num);
 int sgl_string_len(char const *str);
 char sgl_to_upper(char c);
+#define sgl_string_comp(a, b) sgl_string_comp_len(a, b, 0)
+sgl_Bool sgl_string_comp_len(char const *a, char const *b, uintptr_t len) {
+    sgl_Bool res = true;
+    int i;
+
+    if(len == 0) {
+        int a_len = sgl_string_len(a);
+        int b_len = sgl_string_len(b);
+        if(a_len != b_len) {
+            res = false;
+        }
+        else {
+            len = a_len;
+        }
+    }
+
+    if(res) {
+        for(i = 0; (i < len); ++i, ++a, ++b) {
+            if(*a != *b) {
+                res = false;
+                break;
+            }
+        }
+    }
+
+    return(res);
+}
+
 sgl_Bool sgl_is_letter(char c);
 sgl_Bool sgl_is_number(char c);
+
+#define SGL_KILOBYTES(v) ((v)                * (1024LL))
+#define SGL_MEGABYTES(v) ((SGL_KILOBYTES(v)) * (1024LL))
+#define SGL_GIGABYTES(v) ((SGL_MEGABYTES(v)) * (1024LL))
+
+//
+// If no crt
+//
+#define SGL_NO_CRT 0
+
+#if defined(SGL_NO_CRT_WINDOW_APP) || defined(SGL_NO_CRT_CONSOLE_APP) || defined(SGL_NO_CRT_DLL)
+#undef SGL_NO_CRT
+#define SGL_NO_CRT 1
+#endif // #if defined(SGL_NO_CRT_WINDOW_APP) || defined(SGL_NO_CRT_CONSOLE_APP)
+
+
+#if SGL_COMPILER_MSVC && SGL_NO_CRT
+
+#pragma function(memset)
+void *__cdecl memset(void *dest, int c, size_t count);
+
+#pragma function(memcpy)
+void *__cdecl memcpy(void *dest, void const *src, size_t count);
+
+#endif // SGL_COMPILER_MSVC && SGL_NO_CRT
 
 #if defined(SGL_IMPLEMENTATION)
 
 void sgl_memset(void *dest, uint8_t x, uintptr_t size) {
     uint8_t *dest8 = (uint8_t *)dest;
-    for(int i = 0; (i < size); ++i) {
+    for(uintptr_t i = 0; (i < size); ++i) {
         dest8[i] = x;
+    }
+}
+
+void sgl_memcpy(void *dest, const void *src, uintptr_t num) {
+    uint8_t *dest8 = (uint8_t *)dest;
+    uint8_t *src8 = (uint8_t *)src;
+    for(uintptr_t i = 0; (i < num); ++i) {
+        *dest8++ = *src8++;
     }
 }
 
@@ -178,7 +244,8 @@ char sgl_to_upper(char c) {
 sgl_Bool sgl_is_letter(char c) {
     if((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
         return SGL_TRUE;
-    } else {
+    }
+    else {
         return SGL_FALSE;
     }
 }
@@ -186,11 +253,90 @@ sgl_Bool sgl_is_letter(char c) {
 sgl_Bool sgl_is_number(char c) {
     if(c >= '0' && c <= '9') {
         return SGL_TRUE;
-    } else {
+    }
+    else {
         return SGL_FALSE;
     }
 }
 
+//
+// If no crt
+//
+#if SGL_COMPILER_MSVC && SGL_NO_CRT
+// MSVC need to see "_fltused" before you can use floats (normally defined in the CRT source). No idea why, or why
+// it wants the value "0x9875".
+int _fltused = 0x9875;
+
+#pragma function(memset)
+void *__cdecl memset(void *dest, int c, size_t count) {
+    SGL_ASSERT(c > 0 && c < 0xFF);
+
+    uint8_t val = *(uint8_t *)&c; // Done a little weird to try and avoid sign extending/diminishing.
+    uint8_t *dest8 = (uint8_t *)dest;
+    while(count--) {
+        *dest8++ = val;
+    }
+
+    return(dest);
+}
+
+#pragma function(memcpy)
+void *__cdecl memcpy(void *dest, void const *src, size_t count) {
+    uint8_t *dst8 = (uint8_t *)dest;
+    uint8_t *src8 = (uint8_t *)src;
+    while (count--) {
+        *dst8++ = *src8++;
+    }
+
+    return(dest);
+}
+
+// This function is used to probe the stack and expand the 4k (or 8k in x64) size. However, I don't think it's possible to
+// implement in C and MSVC x64 compiler doesn't support inline asm. So just assert false if we ever call it.
+// Should never be required if you compile with the flags "-GS- -Gs9999999".
+void __chkstk(void) {SGL_ASSERT(0);}
+
+// These functions do some stack checking and other nonsense to prevent "hackers" (because Windows never has those?)
+// Just define them as stubs.
+void __report_rangecheckfailure(void) {}
+void __GSHandlerCheck(void) {}
+void __security_check_cookie(uintptr_t foo) {}
+uintptr_t __security_cookie;
+
+#include <windows.h> // TODO - Get rid of this
+
+// Windows doesn't really let you mix console and window apps. So need to have the user define which one they're using.
+#if defined(SGL_NO_CRT_WINDOW_APP)
+int __stdcall WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int show_code);
+void __stdcall WinMainCRTStartup(void) {
+    // TODO - Pass other values in.
+    int result = WinMain(GetModuleHandle(0), 0, 0, 0);
+    ExitProcess(result); // TODO - Is it safe to just return from WinMainCRTStartup rather than ExitProcess??
+}
+#endif // defined(SGL_NO_CRT_WINDOW_APP)
+
+#if defined(SGL_NO_CRT_CONSOLE_APP)
+int main(int argc, char **argv);
+void __stdcall mainCRTStartup(void) {
+    // TODO - Pass other values in.
+    int result = main(0, 0);
+    ExitProcess(result); // TODO - Is it safe to just return from mainCRTStartup rather than ExitProcess??
+}
+#endif // defined(SGL_NO_CRT_CONSOLE_APP)
+
+#if defined(SGL_NO_CRT_DLL)
+// TODO - I don't think I need to do anything in here?
+void __stdcall _DllMainCRTStartup(void) {}
+BOOL __stdcall DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {}
+#endif // defined(SGL_NO_CRT_DLL)
+
+#endif
+
+
+#endif
+
+#if defined(__cplusplus)
+} // extern "C"
 #endif
 
 #define _SGL_H

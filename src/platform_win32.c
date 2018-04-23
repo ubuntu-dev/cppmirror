@@ -8,33 +8,33 @@
                            The use of this code is at your own risk
                            Anyone can use this code, modify it, sell it to terrorists, etc.
   ===================================================================================================*/
-#if 0
-extern "C" {
-    int _fltused;
+
+#if COMPILER_MSVC
+int _fltused;
 
 #pragma function(memset)
-    void *memset(void *dest, int c, size_t count) {
-        assert(c < 0xFF);
-        Byte *dest8 = (Byte *)dest;
-        while(count--) {
-            *dest8++ = (Byte)c;
-        }
-
-        return(dest);
+void *memset(void *dest, int c, size_t count) {
+    assert(c < 0xFF);
+    Byte *dest8 = (Byte *)dest;
+    while(count--) {
+        *dest8++ = (Byte)c;
     }
+
+    return(dest);
+}
 
 #pragma function(memcpy)
-    void *memcpy(void *dest, void const *src, size_t count) {
-        Byte *dst8 = (Byte *)dest;
-        Byte *src8 = (Byte *)src;
-        while (count--) {
-            *dst8++ = *src8++;
-        }
-
-        return(dest);
+void *memcpy(void *dest, void const *src, size_t count) {
+    Byte *dst8 = (Byte *)dest;
+    Byte *src8 = (Byte *)src;
+    while (count--) {
+        *dst8++ = *src8++;
     }
+
+    return(dest);
 }
 #endif
+
 Uint64 system_get_performance_counter(void) {
     Uint64 res = 0;
 
@@ -109,7 +109,7 @@ File system_read_entire_file_and_null_terminate(Char *fname) {
                 }
             }
         }
-        
+
         CloseHandle(fhandle);
     }
 
@@ -136,7 +136,7 @@ Bool system_write_to_file(Char *fname, File file) {
                 res = true;
             }
         }
-        
+
         CloseHandle(fhandle);
     }
 
@@ -218,7 +218,7 @@ Uintptr get_current_directory(Char *buffer, Uintptr size) {
     return(res);
 }
 
-// TODO(Jonny): This function is _really_ stupid... fix it.
+// TODO - Should I really check the extension of a file??
 Bool is_valid_cpp_file(Char *fname) {
     Bool res = false;
 
@@ -258,7 +258,7 @@ Void system_write_to_console(Char *format, ...) {
 
         assert(res);
         assert(chars_written == len);
-        
+
         system_free(buf);
     }
 }
@@ -309,7 +309,7 @@ int main(int argc_, char **argv_) {
             system_write_to_console("Memory allocation fail");
         }
         else {
-            
+
             Char **cur = argv;
             *cur++ = arg_cpy;
             for(Int i = 0; (i < args_len); ++i) {
@@ -346,12 +346,18 @@ int main(int argc_, char **argv_) {
 
             my_main(argc, argv);
             res = 0;
-            
+
             system_free(argv);
         }
-        
+
         system_free(arg_cpy);
     }
 
     return(res);
+}
+
+// Because the CRT is poop.
+void mainCRTStartup(void) {
+    int res = main(0, 0);
+    ExitProcess(res);
 }

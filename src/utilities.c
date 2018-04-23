@@ -206,9 +206,11 @@ Void *push_size_with_alignment(TempMemory *tm, Uintptr size, Int alignment) {
     if(alignment == -1) {
         if(size <= 4) {
             alignment = 4;
-        } else if(size <= 8) {
+        }
+        else if(size <= 8) {
             alignment = 8;
-        } else {
+        }
+        else {
             alignment = 16;
         }
     }
@@ -218,7 +220,8 @@ Void *push_size_with_alignment(TempMemory *tm, Uintptr size, Int alignment) {
     if(tm->used + alignment_offset < tm->size) {
         res = tm->e + tm->used + alignment_offset;
         tm->used += size + alignment_offset;
-    } else {
+    }
+    else {
         assert(0);
     }
 
@@ -525,6 +528,26 @@ typedef enum {
     Access_count
 } Access;
 
+typedef enum {
+    AnonymousStruct_none,
+    AnonymousStruct_struct,
+    AnonymousStruct_union,
+    AnonymousStruct_enum,
+
+    AnonymousStruct_count,
+} AnonymousStruct;
+
+Char *anonymous_struct_to_type(AnonymousStruct as) {
+    Char *res = 0;
+    switch(as) {
+        case AnonymousStruct_struct: res = "struct"; break;
+        case AnonymousStruct_union: res = "union"; break;
+        case AnonymousStruct_enum: res = "enum"; break;
+    }
+
+    return res;
+}
+
 typedef struct {
     String type;
     String name;
@@ -536,7 +559,7 @@ typedef struct {
 
     Uint32 modifier;
 
-    Bool is_inside_anonymous_struct;
+    AnonymousStruct anonymous_struct;
 } Variable;
 
 Variable create_variable(Char *type, Char *name, Int ptr, Int array_count ) {
