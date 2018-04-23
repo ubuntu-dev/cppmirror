@@ -175,7 +175,7 @@ void *sglp_push_off_temp_memory_align(sglp_TempMemory *tm, uintptr_t size, uintp
 typedef enum sglp_Key {
     sglp_key_unknown,
 
-    // TODO(Jonny): Add all the rest of the keys.
+    // TODO(Jonny): Add all the rest of the keys. Enter.
     sglp_key_ctrl,
     sglp_key_shift,
     sglp_key_alt,
@@ -862,13 +862,12 @@ void sglp_draw_sprite(sglp_Sprite sprite, int32_t cur_frame, float const *tform)
     // Convert the x and y into opengl x and y.
 
     float my_tform[16];
-    my_tform[0] = tform[0]; my_tform[1] = tform[1]; my_tform[ 2] = tform[ 2]; my_tform[ 3] = tform[ 3];
-    my_tform[4] = tform[4]; my_tform[5] = tform[5]; my_tform[ 6] = tform[ 6]; my_tform[ 7] = tform[ 7];
-    my_tform[8] = tform[8]; my_tform[9] = tform[9]; my_tform[10] = tform[10]; my_tform[11] = tform[11];
+    int i;
+    for(i = 0; (i < 16); ++i) {
+        my_tform[i] = tform[i];
+    }
     my_tform[12] = sglp_screen_to_gl_x(tform[12]);
     my_tform[13] = -sglp_screen_to_gl_y(tform[13]);
-    my_tform[14] = tform[14];
-    my_tform[15] = tform[15];
 
     int x_increment = cur_frame;
     int y_increment = 0;
@@ -892,14 +891,12 @@ void sglp_draw_sprite(sglp_Sprite sprite, int32_t cur_frame, float const *tform)
 
 void sglp_draw_sprite_frame_matrix(sglp_Sprite sprite, int32_t cur_frame_x, int32_t cur_frame_y, float const *tform) {
     float my_tform[16];
-    my_tform[0] = tform[0]; my_tform[1] = tform[1]; my_tform[ 2] = tform[ 2]; my_tform[ 3] = tform[ 3];
-    my_tform[4] = tform[4]; my_tform[5] = tform[5]; my_tform[ 6] = tform[ 6]; my_tform[ 7] = tform[ 7];
-    my_tform[8] = tform[8]; my_tform[9] = tform[9]; my_tform[10] = tform[10]; my_tform[11] = tform[11];
+    int i;
+    for(i = 0; (i < 16); ++i) {
+        my_tform[i] = tform[i];
+    }
     my_tform[12] = sglp_screen_to_gl_x(tform[12]);
     my_tform[13] = -sglp_screen_to_gl_y(tform[13]);
-    my_tform[14] = tform[14];
-    my_tform[15] = tform[15];
-
     sglp_global_opengl->glBindVertexArray(sprite.mesh);
     sglp_global_opengl->glBindTexture(SGLP_GL_TEXTURE_2D, sprite.id);
 
@@ -912,15 +909,15 @@ void sglp_draw_sprite_frame_matrix(sglp_Sprite sprite, int32_t cur_frame_x, int3
     sglp_global_opengl->glDrawArrays(SGLP_GL_TRIANGLE_STRIP, 0, 4);
 }
 
+// TODO - The size for this doesn't seem to be correct.
 void sglp_draw_black_box(float const *tform) {
     float my_tform[16];
-    my_tform[0] = tform[0]; my_tform[1] = tform[1]; my_tform[ 2] = tform[ 2]; my_tform[ 3] = tform[ 3];
-    my_tform[4] = tform[4]; my_tform[5] = tform[5]; my_tform[ 6] = tform[ 6]; my_tform[ 7] = tform[ 7];
-    my_tform[8] = tform[8]; my_tform[9] = tform[9]; my_tform[10] = tform[10]; my_tform[11] = tform[11];
+    int i;
+    for(i = 0; (i < 16); ++i) {
+        my_tform[i] = tform[i];
+    }
     my_tform[12] = sglp_screen_to_gl_x(tform[12]);
     my_tform[13] = -sglp_screen_to_gl_y(tform[13]);
-    my_tform[14] = tform[14];
-    my_tform[15] = tform[15];
 
     sglp_global_opengl->glBindVertexArray(sglp_global_black_sprite.mesh);
     sglp_global_opengl->glBindTexture(SGLP_GL_TEXTURE_2D, sglp_global_black_sprite.id);
