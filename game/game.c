@@ -188,6 +188,10 @@ struct Game_State {
     sglp_Sprite sprite[pp_get_enum_size_const(Sprite_ID)];
 
     Entity *entity;
+
+    Bool show_text_box;
+    Char *text_box_input;
+    Bool hide_player;
 };
 
 enum Sound_ID {
@@ -299,6 +303,23 @@ Void draw_entity_text(sglp_API *api, Game_State *gs, Entity *entity, V2 mouse_po
 // TODO - When this function draws text it'd be good if it made sure the text was always onscreen.
 Void draw_debug_information(sglp_API *api, Game_State *gs) {
 #if INTERNAL
+
+    // TODO - This is actually kinda awful (and doesn't work).
+    if(gs->show_text_box) {
+        V2 size = v2(1.0f, 0.25f);
+        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(0.0f + (size.x * 0.5f), 0.0f + (size.y * 0.5f),
+                                                          size.x, size.y,
+                                                          0.0f);
+        Float tform[16] = {0};
+        sglm_mat4x4_as_float_arr(tform, &mat);
+
+        api->draw_black_box(tform);
+
+
+        V2 word_size = v2(0.025f, 0.025f);
+        draw_word(gs->text_box_input, api, gs, v2(0.1f, 0.1f), word_size);
+    }
+
     V2 mouse_position = v2(api->mouse_x, api->mouse_y);
 
     Entity *next = gs->entity;
@@ -334,6 +355,10 @@ void render(sglp_API *api, Game_State *gs) {
                 trans = next->player.trans;
                 id = Sprite_ID_player;
                 current_frame = next->player.current_frame;
+                if(gs->hide_player) {
+                    id = Sprite_ID_unknown;
+                }
+
             } break;
 
             case pp_Type_Enemy: {
@@ -349,13 +374,16 @@ void render(sglp_API *api, Game_State *gs) {
             default: assert(0); break;
         }
 
-        sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(trans.pos.x, trans.pos.y,
-                                                          trans.scale.x, trans.scale.y,
-                                                          trans.rot);
-        Float tform[16] = {0};
-        sglm_mat4x4_as_float_arr(tform, &mat);
+        if(id) {
 
-        api->draw_sprite(gs->sprite[id], current_frame, tform);
+            sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(trans.pos.x, trans.pos.y,
+                                                              trans.scale.x, trans.scale.y,
+                                                              trans.rot);
+            Float tform[16] = {0};
+            sglm_mat4x4_as_float_arr(tform, &mat);
+
+            api->draw_sprite(gs->sprite[id], current_frame, tform);
+        }
 
         next = next->next;
     }
@@ -473,6 +501,11 @@ void init(sglp_API *api, Game_State *gs) {
             api->free_file(api, &bloop_wav);
         }
     }
+
+#if INTERNAL
+    gs->text_box_input = api->sglp_push_permanent_memory(api, 256 * 256);
+    // sgl_memcpy(gs->text_box_input, "Hello!", 6);
+#endif
 }
 
 Void handle_player_movement(Player *player, sglp_API *api) {
@@ -628,17 +661,49 @@ void update_bullet(Bullet *bullet, Game_State *gs) {
 }
 
 Void update(sglp_API *api, Game_State *gs) {
-    Entity *next = gs->entity;
-    while(next) {
-        switch(next->type) {
-            case pp_Type_Player: update_player(&next->player, next, api, gs); break;
-            case pp_Type_Enemy:  update_enemy(&next->enemy, gs);        break;
-            case pp_Type_Bullet: update_bullet(&next->bullet, gs);      break;
 
-            default: assert(0); break;
+#if INTERNAL
+    if(api->key[sglp_key_ctrl] && api->key[sglp_key_space]) {
+        gs->show_text_box = true;
+    }
+    if(api->key[sglp_key_escape]) { // TODO - Change to "enter" once sgl_platform.h supports it.
+        gs->show_text_box = false;
+
+        if(sgl_string_comp(gs->text_box_input, "PLAYER")) {
+            gs->hide_player = !gs->hide_player;
         }
 
-        next = next->next;
+        sgl_zero(gs->text_box_input, sgl_string_len(gs->text_box_input));
+    }
+#endif
+
+    if(!gs->show_text_box) {
+        Entity *next = gs->entity;
+        while(next) {
+            switch(next->type) {
+                case pp_Type_Player: update_player(&next->player, next, api, gs); break;
+                case pp_Type_Enemy:  update_enemy(&next->enemy, gs);        break;
+                case pp_Type_Bullet: update_bullet(&next->bullet, gs);      break;
+
+                default: assert(0); break;
+            }
+
+            next = next->next;
+        }
+    }
+    else {
+#if INTERNAL
+        // TODO - This won't let you put in duplicate letters. Or delete letters.
+        for(sglp_Key key = sglp_key_a; key <= sglp_key_z; ++key) {
+            Bool val = api->key[key];
+            if(val) {
+                Int end = sgl_string_len(gs->text_box_input) - 1;
+                if(end == 0 || key != gs->text_box_input[end - 1]) {
+                    gs->text_box_input[end] = key;
+                }
+            }
+        }
+#endif
     }
 }
 

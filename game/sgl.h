@@ -148,10 +148,39 @@ typedef sgl_Bool Bool;
 //
 // Functions
 //
+#define sgl_zero(dest, size) sgl_memset(dest, 0, size)
 void sgl_memset(void *dest, uint8_t x, uintptr_t size);
 void sgl_memcpy(void *dest, const void *src, uintptr_t num);
 int sgl_string_len(char const *str);
 char sgl_to_upper(char c);
+#define sgl_string_comp(a, b) sgl_string_comp_len(a, b, 0)
+sgl_Bool sgl_string_comp_len(char const *a, char const *b, uintptr_t len) {
+    sgl_Bool res = true;
+    int i;
+
+    if(len == 0) {
+        int a_len = sgl_string_len(a);
+        int b_len = sgl_string_len(b);
+        if(a_len != b_len) {
+            res = false;
+        }
+        else {
+            len = a_len;
+        }
+    }
+
+    if(res) {
+        for(i = 0; (i < len); ++i, ++a, ++b) {
+            if(*a != *b) {
+                res = false;
+                break;
+            }
+        }
+    }
+
+    return(res);
+}
+
 sgl_Bool sgl_is_letter(char c);
 sgl_Bool sgl_is_number(char c);
 
