@@ -438,7 +438,7 @@ struct pp_Entity {
      union {pp_Player player; pp_Enemy enemy; pp_Bullet bullet; };pp_Type type; pp_Entity *next; 
 };
 struct pp_Game_State {
-    pp_Entity *entity; 
+    pp_Entity *entity; pp_Bool show_text_box; pp_Char *text_box_input; pp_Bool hide_player; 
 };
 
 // Turn a typedef'd type into it's original type.
@@ -1074,6 +1074,18 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 pp_MemberDefinition res = {pp_Type_Entity, "entity", PP_OFFSETOF(pp_Game_State, entity), 1, 0};
                 return(res);
             } break; 
+            case 1: {
+                pp_MemberDefinition res = {pp_Type_Bool, "show_text_box", PP_OFFSETOF(pp_Game_State, show_text_box), 0, 0};
+                return(res);
+            } break; 
+            case 2: {
+                pp_MemberDefinition res = {pp_Type_Char, "text_box_input", PP_OFFSETOF(pp_Game_State, text_box_input), 1, 0};
+                return(res);
+            } break; 
+            case 3: {
+                pp_MemberDefinition res = {pp_Type_Bool, "hide_player", PP_OFFSETOF(pp_Game_State, hide_player), 0, 0};
+                return(res);
+            } break; 
         }
     }
 
@@ -1102,7 +1114,7 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_Player: { return(7); } break;
         case pp_Type_Enemy: { return(1); } break;
         case pp_Type_Entity: { return(5); } break;
-        case pp_Type_Game_State: { return(1); } break;
+        case pp_Type_Game_State: { return(4); } break;
     }
 
     PP_ASSERT(0);
