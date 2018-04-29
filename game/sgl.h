@@ -326,8 +326,12 @@ void __stdcall mainCRTStartup(void) {
 
 #if defined(SGL_NO_CRT_DLL)
 // TODO - I don't think I need to do anything in here?
-void __stdcall _DllMainCRTStartup(void) {}
-BOOL __stdcall DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {}
+BOOL __stdcall DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
+    return(SGLP_TRUE);
+}
+void __stdcall _DllMainCRTStartup(void) {
+    DllMain(0, 0, 0);
+}
 #endif // defined(SGL_NO_CRT_DLL)
 
 #endif
