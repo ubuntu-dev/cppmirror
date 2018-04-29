@@ -85,11 +85,10 @@ struct Player {
 
 Direction player_direction_to_direction(Player_Direction pd) {
     Direction d = 0;
-    if(0) {}
-    else if(pd == Player_Direction_left)  d = Direction_left;
-    else if(pd == Player_Direction_right) d = Direction_right;
-    else if(pd == Player_Direction_up)    d = Direction_up;
-    else if(pd == Player_Direction_down)  d = Direction_down;
+    if     (pd == Player_Direction_left)  { d = Direction_left;  }
+    else if(pd == Player_Direction_right) { d = Direction_right; }
+    else if(pd == Player_Direction_up)    { d = Direction_up;    }
+    else if(pd == Player_Direction_down)  { d = Direction_down;  }
 
     return(d);
 }
@@ -184,14 +183,25 @@ enum Sprite_ID {
     Sprite_ID_bullet,
 };
 
+struct Camera {
+    V2 pos;
+    V2 speed;
+    // Void *entity_to_follow;
+    Bool follow_exactly;
+};
+
+#define INPUT_DELAY 100
 struct Game_State {
     sglp_Sprite sprite[pp_get_enum_size_const(Sprite_ID)];
 
-    Entity *entity;
+    Entity *entity; // TODO - Change name to root.
 
+    Camera camera;
+#if INTERNAL
     Bool show_text_box;
     Char *text_box_input;
-    Bool hide_player;
+    Int input_delay;
+#endif
 };
 
 enum Sound_ID {
@@ -301,6 +311,7 @@ Void draw_entity_text(sglp_API *api, Game_State *gs, Entity *entity, V2 mouse_po
 }
 
 // TODO - When this function draws text it'd be good if it made sure the text was always onscreen.
+// TODO - Be nice to have some way to display the player with a keypress.
 Void draw_debug_information(sglp_API *api, Game_State *gs) {
 #if INTERNAL
 
@@ -327,9 +338,9 @@ Void draw_debug_information(sglp_API *api, Game_State *gs) {
         V2 position_to_draw = {0};
         Transform trans = {0};
         switch(next->type) {
-            case pp_Type_Player: trans = next->player.trans; break;
-            case pp_Type_Enemy:  trans = next->enemy.trans;  break;
-            case pp_Type_Bullet: trans = next->bullet.trans; break;
+            case pp_Type_Player: { trans = next->player.trans; } break;
+            case pp_Type_Enemy:  { trans = next->enemy.trans;  } break;
+            case pp_Type_Bullet: { trans = next->bullet.trans; } break;
         }
 
         draw_entity_text(api, gs, next, mouse_position, trans);
@@ -355,10 +366,6 @@ void render(sglp_API *api, Game_State *gs) {
                 trans = next->player.trans;
                 id = Sprite_ID_player;
                 current_frame = next->player.current_frame;
-                if(gs->hide_player) {
-                    id = Sprite_ID_unknown;
-                }
-
             } break;
 
             case pp_Type_Enemy: {
@@ -375,8 +382,9 @@ void render(sglp_API *api, Game_State *gs) {
         }
 
         if(id) {
-
-            sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(trans.pos.x, trans.pos.y,
+            Float x = trans.pos.x - gs->camera.pos.x;
+            Float y = trans.pos.y - gs->camera.pos.y;
+            sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(x, y,
                                                               trans.scale.x, trans.scale.y,
                                                               trans.rot);
             Float tform[16] = {0};
@@ -428,7 +436,6 @@ Bullet create_bullet(void) {
 }
 
 void init(sglp_API *api, Game_State *gs) {
-
     // Load the player.
     {
         int width, height, number_of_components;
@@ -481,6 +488,18 @@ void init(sglp_API *api, Game_State *gs) {
             Bullet bullet = create_bullet();
             gs->entity = push_entity(api, gs->entity, &bullet, pp_Type_Bullet);
         }
+    }
+
+    // Camera
+    {
+        Player *player = find_first_entity(gs->entity, pp_Type_Player);
+        assert(player);
+
+        gs->camera.speed = v2(0.05f, 0.05f);
+        // gs->camera.entity_to_follow = player;
+        gs->camera.follow_exactly = false;
+        gs->camera.pos.x = (int)player->trans.pos.x;
+        gs->camera.pos.y = (int)player->trans.pos.y;
     }
 
     // Load background music.
@@ -593,15 +612,15 @@ Void update_player(Player *player, Entity *player_entity, sglp_API *api, Game_St
 
     // DEBUG - Rotation
     float rot_speed = 5.0f;
-    if(api->key[sglp_key_left])  player->trans.rot += rot_speed;
-    if(api->key[sglp_key_right]) player->trans.rot -= rot_speed;
+    if(api->key[sglp_key_left])  { player->trans.rot += rot_speed; }
+    if(api->key[sglp_key_right]) { player->trans.rot -= rot_speed; }
 
     // DEBUG - scaling
     float scaling_speed = 0.01f;
-    if(api->key['I']) player->trans.scale.y += scaling_speed;
-    if(api->key['K']) player->trans.scale.y -= scaling_speed;
-    if(api->key['J']) player->trans.scale.x -= scaling_speed;
-    if(api->key['L']) player->trans.scale.x += scaling_speed;
+    if(api->key['I']) { player->trans.scale.y += scaling_speed; }
+    if(api->key['K']) { player->trans.scale.y -= scaling_speed; }
+    if(api->key['J']) { player->trans.scale.x -= scaling_speed; }
+    if(api->key['L']) { player->trans.scale.x += scaling_speed; }
 }
 
 Void update_enemy(Enemy *enemy, Game_State *gs) {
@@ -630,15 +649,14 @@ Void update_enemy(Enemy *enemy, Game_State *gs) {
 
 void update_bullet(Bullet *bullet, Game_State *gs) {
     // Bullet movement
-    // TODO - Make the bullet an entity.
     if(bullet->dir != Direction_unknown) {
         Float bullet_speed = 0.002f;
 
-        if(bullet->dir == Direction_left)       bullet->trans.pos.x -= bullet_speed;
-        else if(bullet->dir == Direction_right) bullet->trans.pos.x += bullet_speed;
+        if(bullet->dir == Direction_left)       { bullet->trans.pos.x -= bullet_speed; }
+        else if(bullet->dir == Direction_right) { bullet->trans.pos.x += bullet_speed; }
 
-        if(bullet->dir == Direction_up)         bullet->trans.pos.y -= bullet_speed;
-        else if(bullet->dir == Direction_down)  bullet->trans.pos.y += bullet_speed;
+        if(bullet->dir == Direction_up)         { bullet->trans.pos.y -= bullet_speed; }
+        else if(bullet->dir == Direction_down)  { bullet->trans.pos.y += bullet_speed; }
 
         if(is_offscreen(bullet->trans)) {
             bullet->dir = Direction_unknown;
@@ -660,6 +678,39 @@ void update_bullet(Bullet *bullet, Game_State *gs) {
     }
 }
 
+Void handle_input_commands(Char *cmd, sglp_API *api, Game_State *gs) {
+    /*if(sgl_string_comp(cmd, "HIDEPLAYER")) {
+        gs->hide_player = !gs->hide_player;
+    }
+    else*/ {
+        pp_Type gs_type = pp_Type_Game_State;
+        Uintptr number_of_gs_members = pp_get_number_of_members(gs_type);
+        for(Uintptr i =0; (i < number_of_gs_members); ++i) {
+            pp_MemberDefinition mem = pp_get_members_from_type(gs_type, i);
+            if(sgl_string_comp(cmd, mem.name)) {
+                // TODO - Do something here? Like display the value?
+            }
+        }
+    }
+}
+
+Void update_camera(Game_State *gs) {
+    Camera *camera = &gs->camera;
+    Player *player = find_first_entity(gs->entity, pp_Type_Player);
+
+    // TODO - This doesn't work for negative player positions.
+    Float target_x = (float)((int)player->trans.pos.x);
+    Float target_y = (float)((int)player->trans.pos.y);
+
+    if(camera->pos.x < target_x - camera->speed.x)      { camera->pos.x += camera->speed.x; }
+    else if(camera->pos.x > target_x + camera->speed.x) { camera->pos.x -= camera->speed.x; }
+    else                                                { camera->pos.x = target_x;         }
+
+    if(camera->pos.y < target_y - camera->speed.y)      { camera->pos.y += camera->speed.y; }
+    else if(camera->pos.y > target_y + camera->speed.y) { camera->pos.y -= camera->speed.y; }
+    else                                                { camera->pos.y = target_y;         }
+}
+
 Void update(sglp_API *api, Game_State *gs) {
 
 #if INTERNAL
@@ -669,42 +720,50 @@ Void update(sglp_API *api, Game_State *gs) {
     if(api->key[sglp_key_escape]) { // TODO - Change to "enter" once sgl_platform.h supports it.
         gs->show_text_box = false;
 
-        if(sgl_string_comp(gs->text_box_input, "PLAYER")) {
-            gs->hide_player = !gs->hide_player;
-        }
+        handle_input_commands(gs->text_box_input, api, gs);
 
         sgl_zero(gs->text_box_input, sgl_string_len(gs->text_box_input));
     }
 #endif
 
+#if INTERNAL
     if(!gs->show_text_box) {
+#endif
+        update_camera(gs);
+
         Entity *next = gs->entity;
         while(next) {
             switch(next->type) {
-                case pp_Type_Player: update_player(&next->player, next, api, gs); break;
-                case pp_Type_Enemy:  update_enemy(&next->enemy, gs);        break;
-                case pp_Type_Bullet: update_bullet(&next->bullet, gs);      break;
+                case pp_Type_Player: { update_player(&next->player, next, api, gs); } break;
+                case pp_Type_Enemy:  { update_enemy(&next->enemy, gs);              } break;
+                case pp_Type_Bullet: { update_bullet(&next->bullet, gs);            } break;
 
                 default: assert(0); break;
             }
 
             next = next->next;
         }
+#if INTERNAL
     }
     else {
-#if INTERNAL
-        // TODO - This won't let you put in duplicate letters. Or delete letters.
+        // TODO - This won't let you delete letters or put in spaces.
+        if(gs->input_delay >= 0) {
+            gs->input_delay -= api->dt;
+        }
+
         for(sglp_Key key = sglp_key_a; key <= sglp_key_z; ++key) {
             Bool val = api->key[key];
             if(val) {
                 Int end = sgl_string_len(gs->text_box_input) - 1;
-                if(end == 0 || key != gs->text_box_input[end - 1]) {
+
+                if(end == 0 || (key != gs->text_box_input[end - 1] || gs->input_delay <= 0)) {
                     gs->text_box_input[end] = key;
+                    gs->input_delay = INPUT_DELAY;
                 }
             }
         }
-#endif
     }
+#endif
 }
 
 void sglp_platform_update_and_render_callback(sglp_API *api) {

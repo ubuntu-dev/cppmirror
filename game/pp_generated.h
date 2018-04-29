@@ -109,6 +109,7 @@ typedef struct Bullet Bullet;
 typedef struct Player Player;
 typedef struct Enemy Enemy;
 typedef struct Entity Entity;
+typedef struct Camera Camera;
 typedef struct Game_State Game_State;
 
 /* Forward declared functions. */
@@ -253,6 +254,7 @@ typedef enum pp_Type {
     pp_Type_Enemy,
     pp_Type_Entity,
     pp_Type_pp_Type,
+    pp_Type_Camera,
     pp_Type_Game_State,
     pp_Type___m128i,
 
@@ -280,6 +282,7 @@ typedef struct pp_Bullet pp_Bullet;    typedef struct pp_Bullet pp_pp_Bullet;
 typedef struct pp_Player pp_Player;    typedef struct pp_Player pp_pp_Player;
 typedef struct pp_Enemy pp_Enemy;    typedef struct pp_Enemy pp_pp_Enemy;
 typedef struct pp_Entity pp_Entity;    typedef struct pp_Entity pp_pp_Entity;
+typedef struct pp_Camera pp_Camera;    typedef struct pp_Camera pp_pp_Camera;
 typedef struct pp_Game_State pp_Game_State;    typedef struct pp_Game_State pp_pp_Game_State;
 
 // Forward declared enums
@@ -437,8 +440,11 @@ struct pp_Enemy {
 struct pp_Entity {
      union {pp_Player player; pp_Enemy enemy; pp_Bullet bullet; };pp_Type type; pp_Entity *next; 
 };
+struct pp_Camera {
+    pp_V2 pos; pp_V2 speed; pp_Bool follow_exactly; 
+};
 struct pp_Game_State {
-    pp_Entity *entity; pp_Bool show_text_box; pp_Char *text_box_input; pp_Bool hide_player; 
+    pp_Entity *entity; pp_Camera camera; pp_Bool show_text_box; pp_Char *text_box_input; pp_Int input_delay; 
 };
 
 // Turn a typedef'd type into it's original type.
@@ -1068,6 +1074,22 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
             } break; 
         }
     }
+    else if(real_type == pp_Type_Camera) {
+        switch(index) {
+            case 0: {
+                pp_MemberDefinition res = {pp_Type_V2, "pos", PP_OFFSETOF(pp_Camera, pos), 0, 0};
+                return(res);
+            } break; 
+            case 1: {
+                pp_MemberDefinition res = {pp_Type_V2, "speed", PP_OFFSETOF(pp_Camera, speed), 0, 0};
+                return(res);
+            } break; 
+            case 2: {
+                pp_MemberDefinition res = {pp_Type_Bool, "follow_exactly", PP_OFFSETOF(pp_Camera, follow_exactly), 0, 0};
+                return(res);
+            } break; 
+        }
+    }
     else if(real_type == pp_Type_Game_State) {
         switch(index) {
             case 0: {
@@ -1075,15 +1097,19 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 return(res);
             } break; 
             case 1: {
-                pp_MemberDefinition res = {pp_Type_Bool, "show_text_box", PP_OFFSETOF(pp_Game_State, show_text_box), 0, 0};
+                pp_MemberDefinition res = {pp_Type_Camera, "camera", PP_OFFSETOF(pp_Game_State, camera), 0, 0};
                 return(res);
             } break; 
             case 2: {
-                pp_MemberDefinition res = {pp_Type_Char, "text_box_input", PP_OFFSETOF(pp_Game_State, text_box_input), 1, 0};
+                pp_MemberDefinition res = {pp_Type_Bool, "show_text_box", PP_OFFSETOF(pp_Game_State, show_text_box), 0, 0};
                 return(res);
             } break; 
             case 3: {
-                pp_MemberDefinition res = {pp_Type_Bool, "hide_player", PP_OFFSETOF(pp_Game_State, hide_player), 0, 0};
+                pp_MemberDefinition res = {pp_Type_Char, "text_box_input", PP_OFFSETOF(pp_Game_State, text_box_input), 1, 0};
+                return(res);
+            } break; 
+            case 4: {
+                pp_MemberDefinition res = {pp_Type_Int, "input_delay", PP_OFFSETOF(pp_Game_State, input_delay), 0, 0};
                 return(res);
             } break; 
         }
@@ -1114,7 +1140,8 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_Player: { return(7); } break;
         case pp_Type_Enemy: { return(1); } break;
         case pp_Type_Entity: { return(5); } break;
-        case pp_Type_Game_State: { return(4); } break;
+        case pp_Type_Camera: { return(3); } break;
+        case pp_Type_Game_State: { return(5); } break;
     }
 
     PP_ASSERT(0);
@@ -1141,7 +1168,7 @@ PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {
             return(pp_StructureType_enum);
         } break;
 
-        case pp_Type___m128: case pp_Type___m128i: case pp_Type_stbsp__context: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_TempMemory: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_File: case pp_Type_sglp_Settings: case pp_Type_sglp_API: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_V2: case pp_Type_Transform: case pp_Type_Bullet: case pp_Type_Player: case pp_Type_Enemy: case pp_Type_Entity: case pp_Type_Game_State: {
+        case pp_Type___m128: case pp_Type___m128i: case pp_Type_stbsp__context: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_TempMemory: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_File: case pp_Type_sglp_Settings: case pp_Type_sglp_API: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_V2: case pp_Type_Transform: case pp_Type_Bullet: case pp_Type_Player: case pp_Type_Enemy: case pp_Type_Entity: case pp_Type_Camera: case pp_Type_Game_State: {
             return(pp_StructureType_struct);
         } break;
     }
@@ -1286,6 +1313,7 @@ PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_Enemy: { return("Enemy"); } break;
         case pp_Type_Entity: { return("Entity"); } break;
         case pp_Type_pp_Type: { return("pp_Type"); } break;
+        case pp_Type_Camera: { return("Camera"); } break;
         case pp_Type_Game_State: { return("Game_State"); } break;
         case pp_Type___m128i: { return("__m128i"); } break;
     }
@@ -1425,6 +1453,7 @@ PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
         case pp_Type_Player: { return sizeof(pp_Player); } break;
         case pp_Type_Enemy: { return sizeof(pp_Enemy); } break;
         case pp_Type_Entity: { return sizeof(pp_Entity); } break;
+        case pp_Type_Camera: { return sizeof(pp_Camera); } break;
         case pp_Type_Game_State: { return sizeof(pp_Game_State); } break;
         case pp_Type___m128i: { return sizeof(pp___m128i); } break;
     }
