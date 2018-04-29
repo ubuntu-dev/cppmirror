@@ -2750,6 +2750,19 @@ static FILETIME sglp_win32_get_last_write_time(char const *fname) {
     return(res);
 }
 
+static void sglp_win32_check_error(void) {
+    DWORD err = GetLastError();
+    if(err != 0) {
+        LPSTR msg_buf;
+        uintptr_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                        NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&msg_buf,
+                                        0, NULL);
+        SGLP_ASSERT(0);
+        // TODO - Might be nice to have some kind of callback/macro to user code so they can output it however they want.
+        LocalFree(msg_buf);
+    }
+}
+
 static sglp_Win32GameCode sglp_win32_load_game_code(char const *source_fname, char const *temp_fname) {
     sglp_Win32GameCode res = {0};
 
@@ -2771,11 +2784,15 @@ static sglp_Win32GameCode sglp_win32_load_game_code(char const *source_fname, ch
 }
 
 static void sglp_win32_setup_settings_callback(sglp_Win32GameCode *gamecode, sglp_Settings *settings) {
-    if(gamecode->setup_settings_callback) gamecode->setup_settings_callback(settings);
+    if(gamecode->setup_settings_callback) {
+        gamecode->setup_settings_callback(settings);
+    }
 }
 
 static void sglp_win32_update_and_render_callback(sglp_Win32GameCode *gamecode, sglp_API *api) {
-    if(gamecode->update_and_render_callback) gamecode->update_and_render_callback(api);
+    if(gamecode->update_and_render_callback) {
+        gamecode->update_and_render_callback(api);
+    }
 }
 
 static void sglp_win32_unload_game(sglp_Win32GameCode *game) {
