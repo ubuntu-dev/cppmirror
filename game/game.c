@@ -378,7 +378,7 @@ void render(sglp_API *api, Game_State *gs) {
                 id = Sprite_ID_bullet;
             } break;
 
-            default: assert(0); break;
+            default: { assert(0); } break;
         }
 
         if(id) {

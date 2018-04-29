@@ -1061,7 +1061,6 @@ static float sglp_lerp(float t, float a, float b) {
 }
 
 static void sglp_output_playing_sounds(sglp_API *api, sglp_SoundOutputBuffer *snd_buf) {
-    int i;
     float master_vol0 = 1.0f, master_vol1 = 1.0f;
     float seconds_per_sample = 1.0f / (float)snd_buf->samples_per_second;
 
@@ -1076,7 +1075,7 @@ static void sglp_output_playing_sounds(sglp_API *api, sglp_SoundOutputBuffer *sn
         float *dst0 = (float *)float_channel0;
         float *dst1 = (float *)float_channel1;
 
-        for(i = 0; (i < snd_buf->sample_cnt); ++i) {
+        for(uintptr_t i = 0; (i < snd_buf->sample_cnt); ++i) {
             *dst0++ = 0.0f;
             *dst1++ = 0.0f;
         }
@@ -1084,8 +1083,7 @@ static void sglp_output_playing_sounds(sglp_API *api, sglp_SoundOutputBuffer *sn
 
     // Sum all the sounds.
     {
-        sglp_PlayingSound **playing_snd_ptr;
-        for(playing_snd_ptr = &sglp_global_audio_state.first_playing_snd; (*playing_snd_ptr); /* Empty */) {
+        for(sglp_PlayingSound **playing_snd_ptr = &sglp_global_audio_state.first_playing_snd; (*playing_snd_ptr); /* Empty */) {
             sglp_PlayingSound *playing_snd = *playing_snd_ptr;
             sglp_Bool snd_finished = SGLP_FALSE;
 
@@ -1097,16 +1095,14 @@ static void sglp_output_playing_sounds(sglp_API *api, sglp_SoundOutputBuffer *sn
                 sglp_LoadedSound *loaded_snd = sglp_get_sound(sglp_global_loaded_sounds, playing_snd->id);
                 float dvol0 = playing_snd->dcur_volume0 * seconds_per_sample;
                 float dvol1 = playing_snd->dcur_volume1 * seconds_per_sample;
-                uint32_t samples_to_mix, samples_remaining_in_sound;
                 sglp_Bool vol_ended[2] = {0};
-                float sample_pos;
 
                 SGLP_ASSERT(loaded_snd);
                 SGLP_ASSERT(playing_snd->samples_played >= 0.0f); // Do now allow pre-queued sounds (right now).
 
-                samples_to_mix = total_samples_to_mix;
-                samples_remaining_in_sound = sglp_round_float_to_int((loaded_snd->sample_cnt - sglp_round_float_to_int(playing_snd->samples_played)) /
-                                                                     playing_snd->dsample);
+                uint32_t samples_to_mix = total_samples_to_mix;
+                uint32_t samples_remaining_in_sound = sglp_round_float_to_int((loaded_snd->sample_cnt - sglp_round_float_to_int(playing_snd->samples_played)) /
+                                                                              playing_snd->dsample);
                 if(samples_to_mix > samples_remaining_in_sound) {
                     samples_to_mix = samples_remaining_in_sound;
                 }
@@ -1136,8 +1132,8 @@ static void sglp_output_playing_sounds(sglp_API *api, sglp_SoundOutputBuffer *sn
                 }
 
                 // TODO(Jonny): Handle stereo!
-                sample_pos = playing_snd->samples_played;
-                for(i = 0; (i < samples_to_mix); ++i) {
+                float sample_pos = playing_snd->samples_played;
+                for(uintptr_t i = 0; (i < samples_to_mix); ++i) {
                     uint32_t sample_index = sglp_floor_float_to_int(sample_pos);
                     float sample_value = sglp_lerp(sample_pos - (float)sample_index,
                                                    (float)loaded_snd->samples[0][sample_index],
@@ -1185,7 +1181,7 @@ static void sglp_output_playing_sounds(sglp_API *api, sglp_SoundOutputBuffer *sn
         float *src1 = (float *)float_channel1;
 
         int16_t *sample_out = snd_buf->samples;
-        for(i = 0; (i < snd_buf->sample_cnt); ++i) {
+        for(uintptr_t i = 0; (i < snd_buf->sample_cnt); ++i) {
             *sample_out++ = (int16_t)(*src0++ + 0.5f);
             *sample_out++ = (int16_t)(*src1++ + 0.5f);
         }
@@ -1280,21 +1276,19 @@ static uint32_t sglp_get_chunk_data_size(sglp_RiffIter iter) {
 
 sglp_Bool sglp_load_wav(sglp_API *api, int32_t id, void *data, uintptr_t size) {
     sglp_Bool res = SGLP_FALSE;
-    if(sglp_global_loaded_sound_cnt + 1< sglp_global_loaded_sound_max) {
-        int i, j;
-        sglp_WAVEHeader *header;
-        sglp_LoadedSound *loaded_snd = sglp_global_loaded_sounds + sglp_global_loaded_sound_cnt++;
-        uint32_t no_channels = 0, sample_data_size = 0, sample_cnt;
+    if(sglp_global_loaded_sound_cnt + 1 < sglp_global_loaded_sound_max) {
+        uint32_t no_channels = 0;
+        uint32_t sample_data_size = 0;
         int16_t *sample_data = 0;
-        sglp_RiffIter iter;
 
+        sglp_LoadedSound *loaded_snd = sglp_global_loaded_sounds + sglp_global_loaded_sound_cnt++;
         loaded_snd->id = id;
 
-        header = (sglp_WAVEHeader *)sglp_malloc(size);
+        sglp_WAVEHeader *header = (sglp_WAVEHeader *)sglp_malloc(size);
         sglp_memcpy(header, data, size);
         SGLP_ASSERT((header) && (header->riff_id == SGLP_WAVE_ChunkID_RIFF) && (header->wav_id == SGLP_WAVE_ChunkID_WAVE));
 
-        for(iter = sglp_parse_chunk_at((header + 1), ((uint8_t *)(header + 1) + header->size - 4)); (sglp_is_valid(iter)); iter = sglp_next_chunk(iter)) {
+        for(sglp_RiffIter iter = sglp_parse_chunk_at((header + 1), ((uint8_t *)(header + 1) + header->size - 4)); (sglp_is_valid(iter)); iter = sglp_next_chunk(iter)) {
             switch(sglp_get_type(iter)) {
                 case SGLP_WAVE_ChunkID_fmt: {
                     sglp_WavFormat *fmt = (sglp_WavFormat *)sglp_get_chunk_data(iter);
@@ -1312,7 +1306,7 @@ sglp_Bool sglp_load_wav(sglp_API *api, int32_t id, void *data, uintptr_t size) {
         SGLP_ASSERT((no_channels) && (sample_data));
 
         loaded_snd->no_channels = no_channels;
-        sample_cnt = sample_data_size / (no_channels * sizeof(int16_t));
+        uint32_t sample_cnt = sample_data_size / (no_channels * sizeof(int16_t));
         if(no_channels == 1) {
             loaded_snd->samples[0] = (int16_t *)sample_data;
             loaded_snd->samples[1] = 0;
@@ -1321,7 +1315,7 @@ sglp_Bool sglp_load_wav(sglp_API *api, int32_t id, void *data, uintptr_t size) {
             loaded_snd->samples[0] = sample_data;
             loaded_snd->samples[1] = sample_data + sample_cnt;
 
-            for(i = 0; (i < sample_cnt); ++i) {
+            for(uintptr_t i = 0; (i < sample_cnt); ++i) {
                 int16_t Source = sample_data[2 * i];
                 sample_data[2 * i] = sample_data[i];
                 sample_data[i]   = Source;
@@ -1335,8 +1329,8 @@ sglp_Bool sglp_load_wav(sglp_API *api, int32_t id, void *data, uintptr_t size) {
         // TODO(Jonny): Load right channel!
         loaded_snd->no_channels = 1;
 
-        for(i = loaded_snd->no_channels; (i < loaded_snd->no_channels); ++i) {
-            for(j = sample_cnt; (j < sample_cnt + 8); ++j) {
+        for(uintptr_t i = loaded_snd->no_channels; (i < loaded_snd->no_channels); ++i) {
+            for(uintptr_t j = sample_cnt; (j < sample_cnt + 8); ++j) {
                 loaded_snd->samples[i][j] = 0;
             }
         }
@@ -1389,7 +1383,7 @@ void *sglp_push_permanent_memory_with_alignment(sglp_API *api, uintptr_t size, u
 
     SGLP_ASSERT(api->permanent_memory_index < api->settings.permanent_memory_size);
 
-    return res;
+    return(res);
 }
 
 sglp_TempMemory sglp_push_temp_memory_with_alignment(sglp_API *api, uintptr_t size, uintptr_t alignment) {
@@ -1405,7 +1399,7 @@ sglp_TempMemory sglp_push_temp_memory_with_alignment(sglp_API *api, uintptr_t si
 
     api->temp_memory_index += (size + alignment_offset);
 
-    return res;
+    return(res);
 }
 
 void sglp_pop_temp_memory(sglp_API *api, sglp_TempMemory *tm) {
@@ -1424,7 +1418,7 @@ void *sglp_push_off_temp_memory_align(sglp_TempMemory *tm, uintptr_t size, uintp
 
     SGLP_ASSERT(tm->used <= tm->size);
 
-    return res;
+    return(res);
 }
 
 //
@@ -2231,9 +2225,8 @@ static sglp_XInputSetState_t *sglp_xinput_set_state;
 
 static sglp_Bool sglp_init_xinput(void) {
     sglp_Bool res = SGLP_FALSE;
-    HMODULE hxinput = 0;
+    HMODULE hxinput = LoadLibraryA("Xinput1_3.dll");
 
-    if(!hxinput) { hxinput = LoadLibraryA("Xinput1_3.dll");   }
     if(!hxinput) { hxinput = LoadLibraryA("Xinput1_4.dll");   }
     if(!hxinput) { hxinput = LoadLibraryA("Xinput9_1_0.dll"); }
     if(!hxinput) { hxinput = LoadLibraryA("Xinputuap.dll");   }
@@ -2265,11 +2258,11 @@ static sglp_Bool sglp_init_xinput(void) {
 #define SGLP_WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB 0x00000002
 
 static sglp_Bool sglp_win32_init_opengl(HWND win) {
-    typedef PROC  SGLP_STDCALL wglGetProcAddress_t(LPCSTR lpszProc);
-    typedef HGLRC SGLP_STDCALL wglCreateContext_t(HDC hdc);
+    typedef PROC       SGLP_STDCALL wglGetProcAddress_t(LPCSTR lpszProc);
+    typedef HGLRC      SGLP_STDCALL wglCreateContext_t(HDC hdc);
     typedef sglp_Bool  SGLP_STDCALL wglMakeCurrent_t(HDC hdc, HGLRC hglrc);
     typedef sglp_Bool  SGLP_STDCALL wglDeleteContext_t(HGLRC hglrc);
-    typedef HGLRC SGLP_STDCALL wglCreateContextAttribsArb_t(HDC hDC, HGLRC hShareContext, const int *attribList);
+    typedef HGLRC      SGLP_STDCALL wglCreateContextAttribsArb_t(HDC hDC, HGLRC hShareContext, const int *attribList);
     typedef sglp_Bool  SGLP_STDCALL wglSwapIntervalExt_t(int interval);
 
     sglp_Bool res = SGLP_FALSE;
@@ -2562,9 +2555,8 @@ static DWORD SGLP_STDCALL sglp_thread_proc(void *p) {
 // sglp_File IO
 //
 static uint32_t sglp_safe_truncate_64_to_32(uint64_t v) {
-    uint32_t res;
     SGLP_ASSERT(v <= 0xFFFFFFFF);
-    res = (uint32_t)v;
+    uint32_t res = (uint32_t)v;
 
     return(res);
 }
@@ -2632,7 +2624,7 @@ void *sglp_malloc(uintptr_t size) {
 }
 
 void *sglp_realloc(void *ptr, uintptr_t size) {
-    void *res;
+    void *res = 0;
 
     if(ptr) {
         res = HeapReAlloc(GetProcessHeap(), 0x00000008/*HEAP_ZERO_MEMORY*/, ptr, size);
@@ -2818,13 +2810,11 @@ static void sglp_win32_concat_strings(uintptr_t source_a_cnt, char const *source
 }
 
 int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_line, int show_code) {
-    int i;
     sglp_API api = {0};
+    sglp_setup_callbacks(&api);
+
     char source_dll_full[MAX_PATH] = {0};
     char temp_dll_full[MAX_PATH] = {0};
-    sglp_Win32GameCode game_code;
-
-    sglp_setup_callbacks(&api);
 
 #if defined(SGLP_LOAD_GAME_FROM_DLL)
     {
@@ -2832,11 +2822,11 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
         char temp_dll_name[] = SGLP_CONCAT(SGLP_TO_STRING(SGLP_CONCAT(SGLP_LOAD_GAME_FROM_DLL, _temp)), SGLP_TO_STRING(.dll));
         char exe_fname[MAX_PATH] = {0};
         DWORD exe_fname_length = GetModuleFileName(instance, exe_fname, MAX_PATH);
+
         char const *one_past_the_last_slash = exe_fname;
-        char *it;
         SGLP_ASSERT(exe_fname_length < MAX_PATH);
 
-        for(it = exe_fname; (*it != '\0'); ++it) {
+        for(char *it = exe_fname; (*it != '\0'); ++it) {
             if(*it == '\\') {
                 one_past_the_last_slash = it + 1;
             }
@@ -2847,8 +2837,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
     }
 #endif
 
-
-    game_code = sglp_win32_load_game_code(source_dll_full, temp_dll_full);
+    sglp_Win32GameCode game_code = sglp_win32_load_game_code(source_dll_full, temp_dll_full);
 
     api.add_work_queue_entry = sglp_win32_add_work_queue_entry;
     api.complete_all_work = sglp_win32_complete_all_work;
@@ -2856,18 +2845,12 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
     sglp_global_opengl = &api.gl;
 
     if((sglp_load_user32dll()) && (sglp_load_gdi32dll())) {
-        int monitor_refresh_hz, game_update_hz;
-        SYSTEM_INFO system_info;
-        LARGE_INTEGER perf_cnt_freq_res;
-        int64_t perf_cnt_freq;
-        WNDCLASS wnd_class = {0};
-        float target_seconds_per_frame, target_ms_per_frame;
-
         // Default sglp_API settings.
+        SYSTEM_INFO system_info;
         GetSystemInfo(&system_info);
 
         // Frame rate.
-        monitor_refresh_hz = 60; // TODO(Jonny): Read from hardware.
+        int monitor_refresh_hz = 60; // TODO(Jonny): Read from hardware.
         api.settings.frame_rate = monitor_refresh_hz;
 
         // Thread count.
@@ -2880,36 +2863,34 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 
         sglp_win32_setup_settings_callback(&game_code, &api.settings);
 
+        LARGE_INTEGER perf_cnt_freq_res;
         QueryPerformanceFrequency(&perf_cnt_freq_res);
-        perf_cnt_freq = perf_cnt_freq_res.QuadPart;
+        int64_t perf_cnt_freq = perf_cnt_freq_res.QuadPart;
 
         // TODO(Jonny): Replace with WNDCLASSEX??
+        WNDCLASS wnd_class = {0};
         wnd_class.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
         wnd_class.hInstance = instance;
         wnd_class.lpszClassName = TEXT("Frozen_Game");
         wnd_class.lpfnWndProc = sglp_user32_DefWindowProcA;
 
-        game_update_hz = (api.settings.frame_rate) ? api.settings.frame_rate : api.settings.frame_rate;
-        target_seconds_per_frame = 1.0f / (float)game_update_hz;
-        target_ms_per_frame = (1.0f / api.settings.frame_rate) * 1000.0f;
+        int game_update_hz = (api.settings.frame_rate) ? api.settings.frame_rate : api.settings.frame_rate;
+        float target_seconds_per_frame = 1.0f / (float)game_update_hz;
+        float target_ms_per_frame = (1.0f / api.settings.frame_rate) * 1000.0f;
 
         // To make the frame rate more granular.
-        {
-            HMODULE winmmdll = LoadLibraryA("winmm.dll");
-            if(winmmdll) {
-                typedef MMRESULT TimeBeginPeriod_t(uint32_t uPeriod);
-                TimeBeginPeriod_t *winm_timeBeginPeriod = (TimeBeginPeriod_t *)GetProcAddress(winmmdll, "timeBeginPeriod");
-                if(winm_timeBeginPeriod) {
-                    winm_timeBeginPeriod(1);
-                }
-
-                FreeLibrary(winmmdll);
+        HMODULE winmmdll = LoadLibraryA("winmm.dll");
+        if(winmmdll) {
+            typedef MMRESULT TimeBeginPeriod_t(uint32_t uPeriod);
+            TimeBeginPeriod_t *winm_timeBeginPeriod = (TimeBeginPeriod_t *)GetProcAddress(winmmdll, "timeBeginPeriod");
+            if(winm_timeBeginPeriod) {
+                winm_timeBeginPeriod(1);
             }
+
+            FreeLibrary(winmmdll);
         }
 
         if(sglp_user32_RegisterClassA(&wnd_class)) {
-            char const *window_title = (api.settings.window_title) ? api.settings.window_title : "Game";
-            HWND win;
 
             if(!api.settings.win_width) {
                 api.settings.win_width = 1920;
@@ -2919,28 +2900,27 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                 api.settings.win_height = 1080;
             }
 
-            win = sglp_user32_CreateWindowExA(0, wnd_class.lpszClassName, window_title,
-                                              WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_POPUP, CW_USEDEFAULT, CW_USEDEFAULT,
-                                              api.settings.win_width, api.settings.win_height, 0, 0, instance, 0);
-            if((win) && (win != INVALID_HANDLE_VALUE)) {
-                sglp_Bool should_play_snd, should_allow_controller;
-                sglp_Win32SoundOutput snd_output = {0};
-                LPDIRECTSOUNDBUFFER secondary_buffer = 0;
-                int16_t *snd_samples = 0;
-
+            char const *window_title = (api.settings.window_title) ? api.settings.window_title : "Game";
+            HWND win = sglp_user32_CreateWindowExA(0, wnd_class.lpszClassName, window_title,
+                                                   WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_POPUP, CW_USEDEFAULT, CW_USEDEFAULT,
+                                                   api.settings.win_width, api.settings.win_height, 0, 0, instance, 0);
+            if(win && win != INVALID_HANDLE_VALUE) {
                 if(api.settings.fullscreen) {
                     sglp_win32_toggle_fullscreen(win);
                 }
 
+                sglp_Win32SoundOutput snd_output = {0};
                 snd_output.samples_per_second = 48000;
                 snd_output.bytes_per_sample = sizeof(int16_t) * 2;
                 snd_output.secondary_buf_size = snd_output.samples_per_second * snd_output.bytes_per_sample;
                 snd_output.safety_bytes =
                     (int32_t)(((float)snd_output.samples_per_second * (float)snd_output.bytes_per_sample / game_update_hz) / 3.0f);
 
-                should_play_snd = sglp_init_dsound(win, snd_output.samples_per_second,
-                                                   snd_output.secondary_buf_size, &secondary_buffer);
+                LPDIRECTSOUNDBUFFER secondary_buffer = 0;
+                sglp_Bool should_play_snd = sglp_init_dsound(win, snd_output.samples_per_second,
+                                                             snd_output.secondary_buf_size, &secondary_buffer);
 
+                int16_t *snd_samples = 0;
                 if(should_play_snd) {
                     if(!secondary_buffer) {
                         should_play_snd = SGLP_FALSE;
@@ -2955,12 +2935,12 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                             uint8_t *DestSample;
 
                             DestSample = (uint8_t *)region1;
-                            for(i = 0; (i < region1_size); ++i) {
+                            for(uintptr_t i = 0; (i < region1_size); ++i) {
                                 *DestSample++ = 0;
                             }
 
                             DestSample = (uint8_t *)region2;
-                            for(i = 0; (i < region2_size); ++i) {
+                            for(uintptr_t i = 0; (i < region2_size); ++i) {
                                 *DestSample++ = 0;
                             }
 
@@ -2974,13 +2954,13 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                     }
                 }
 
-                should_allow_controller = sglp_init_xinput();
+                sglp_Bool should_allow_controller = sglp_init_xinput();
 
                 sglp_global_work_queue.hsem = CreateSemaphore(0, 0, api.settings.thread_cnt, 0);
 
-                for(i = 0; (i < api.settings.thread_cnt); ++i) {
+                for(int i = 0; (i < api.settings.thread_cnt); ++i) {
                     HANDLE hthread = CreateThread(0, 0, sglp_thread_proc, &sglp_global_work_queue, 0, 0);
-                    SGLP_ASSERT((hthread) && (hthread != INVALID_HANDLE_VALUE));
+                    SGLP_ASSERT(hthread && hthread != INVALID_HANDLE_VALUE);
 
                     CloseHandle(hthread);
                 }
@@ -3027,7 +3007,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                             // XInput.
                             //
                             if(should_allow_controller) {
-                                for(i = 0; (i < /*XUSER_MAX_COUNT*/4); ++i) {
+                                for(int i = 0; (i < /*XUSER_MAX_COUNT*/4); ++i) {
                                     SGLP_XINPUT_STATE controller_state;
                                     if((sglp_xinput_get_state) && (sglp_xinput_get_state(i, &controller_state) == ERROR_SUCCESS)) {
                                         // TODO(Jonny): Make sure controller_state.dwPacketNumber doesn't increment too quickly...
@@ -3050,8 +3030,8 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                                         {
                                             int16_t left_stickx  = controller_state.Gamepad.sThumbLX;
                                             int16_t left_sticky  = controller_state.Gamepad.sThumbLY;
-                                            int16_t right_stickx = controller_state.Gamepad.sThumbRX;
-                                            int16_t right_sticky = controller_state.Gamepad.sThumbRY;
+                                            int16_t right_stickx = controller_state.Gamepad.sThumbRX; // TODO - Unused.
+                                            int16_t right_sticky = controller_state.Gamepad.sThumbRY; // TODO - Unused.
 
                                             api.key[sglp_left_stick_x] = 0.0f;
                                             api.key[sglp_left_stick_y] = 0.0f;
@@ -3096,19 +3076,14 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                             api.init_game = SGLP_FALSE;
 
                             // Get mouse position.
-                            {
-                                POINT mouse_point = {0};
-                                RECT rect = {0};
-                                if(sglp_user32_GetCursorPos(&mouse_point) && sglp_user32_GetWindowRect(win, &rect)) {
-                                    int x = mouse_point.x - rect.left;
-                                    int y = mouse_point.y - rect.top;
-                                    if(api.key[sglp_key_space]) {
-                                        int k = 0;
-                                    }
+                            POINT mouse_point = {0};
+                            RECT rect = {0};
+                            if(sglp_user32_GetCursorPos(&mouse_point) && sglp_user32_GetWindowRect(win, &rect)) {
+                                int x = mouse_point.x - rect.left;
+                                int y = mouse_point.y - rect.top;
 
-                                    api.mouse_x = SGLP_NORMALISE((float)x, (float)api.settings.win_width, 0.0f);
-                                    api.mouse_y = SGLP_NORMALISE((float)y, (float)api.settings.win_height, 0.0f);
-                                }
+                                api.mouse_x = SGLP_NORMALISE((float)x, (float)api.settings.win_width, 0.0f);
+                                api.mouse_y = SGLP_NORMALISE((float)y, (float)api.settings.win_height, 0.0f);
                             }
 
                             sglp_win32_get_mouse_position(&api, win);
@@ -3120,18 +3095,17 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                                 DWORD play_cursor, write_cursor;
                                 if(IDirectSoundBuffer_GetCurrentPosition(secondary_buffer, &play_cursor, &write_cursor) == DS_OK) {
                                     sglp_SoundOutputBuffer snd_buf = {0};
-                                    uint32_t byte_to_lock, expected_snd_bytes_per_frame, safe_write_cursor, target_cursor, bytes_to_write;
 
                                     if(!snd_is_valid) {
                                         snd_output.running_sample_index = write_cursor / snd_output.bytes_per_sample;
                                         snd_is_valid = SGLP_TRUE;
                                     }
 
-                                    byte_to_lock =
+                                    uint32_t byte_to_lock =
                                         (snd_output.running_sample_index * snd_output.bytes_per_sample) % snd_output.secondary_buf_size;
-                                    expected_snd_bytes_per_frame =
+                                    uint32_t expected_snd_bytes_per_frame =
                                         (DWORD)(((float)snd_output.samples_per_second * snd_output.bytes_per_sample) / game_update_hz);
-                                    safe_write_cursor = write_cursor;
+                                    uint32_t safe_write_cursor = write_cursor;
                                     if(safe_write_cursor < play_cursor) {
                                         safe_write_cursor += snd_output.secondary_buf_size;
                                     }
@@ -3139,8 +3113,10 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                                     SGLP_ASSERT(safe_write_cursor >= play_cursor);
                                     safe_write_cursor += snd_output.safety_bytes;
 
-                                    target_cursor =
+                                    uint32_t target_cursor =
                                         (write_cursor + expected_snd_bytes_per_frame + snd_output.safety_bytes) % snd_output.secondary_buf_size;
+
+                                    uint32_t bytes_to_write;
                                     if(byte_to_lock > target_cursor) {
                                         bytes_to_write = (snd_output.secondary_buf_size - byte_to_lock) + target_cursor;
                                     }
@@ -3162,36 +3138,23 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                                         if(SUCCEEDED(IDirectSoundBuffer_Lock(secondary_buffer, byte_to_lock, bytes_to_write,
                                                                              &region1, &region1_size, &region2, &region2_size,
                                                                              0))) {
-                                            int16_t *DestSample;
+                                            int16_t *DestSample = 0;
                                             int16_t *source_sample = snd_buf.samples;
 
                                             DestSample = (int16_t *)region1;
-                                            for(i = 0; (i < region1_size / snd_output.bytes_per_sample); ++i) {
+                                            for(uintptr_t i = 0; (i < region1_size / snd_output.bytes_per_sample); ++i) {
                                                 *DestSample++ = *source_sample++;
                                                 *DestSample++ = *source_sample++;
                                                 ++snd_output.running_sample_index;
                                             }
 
                                             DestSample = (int16_t *)region2;
-                                            for(i = 0; (i < region2_size / snd_output.bytes_per_sample); ++i) {
+                                            for(uintptr_t i = 0; (i < region2_size / snd_output.bytes_per_sample); ++i) {
                                                 *DestSample++ = *source_sample++;
                                                 *DestSample++ = *source_sample++;
                                                 ++snd_output.running_sample_index;
                                             }
 
-                                            /*
-                                            auto fill_buffer=[&](void *region, uint32_t region_sample_cnt) {
-                                                int16_t *DestSample = (int16_t *)region;
-                                                for(int32_t i = 0; (i < region_sample_cnt); ++i) {
-                                                    *DestSample++ = *source_sample++;
-                                                    *DestSample++ = *source_sample++;
-                                                    ++snd_output.running_sample_index;
-                                                }
-
-                                            };
-                                            fill_buffer(region1, region1_size / snd_output.bytes_per_sample);
-                                            fill_buffer(region2, region2_size / snd_output.bytes_per_sample);
-                                            */
                                             IDirectSoundBuffer_Unlock(secondary_buffer, region1, region1_size, region2, region2_size);
                                         }
                                     }
@@ -3207,15 +3170,14 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                                                                                                  sglp_win32_get_wall_clock(),
                                                                                                  perf_cnt_freq);
                                 if(seconds_elapsed_for_frame < target_seconds_per_frame) {
-                                    float test_seconds_elapsed_for_frame;
                                     DWORD sleepms = (DWORD)(1000.0f * (target_seconds_per_frame - seconds_elapsed_for_frame));
                                     if(sleepms > 0) {
                                         Sleep(sleepms);
                                     }
 
-                                    test_seconds_elapsed_for_frame = sglp_win32_get_seconds_elapsed(last_counter,
-                                                                                                    sglp_win32_get_wall_clock(),
-                                                                                                    perf_cnt_freq);
+                                    float test_seconds_elapsed_for_frame = sglp_win32_get_seconds_elapsed(last_counter,
+                                                                                                          sglp_win32_get_wall_clock(),
+                                                                                                          perf_cnt_freq);
                                     if(test_seconds_elapsed_for_frame < target_seconds_per_frame) {
                                         // TODO(Jonny): Log missed Sleep here
                                     }
