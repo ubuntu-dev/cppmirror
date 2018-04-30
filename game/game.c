@@ -45,6 +45,7 @@ enum Sprite_ID {
     Sprite_ID_enemy_one,
     Sprite_ID_bitmap_font,
     Sprite_ID_bullet,
+    Sprite_ID_block,
 };
 
 struct Transform {
@@ -106,26 +107,31 @@ struct Enemy {
     Transform trans;
 };
 
+struct Block {
+    Transform trans;
+};
+
 struct Entity {
     // These have to be first in the struct, so I can cast between them.
     union {
         Player player;
         Enemy enemy;
         Bullet bullet;
+        Block block;
     };
 
     pp_Type type;
     Entity *next;
 };
 
-struct EntityInfo {
+struct Entity_Info {
     Transform *trans;
     Sprite_ID sprite_id;
     Int current_frame;
 };
 
-EntityInfo get_entity_info(Entity *entity) {
-    EntityInfo res = {0};
+Entity_Info get_entity_info(Entity *entity) {
+    Entity_Info res = {0};
     switch(entity->type) {
         case pp_Type_Player: {
             Player *player = (Player *)entity;
@@ -134,17 +140,26 @@ EntityInfo get_entity_info(Entity *entity) {
             res.sprite_id = Sprite_ID_player;
             res.current_frame = player->current_frame;
         } break;
+
         case pp_Type_Enemy:  {
             Enemy *enemy = (Enemy *)entity;
 
             res.trans = &enemy->trans;
             res.sprite_id = Sprite_ID_enemy_one;
         } break;
+
         case pp_Type_Bullet: {
             Bullet *bullet = (Bullet *)entity;
 
             res.trans = &bullet->trans;
             res.sprite_id = Sprite_ID_bullet;
+        } break;
+
+        case pp_Type_Block: {
+            Block *block = (Block *)entity;
+
+            res.trans = &block->trans;
+            res.sprite_id = Sprite_ID_block;
         } break;
     }
 
@@ -389,7 +404,7 @@ void render(sglp_API *api, Game_State *gs) {
     // Render all entities.
     Entity *next = gs->entity;
     while(next) {
-        EntityInfo entity_info = get_entity_info(next);
+        Entity_Info entity_info = get_entity_info(next);
 
         if(entity_info.trans && entity_info.sprite_id) {
             Float x = entity_info.trans->pos.x - gs->camera.pos.x;
@@ -442,7 +457,16 @@ Bullet create_bullet(void) {
 
     res.trans.pos = v2(400, 400);
 
-    return res;
+    return(res);
+}
+
+Block create_block(Float x, Float y) {
+    Block res = {0};
+
+    res.trans.pos = v2(x, y);
+    res.trans.scale = v2(0.1f, 0.1f);
+
+    return(res);
 }
 
 void init(sglp_API *api, Game_State *gs) {
@@ -500,6 +524,20 @@ void init(sglp_API *api, Game_State *gs) {
         }
     }
 
+    // Blocks
+    {
+        Int width, height, number_of_components;
+        sglp_File file = api->read_file(api, "block.png");
+        uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
+        gs->sprite[Sprite_ID_block] = api->load_image(api, img_data, 1, 1, Sprite_ID_block, width, height, number_of_components);
+        stbi_image_free(img_data);
+
+        for(Int i = 0; (i < 10); ++i) {
+            Block block = create_block(0.1f * i, 0.9f);
+            gs->entity = push_entity(api, gs->entity, &block, pp_Type_Block);
+        }
+    }
+
     // Camera
     {
         Player *player = find_first_entity(gs->entity, pp_Type_Player);
@@ -537,7 +575,7 @@ void init(sglp_API *api, Game_State *gs) {
 #endif
 }
 
-Void handle_player_movement(Player *player, sglp_API *api) {
+Void handle_player_movement(Player *player, Entity *root, sglp_API *api) {
     V2 current_speed = player->current_speed;
     V2 max_speed = v2(0.01f, 0.01f);
     V2 acceleration = v2(0.006f, 0.006f);
@@ -587,13 +625,65 @@ Void handle_player_movement(Player *player, sglp_API *api) {
         }
     }
 
-    player->current_speed = current_speed;
+    Bool safe_hor = true;
+    Bool safe_vert = true;
+
+    {
+        Transform hor = player->trans;
+        hor.pos.x += current_speed.x;
+        Entity *next = root;
+        while(next) {
+            if(next->type == pp_Type_Block) {
+                Block *block = (Block *)next;
+                if(overlap(hor, block->trans)) {
+                    safe_hor = false;
+                    break;
+                }
+            }
+
+            next = next->next;
+        }
+    }
+
+    {
+        Transform vert = player->trans;
+        vert.pos.y += current_speed.y;
+        Entity *next = root;
+        while(next) {
+            if(next->type == pp_Type_Block) {
+                Block *block = (Block *)next;
+                if(overlap(vert, block->trans)) {
+                    safe_vert = false;
+                    break;
+                }
+            }
+
+            next = next->next;
+        }
+    }
+
+    if(safe_hor) {
+        player->current_speed.x = current_speed.x;
+    }
+    else {
+        player->current_speed.x = 0.0f;
+    }
+
+    if(safe_vert) {
+        player->current_speed.y = current_speed.y;
+    }
+    else {
+        player->current_speed.y = 0.0f;
+    }
+
+
     player->trans.pos.x += player->current_speed.x;
     player->trans.pos.y += player->current_speed.y;
+
 }
 
 Void update_player(Player *player, Entity *player_entity, sglp_API *api, Game_State *gs) {
-    handle_player_movement(player, api);
+    handle_player_movement(player, gs->entity, api);
 
     // Shooting.
     if(api->key[sglp_key_space] && player->can_shoot) {
