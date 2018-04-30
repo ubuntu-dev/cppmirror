@@ -38,6 +38,15 @@ V2 v2(Float x, Float y) {
     return(res);
 }
 
+enum Sprite_ID {
+    Sprite_ID_unknown,
+
+    Sprite_ID_player,
+    Sprite_ID_enemy_one,
+    Sprite_ID_bitmap_font,
+    Sprite_ID_bullet,
+};
+
 struct Transform {
     V2 pos;
     V2 scale;
@@ -109,6 +118,38 @@ struct Entity {
     Entity *next;
 };
 
+struct EntityInfo {
+    Transform *trans;
+    Sprite_ID sprite_id;
+    Int current_frame;
+};
+
+EntityInfo get_entity_info(Entity *entity) {
+    EntityInfo res = {0};
+    switch(entity->type) {
+        case pp_Type_Player: {
+            Player *player = (Player *)entity;
+
+            res.trans = &player->trans;
+            res.sprite_id = Sprite_ID_player;
+            res.current_frame = player->current_frame;
+        } break;
+        case pp_Type_Enemy:  {
+            Enemy *enemy = (Enemy *)entity;
+
+            res.trans = &enemy->trans;
+            res.sprite_id = Sprite_ID_enemy_one;
+        } break;
+        case pp_Type_Bullet: {
+            Bullet *bullet = (Bullet *)entity;
+
+            res.trans = &bullet->trans;
+            res.sprite_id = Sprite_ID_bullet;
+        } break;
+    }
+
+    return(res);
+}
 
 Entity *get_end_entity(Entity *root) {
     Entity *next = root;
@@ -121,7 +162,7 @@ Entity *get_end_entity(Entity *root) {
         }
     }
 
-    return next;
+    return(next);
 }
 
 Entity *push_entity(sglp_API *api, Entity *root, Void *var, pp_Type type) {
@@ -173,15 +214,6 @@ Void *find_next_entity(Void *root, pp_Type type) {
     return 0;
 }
 
-
-enum Sprite_ID {
-    Sprite_ID_unknown,
-
-    Sprite_ID_player,
-    Sprite_ID_enemy_one,
-    Sprite_ID_bitmap_font,
-    Sprite_ID_bullet,
-};
 
 struct Camera {
     V2 pos;
@@ -357,40 +389,18 @@ void render(sglp_API *api, Game_State *gs) {
     // Render all entities.
     Entity *next = gs->entity;
     while(next) {
-        Int current_frame = 0;
-        Transform trans = {0};
-        Sprite_ID id = Sprite_ID_unknown;
+        EntityInfo entity_info = get_entity_info(next);
 
-        switch(next->type) {
-            case pp_Type_Player: {
-                trans = next->player.trans;
-                id = Sprite_ID_player;
-                current_frame = next->player.current_frame;
-            } break;
-
-            case pp_Type_Enemy: {
-                trans = next->enemy.trans;
-                id = Sprite_ID_enemy_one;
-            } break;
-
-            case pp_Type_Bullet: {
-                trans = next->bullet.trans;
-                id = Sprite_ID_bullet;
-            } break;
-
-            default: { assert(0); } break;
-        }
-
-        if(id) {
-            Float x = trans.pos.x - gs->camera.pos.x;
-            Float y = trans.pos.y - gs->camera.pos.y;
+        if(entity_info.trans && entity_info.sprite_id) {
+            Float x = entity_info.trans->pos.x - gs->camera.pos.x;
+            Float y = entity_info.trans->pos.y - gs->camera.pos.y;
             sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(x, y,
-                                                              trans.scale.x, trans.scale.y,
-                                                              trans.rot);
+                                                              entity_info.trans->scale.x, entity_info.trans->scale.y,
+                                                              entity_info.trans->rot);
             Float tform[16] = {0};
             sglm_mat4x4_as_float_arr(tform, &mat);
 
-            api->draw_sprite(gs->sprite[id], current_frame, tform);
+            api->draw_sprite(gs->sprite[entity_info.sprite_id], entity_info.current_frame, tform);
         }
 
         next = next->next;

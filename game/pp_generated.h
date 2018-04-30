@@ -87,9 +87,9 @@ PP_STATIC void *PP_MEMSET(void *dst, uint8_t v, uintptr_t size) {
 
 /* Forward declared enums. */
 typedef enum sglp_Key sglp_Key;
+typedef enum Sprite_ID Sprite_ID;
 typedef enum Direction Direction;
 typedef enum Player_Direction Player_Direction;
-typedef enum Sprite_ID Sprite_ID;
 typedef enum Sound_ID Sound_ID;
 
 /* Forward declared structs. */
@@ -109,6 +109,7 @@ typedef struct Bullet Bullet;
 typedef struct Player Player;
 typedef struct Enemy Enemy;
 typedef struct Entity Entity;
+typedef struct EntityInfo EntityInfo;
 typedef struct Camera Camera;
 typedef struct Game_State Game_State;
 
@@ -231,9 +232,9 @@ typedef enum pp_Type {
     pp_Type_Char,
     pp_Type_Bool,
     pp_Type_sglp_Key,
+    pp_Type_Sprite_ID,
     pp_Type_Direction,
     pp_Type_Player_Direction,
-    pp_Type_Sprite_ID,
     pp_Type_Sound_ID,
     pp_Type_stbsp__context,
     pp_Type_sglp_Sprite,
@@ -254,6 +255,7 @@ typedef enum pp_Type {
     pp_Type_Enemy,
     pp_Type_Entity,
     pp_Type_pp_Type,
+    pp_Type_EntityInfo,
     pp_Type_Camera,
     pp_Type_Game_State,
     pp_Type___m128i,
@@ -282,14 +284,15 @@ typedef struct pp_Bullet pp_Bullet;    typedef struct pp_Bullet pp_pp_Bullet;
 typedef struct pp_Player pp_Player;    typedef struct pp_Player pp_pp_Player;
 typedef struct pp_Enemy pp_Enemy;    typedef struct pp_Enemy pp_pp_Enemy;
 typedef struct pp_Entity pp_Entity;    typedef struct pp_Entity pp_pp_Entity;
+typedef struct pp_EntityInfo pp_EntityInfo;    typedef struct pp_EntityInfo pp_pp_EntityInfo;
 typedef struct pp_Camera pp_Camera;    typedef struct pp_Camera pp_pp_Camera;
 typedef struct pp_Game_State pp_Game_State;    typedef struct pp_Game_State pp_pp_Game_State;
 
 // Forward declared enums
 typedef int pp_sglp_Key;
+typedef int pp_Sprite_ID;
 typedef int pp_Direction;
 typedef int pp_Player_Direction;
-typedef int pp_Sprite_ID;
 typedef int pp_Sound_ID;
 
 //
@@ -439,6 +442,9 @@ struct pp_Enemy {
 };
 struct pp_Entity {
      union {pp_Player player; pp_Enemy enemy; pp_Bullet bullet; };pp_Type type; pp_Entity *next; 
+};
+struct pp_EntityInfo {
+    pp_Transform *trans; pp_Sprite_ID sprite_id; pp_Int current_frame; 
 };
 struct pp_Camera {
     pp_V2 pos; pp_V2 speed; pp_Bool follow_exactly; 
@@ -1074,6 +1080,22 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
             } break; 
         }
     }
+    else if(real_type == pp_Type_EntityInfo) {
+        switch(index) {
+            case 0: {
+                pp_MemberDefinition res = {pp_Type_Transform, "trans", PP_OFFSETOF(pp_EntityInfo, trans), 1, 0};
+                return(res);
+            } break; 
+            case 1: {
+                pp_MemberDefinition res = {pp_Type_Sprite_ID, "sprite_id", PP_OFFSETOF(pp_EntityInfo, sprite_id), 0, 0};
+                return(res);
+            } break; 
+            case 2: {
+                pp_MemberDefinition res = {pp_Type_Int, "current_frame", PP_OFFSETOF(pp_EntityInfo, current_frame), 0, 0};
+                return(res);
+            } break; 
+        }
+    }
     else if(real_type == pp_Type_Camera) {
         switch(index) {
             case 0: {
@@ -1140,6 +1162,7 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_Player: { return(7); } break;
         case pp_Type_Enemy: { return(1); } break;
         case pp_Type_Entity: { return(5); } break;
+        case pp_Type_EntityInfo: { return(3); } break;
         case pp_Type_Camera: { return(3); } break;
         case pp_Type_Game_State: { return(5); } break;
     }
@@ -1164,11 +1187,11 @@ PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {
             return(pp_StructureType_primitive);
         } break;
 
-        case pp_Type_sglp_Key: case pp_Type_Direction: case pp_Type_Player_Direction: case pp_Type_Sprite_ID: case pp_Type_Sound_ID: {
+        case pp_Type_sglp_Key: case pp_Type_Sprite_ID: case pp_Type_Direction: case pp_Type_Player_Direction: case pp_Type_Sound_ID: {
             return(pp_StructureType_enum);
         } break;
 
-        case pp_Type___m128: case pp_Type___m128i: case pp_Type_stbsp__context: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_TempMemory: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_File: case pp_Type_sglp_Settings: case pp_Type_sglp_API: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_V2: case pp_Type_Transform: case pp_Type_Bullet: case pp_Type_Player: case pp_Type_Enemy: case pp_Type_Entity: case pp_Type_Camera: case pp_Type_Game_State: {
+        case pp_Type___m128: case pp_Type___m128i: case pp_Type_stbsp__context: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_TempMemory: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_File: case pp_Type_sglp_Settings: case pp_Type_sglp_API: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_V2: case pp_Type_Transform: case pp_Type_Bullet: case pp_Type_Player: case pp_Type_Enemy: case pp_Type_Entity: case pp_Type_EntityInfo: case pp_Type_Camera: case pp_Type_Game_State: {
             return(pp_StructureType_struct);
         } break;
     }
@@ -1290,9 +1313,9 @@ PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_Char: { return("Char"); } break;
         case pp_Type_Bool: { return("Bool"); } break;
         case pp_Type_sglp_Key: { return("sglp_Key"); } break;
+        case pp_Type_Sprite_ID: { return("Sprite_ID"); } break;
         case pp_Type_Direction: { return("Direction"); } break;
         case pp_Type_Player_Direction: { return("Player_Direction"); } break;
-        case pp_Type_Sprite_ID: { return("Sprite_ID"); } break;
         case pp_Type_Sound_ID: { return("Sound_ID"); } break;
         case pp_Type_stbsp__context: { return("stbsp__context"); } break;
         case pp_Type_sglp_Sprite: { return("sglp_Sprite"); } break;
@@ -1313,6 +1336,7 @@ PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_Enemy: { return("Enemy"); } break;
         case pp_Type_Entity: { return("Entity"); } break;
         case pp_Type_pp_Type: { return("pp_Type"); } break;
+        case pp_Type_EntityInfo: { return("EntityInfo"); } break;
         case pp_Type_Camera: { return("Camera"); } break;
         case pp_Type_Game_State: { return("Game_State"); } break;
         case pp_Type___m128i: { return("__m128i"); } break;
@@ -1432,9 +1456,9 @@ PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
         case pp_Type_Char: { return sizeof(pp_Char); } break;
         case pp_Type_Bool: { return sizeof(pp_Bool); } break;
         case pp_Type_sglp_Key: { return sizeof(pp_int); } break;
+        case pp_Type_Sprite_ID: { return sizeof(pp_int); } break;
         case pp_Type_Direction: { return sizeof(pp_int); } break;
         case pp_Type_Player_Direction: { return sizeof(pp_int); } break;
-        case pp_Type_Sprite_ID: { return sizeof(pp_int); } break;
         case pp_Type_Sound_ID: { return sizeof(pp_int); } break;
         case pp_Type_stbsp__context: { return sizeof(pp_stbsp__context); } break;
         case pp_Type_sglp_Sprite: { return sizeof(pp_sglp_Sprite); } break;
@@ -1453,6 +1477,7 @@ PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
         case pp_Type_Player: { return sizeof(pp_Player); } break;
         case pp_Type_Enemy: { return sizeof(pp_Enemy); } break;
         case pp_Type_Entity: { return sizeof(pp_Entity); } break;
+        case pp_Type_EntityInfo: { return sizeof(pp_EntityInfo); } break;
         case pp_Type_Camera: { return sizeof(pp_Camera); } break;
         case pp_Type_Game_State: { return sizeof(pp_Game_State); } break;
         case pp_Type___m128i: { return sizeof(pp___m128i); } break;
@@ -1624,9 +1649,9 @@ pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent
 //
 #define pp_get_enum_size_const(type) pp_get_enum_size_##type
 #define pp_get_enum_size_sglp_Key 55
+#define pp_get_enum_size_Sprite_ID 5
 #define pp_get_enum_size_Direction 5
 #define pp_get_enum_size_Player_Direction 4
-#define pp_get_enum_size_Sprite_ID 5
 #define pp_get_enum_size_Sound_ID 3
 
 //
@@ -1635,9 +1660,9 @@ pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent
 PP_STATIC uintptr_t pp_get_enum_size_from_type(pp_Type type) {
     switch(pp_typedef_to_original(type)) {
         case pp_Type_sglp_Key: { return(55); } break;
+        case pp_Type_Sprite_ID: { return(5); } break;
         case pp_Type_Direction: { return(5); } break;
         case pp_Type_Player_Direction: { return(4); } break;
-        case pp_Type_Sprite_ID: { return(5); } break;
         case pp_Type_Sound_ID: { return(3); } break;
     }
 
@@ -1707,6 +1732,13 @@ PP_STATIC intptr_t pp_string_to_enum(pp_Type type, char const *str) {
             else if(pp_string_compare(str, "sglp_key_z")) { return(90); }
             else if(pp_string_compare(str, "sglp_key_cnt")) { return(128); }
         } break;
+        case pp_Type_Sprite_ID: {
+            if(pp_string_compare(str, "Sprite_ID_unknown")) { return(0); }
+            else if(pp_string_compare(str, "Sprite_ID_player")) { return(1); }
+            else if(pp_string_compare(str, "Sprite_ID_enemy_one")) { return(2); }
+            else if(pp_string_compare(str, "Sprite_ID_bitmap_font")) { return(3); }
+            else if(pp_string_compare(str, "Sprite_ID_bullet")) { return(4); }
+        } break;
         case pp_Type_Direction: {
             if(pp_string_compare(str, "Direction_unknown")) { return(0); }
             else if(pp_string_compare(str, "Direction_left")) { return(1); }
@@ -1719,13 +1751,6 @@ PP_STATIC intptr_t pp_string_to_enum(pp_Type type, char const *str) {
             else if(pp_string_compare(str, "Player_Direction_right")) { return(2); }
             else if(pp_string_compare(str, "Player_Direction_up")) { return(4); }
             else if(pp_string_compare(str, "Player_Direction_down")) { return(6); }
-        } break;
-        case pp_Type_Sprite_ID: {
-            if(pp_string_compare(str, "Sprite_ID_unknown")) { return(0); }
-            else if(pp_string_compare(str, "Sprite_ID_player")) { return(1); }
-            else if(pp_string_compare(str, "Sprite_ID_enemy_one")) { return(2); }
-            else if(pp_string_compare(str, "Sprite_ID_bitmap_font")) { return(3); }
-            else if(pp_string_compare(str, "Sprite_ID_bullet")) { return(4); }
         } break;
         case pp_Type_Sound_ID: {
             if(pp_string_compare(str, "ID_unknown")) { return(0); }
@@ -1802,6 +1827,15 @@ PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t index) {
                 case 128: { return("sglp_key_cnt"); } break;
             }
         } break;
+        case pp_Type_Sprite_ID: {
+            switch(index) {
+                case 0: { return("Sprite_ID_unknown"); } break;
+                case 1: { return("Sprite_ID_player"); } break;
+                case 2: { return("Sprite_ID_enemy_one"); } break;
+                case 3: { return("Sprite_ID_bitmap_font"); } break;
+                case 4: { return("Sprite_ID_bullet"); } break;
+            }
+        } break;
         case pp_Type_Direction: {
             switch(index) {
                 case 0: { return("Direction_unknown"); } break;
@@ -1817,15 +1851,6 @@ PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t index) {
                 case 2: { return("Player_Direction_right"); } break;
                 case 4: { return("Player_Direction_up"); } break;
                 case 6: { return("Player_Direction_down"); } break;
-            }
-        } break;
-        case pp_Type_Sprite_ID: {
-            switch(index) {
-                case 0: { return("Sprite_ID_unknown"); } break;
-                case 1: { return("Sprite_ID_player"); } break;
-                case 2: { return("Sprite_ID_enemy_one"); } break;
-                case 3: { return("Sprite_ID_bitmap_font"); } break;
-                case 4: { return("Sprite_ID_bullet"); } break;
             }
         } break;
         case pp_Type_Sound_ID: {
