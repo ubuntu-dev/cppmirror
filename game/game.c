@@ -536,6 +536,10 @@ void init(sglp_API *api, Game_State *gs) {
             Block block = create_block(0.1f * i, 0.9f);
             gs->entity = push_entity(api, gs->entity, &block, pp_Type_Block);
         }
+        for(Int i = 0; (i < 10); ++i) {
+            Block block = create_block(0.1f, 0.1f * i);
+            gs->entity = push_entity(api, gs->entity, &block, pp_Type_Block);
+        }
     }
 
     // Camera
@@ -580,35 +584,46 @@ Void handle_player_movement(Player *player, Entity *root, sglp_API *api) {
     V2 max_speed = v2(0.01f, 0.01f);
     V2 acceleration = v2(0.006f, 0.006f);
     V2 friction = v2(0.005f, 0.005f);
+    Float gravity = 0.004f; // TODO - Use this.
+    Float jump_power = 0.1f;
+    Block *block_standing_on = 0;
 
-    if(api->key['W']) {
-        current_speed.y += accelerate(current_speed.y, max_speed.y, acceleration.y * api->dt, false);
-        player->dir = Player_Direction_up;
-        player->current_frame = Player_Direction_up;
+    // Handle landing on a block.
+    {
+        Transform vert = player->trans;
+        vert.pos.y += current_speed.y;
+        Entity *next = root;
+        while(next) {
+            if(next->type == pp_Type_Block) {
+                Block *block = (Block *)next;
+                if(overlap(vert, block->trans)) {
+                    block_standing_on = block;
+                    player->trans.pos.y = block->trans.pos.y - (block->trans.scale.y * 0.5f) - (player->trans.scale.y * 0.5f) - current_speed.y;
+                    break;
+                }
+            }
+
+            next = next->next;
+        }
     }
-    else if(api->key['S']) {
-        current_speed.y += accelerate(current_speed.y, max_speed.y, acceleration.y * api->dt, true);
-        player->dir = Player_Direction_down;
-        player->current_frame = Player_Direction_down;
+
+    if(!block_standing_on) {
+        // Handle gravity
+        current_speed.y += accelerate(current_speed.y, max_speed.y, gravity * api->dt, true);
     }
     else {
-        if(current_speed.y > friction.y * 0.5f) {
-            current_speed.y += accelerate(current_speed.y, max_speed.y, friction.y * api->dt, false);
-        }
-        else if(current_speed.y < -friction.y * 0.5f) {
-            current_speed.y += accelerate(current_speed.y, max_speed.y, friction.y * api->dt, true);
-        }
-        else {
-            current_speed.y = 0;
+        // Handle jumping.
+        if(api->key[sglp_key_space]) {
+            current_speed.y += accelerate(current_speed.y, max_speed.y, jump_power * api->dt, false);
         }
     }
 
-    if(api->key['A']) {
+    if(api->key['A'] || api->key[sglp_key_left]) {
         current_speed.x += accelerate(current_speed.x, max_speed.x, acceleration.x * api->dt, false);
         player->dir = Player_Direction_left;
         player->current_frame = Player_Direction_left;
     }
-    else if(api->key['D']) {
+    else if(api->key['D'] || api->key[sglp_key_right]) {
         current_speed.x += accelerate(current_speed.x, max_speed.x, acceleration.x * api->dt, true);
         player->dir = Player_Direction_right;
         player->current_frame = Player_Direction_right;
@@ -626,8 +641,6 @@ Void handle_player_movement(Player *player, Entity *root, sglp_API *api) {
     }
 
     Bool safe_hor = true;
-    Bool safe_vert = true;
-
     {
         Transform hor = player->trans;
         hor.pos.x += current_speed.x;
@@ -645,23 +658,6 @@ Void handle_player_movement(Player *player, Entity *root, sglp_API *api) {
         }
     }
 
-    {
-        Transform vert = player->trans;
-        vert.pos.y += current_speed.y;
-        Entity *next = root;
-        while(next) {
-            if(next->type == pp_Type_Block) {
-                Block *block = (Block *)next;
-                if(overlap(vert, block->trans)) {
-                    safe_vert = false;
-                    break;
-                }
-            }
-
-            next = next->next;
-        }
-    }
-
     if(safe_hor) {
         player->current_speed.x = current_speed.x;
     }
@@ -669,13 +665,7 @@ Void handle_player_movement(Player *player, Entity *root, sglp_API *api) {
         player->current_speed.x = 0.0f;
     }
 
-    if(safe_vert) {
-        player->current_speed.y = current_speed.y;
-    }
-    else {
-        player->current_speed.y = 0.0f;
-    }
-
+    player->current_speed.y = current_speed.y;
 
     player->trans.pos.x += player->current_speed.x;
     player->trans.pos.y += player->current_speed.y;
@@ -686,7 +676,7 @@ Void update_player(Player *player, Entity *player_entity, sglp_API *api, Game_St
     handle_player_movement(player, gs->entity, api);
 
     // Shooting.
-    if(api->key[sglp_key_space] && player->can_shoot) {
+    if(api->key['Z'] && player->can_shoot) {
         player->shot_timer = 200;
         player->can_shoot = false;
         api->play_audio(api, ID_sound_bloop);
@@ -711,6 +701,7 @@ Void update_player(Player *player, Entity *player_entity, sglp_API *api, Game_St
     }
 
     // DEBUG - Rotation
+#if 0
     float rot_speed = 5.0f;
     if(api->key[sglp_key_left])  { player->trans.rot += rot_speed; }
     if(api->key[sglp_key_right]) { player->trans.rot -= rot_speed; }
@@ -721,6 +712,7 @@ Void update_player(Player *player, Entity *player_entity, sglp_API *api, Game_St
     if(api->key['K']) { player->trans.scale.y -= scaling_speed; }
     if(api->key['J']) { player->trans.scale.x -= scaling_speed; }
     if(api->key['L']) { player->trans.scale.x += scaling_speed; }
+#endif
 }
 
 Void update_enemy(Enemy *enemy, Game_State *gs) {
