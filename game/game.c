@@ -46,6 +46,7 @@ enum Sprite_ID {
     Sprite_ID_bitmap_font,
     Sprite_ID_bullet,
     Sprite_ID_block,
+    Sprite_ID_jumpthrough_block,
 };
 
 struct Transform {
@@ -111,6 +112,15 @@ struct Block {
     Transform trans;
 };
 
+struct JumpThrough_Block {
+    Transform trans;
+};
+
+struct MovingBlock {
+    Transform trans;
+    V2 speed;
+};
+
 struct Entity {
     // These have to be first in the struct, so I can cast between them.
     union {
@@ -160,6 +170,13 @@ Entity_Info get_entity_info(Entity *entity) {
 
             res.trans = &block->trans;
             res.sprite_id = Sprite_ID_block;
+        } break;
+
+        case pp_Type_JumpThrough_Block: {
+            JumpThrough_Block *block = (JumpThrough_Block *)entity;
+
+            res.trans = &block->trans;
+            res.sprite_id = Sprite_ID_jumpthrough_block;
         } break;
     }
 
@@ -313,9 +330,20 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, V2 pos, V2 scale)
     }
 }
 
+V2 get_centre_pos(Transform t) {
+    V2 res;
+    res.x = t.pos.x - (t.scale.x * 0.5f);
+    res.y = t.pos.y - (t.scale.y * 0.5f);
+
+    return(res);
+}
+
 Bool overlap(Transform a, Transform b) {
-    if((a.pos.x >= b.pos.x && a.pos.x <= b.pos.x + b.scale.x) || (b.pos.x >= a.pos.x && b.pos.x <= a.pos.x + a.scale.x)) {
-        if((a.pos.y >= b.pos.y && a.pos.y <= b.pos.y + b.scale.y) || (b.pos.y >= a.pos.y && b.pos.y <= a.pos.y + a.scale.y)) {
+    V2 centre_a = get_centre_pos(a);
+    V2 centre_b = get_centre_pos(b);
+
+    if((centre_a.x >= centre_b.x && centre_a.x <= centre_b.x + b.scale.x) || (centre_b.x >= centre_a.x && centre_b.x <= centre_a.x + a.scale.x)) {
+        if((centre_a.y >= centre_b.y && centre_a.y <= centre_b.y + b.scale.y) || (centre_b.y >= centre_a.y && centre_b.y <= centre_a.y + a.scale.y)) {
             return true;
         }
     }
@@ -460,11 +488,20 @@ Bullet create_bullet(void) {
     return(res);
 }
 
-Block create_block(Float x, Float y) {
+Block create_block(Float x, Float y, Float scalex, Float scaley) {
     Block res = {0};
 
     res.trans.pos = v2(x, y);
-    res.trans.scale = v2(0.1f, 0.1f);
+    res.trans.scale = v2(scalex, scaley);
+
+    return(res);
+}
+
+JumpThrough_Block create_jump_through_block(Float x, Float y, Float scalex, Float scaley) {
+    JumpThrough_Block res = {0};
+
+    res.trans.pos = v2(x, y);
+    res.trans.scale = v2(scalex, scaley);
 
     return(res);
 }
@@ -494,7 +531,7 @@ void init(sglp_API *api, Game_State *gs) {
 
         Float x = 0.1f;
         for(Int i = 0; (i < 4); ++i) {
-            Enemy enemy = create_enemy(x, 0.5f);
+            Enemy enemy = create_enemy(x, 0.3f);
             gs->entity = push_entity(api, gs->entity, &enemy, pp_Type_Enemy);
 
             x += 0.2f;
@@ -531,15 +568,27 @@ void init(sglp_API *api, Game_State *gs) {
         uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
         gs->sprite[Sprite_ID_block] = api->load_image(api, img_data, 1, 1, Sprite_ID_block, width, height, number_of_components);
         stbi_image_free(img_data);
+    }
 
-        for(Int i = 0; (i < 10); ++i) {
-            Block block = create_block(0.1f * i, 0.9f);
-            gs->entity = push_entity(api, gs->entity, &block, pp_Type_Block);
-        }
-        for(Int i = 0; (i < 10); ++i) {
-            Block block = create_block(0.1f, 0.1f * i);
-            gs->entity = push_entity(api, gs->entity, &block, pp_Type_Block);
-        }
+    // Jumpthrough Block
+    {
+        Int width, height, number_of_components;
+        sglp_File file = api->read_file(api, "block1.png");
+        uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
+        gs->sprite[Sprite_ID_jumpthrough_block] = api->load_image(api, img_data, 1, 1, Sprite_ID_jumpthrough_block, width, height, number_of_components);
+        stbi_image_free(img_data);
+    }
+
+    // Position blocks
+    {
+        Block hor_block = create_block(0.5f, 1.0f, 1.5f, 0.1f);
+        gs->entity = push_entity(api, gs->entity, &hor_block, pp_Type_Block);
+
+        Block block2 = create_block(0.5f, 0.5f, 0.5f, 0.1f);
+        gs->entity = push_entity(api, gs->entity, &block2, pp_Type_JumpThrough_Block);
+
+        Block vert_block = create_block(0.1f, 0.5f, 0.1f, 1.0f);
+        gs->entity = push_entity(api, gs->entity, &vert_block, pp_Type_Block);
     }
 
     // Camera
@@ -579,26 +628,64 @@ void init(sglp_API *api, Game_State *gs) {
 #endif
 }
 
+// TODO - These are awful.
+Bool is_block(Entity *entity) {
+    Bool res = false;
+    if(entity->type == pp_Type_Block || entity->type == pp_Type_JumpThrough_Block) {
+        res = true;
+    }
+
+    return(res);
+}
+
+Bool is_non_jumpthrough_block(Entity *entity) {
+    Bool res = false;
+    if(entity->type == pp_Type_Block) {
+        res = true;
+    }
+
+    return(res);
+}
+
 Void handle_player_movement(Player *player, Entity *root, sglp_API *api) {
     V2 current_speed = player->current_speed;
     V2 max_speed = v2(0.01f, 0.01f);
     V2 acceleration = v2(0.006f, 0.006f);
     V2 friction = v2(0.005f, 0.005f);
     Float gravity = 0.004f; // TODO - Use this.
-    Float jump_power = 0.1f;
+    Float jump_power = 0.15f;
     Block *block_standing_on = 0;
 
     // Handle landing on a block.
-    {
+    if(current_speed.y > 0) {
         Transform vert = player->trans;
         vert.pos.y += current_speed.y;
         Entity *next = root;
         while(next) {
-            if(next->type == pp_Type_Block) {
+            if(is_block(next)) {
                 Block *block = (Block *)next;
+                // TODO - This shouldn't really be testing a full overlap, just an overlap of the players feet.
                 if(overlap(vert, block->trans)) {
                     block_standing_on = block;
                     player->trans.pos.y = block->trans.pos.y - (block->trans.scale.y * 0.5f) - (player->trans.scale.y * 0.5f) - current_speed.y;
+                    break;
+                }
+            }
+
+            next = next->next;
+        }
+    }
+
+    // Handle booping head on block.
+    if(current_speed.y < 0) {
+        Transform vert = player->trans;
+        vert.pos.y += current_speed.y;
+        Entity *next = root;
+        while(next) {
+            if(is_non_jumpthrough_block(next)) {
+                Block *block = (Block *)next;
+                if(overlap(vert, block->trans)) {
+                    player->trans.pos.y = block->trans.pos.y + (block->trans.scale.y * 0.5f) + (player->trans.scale.y * 0.5f) - current_speed.y;
                     break;
                 }
             }
@@ -646,7 +733,7 @@ Void handle_player_movement(Player *player, Entity *root, sglp_API *api) {
         hor.pos.x += current_speed.x;
         Entity *next = root;
         while(next) {
-            if(next->type == pp_Type_Block) {
+            if(is_block(next)) {
                 Block *block = (Block *)next;
                 if(overlap(hor, block->trans)) {
                     safe_hor = false;

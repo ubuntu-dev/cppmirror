@@ -109,6 +109,8 @@ typedef struct Bullet Bullet;
 typedef struct Player Player;
 typedef struct Enemy Enemy;
 typedef struct Block Block;
+typedef struct JumpThrough_Block JumpThrough_Block;
+typedef struct MovingBlock MovingBlock;
 typedef struct Entity Entity;
 typedef struct Entity_Info Entity_Info;
 typedef struct Camera Camera;
@@ -255,6 +257,8 @@ typedef enum pp_Type {
     pp_Type_Player,
     pp_Type_Enemy,
     pp_Type_Block,
+    pp_Type_JumpThrough_Block,
+    pp_Type_MovingBlock,
     pp_Type_Entity,
     pp_Type_pp_Type,
     pp_Type_Entity_Info,
@@ -286,6 +290,8 @@ typedef struct pp_Bullet pp_Bullet;    typedef struct pp_Bullet pp_pp_Bullet;
 typedef struct pp_Player pp_Player;    typedef struct pp_Player pp_pp_Player;
 typedef struct pp_Enemy pp_Enemy;    typedef struct pp_Enemy pp_pp_Enemy;
 typedef struct pp_Block pp_Block;    typedef struct pp_Block pp_pp_Block;
+typedef struct pp_JumpThrough_Block pp_JumpThrough_Block;    typedef struct pp_JumpThrough_Block pp_pp_JumpThrough_Block;
+typedef struct pp_MovingBlock pp_MovingBlock;    typedef struct pp_MovingBlock pp_pp_MovingBlock;
 typedef struct pp_Entity pp_Entity;    typedef struct pp_Entity pp_pp_Entity;
 typedef struct pp_Entity_Info pp_Entity_Info;    typedef struct pp_Entity_Info pp_pp_Entity_Info;
 typedef struct pp_Camera pp_Camera;    typedef struct pp_Camera pp_pp_Camera;
@@ -445,6 +451,12 @@ struct pp_Enemy {
 };
 struct pp_Block {
     pp_Transform trans; 
+};
+struct pp_JumpThrough_Block {
+    pp_Transform trans; 
+};
+struct pp_MovingBlock {
+    pp_Transform trans; pp_V2 speed; 
 };
 struct pp_Entity {
      union {pp_Player player; pp_Enemy enemy; pp_Bullet bullet; pp_Block block; };pp_Type type; pp_Entity *next; 
@@ -1070,6 +1082,26 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
             } break; 
         }
     }
+    else if(real_type == pp_Type_JumpThrough_Block) {
+        switch(index) {
+            case 0: {
+                pp_MemberDefinition res = {pp_Type_Transform, "trans", PP_OFFSETOF(pp_JumpThrough_Block, trans), 0, 0};
+                return(res);
+            } break; 
+        }
+    }
+    else if(real_type == pp_Type_MovingBlock) {
+        switch(index) {
+            case 0: {
+                pp_MemberDefinition res = {pp_Type_Transform, "trans", PP_OFFSETOF(pp_MovingBlock, trans), 0, 0};
+                return(res);
+            } break; 
+            case 1: {
+                pp_MemberDefinition res = {pp_Type_V2, "speed", PP_OFFSETOF(pp_MovingBlock, speed), 0, 0};
+                return(res);
+            } break; 
+        }
+    }
     else if(real_type == pp_Type_Entity) {
         switch(index) {
             case 0: {
@@ -1180,6 +1212,8 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_Player: { return(7); } break;
         case pp_Type_Enemy: { return(1); } break;
         case pp_Type_Block: { return(1); } break;
+        case pp_Type_JumpThrough_Block: { return(1); } break;
+        case pp_Type_MovingBlock: { return(2); } break;
         case pp_Type_Entity: { return(6); } break;
         case pp_Type_Entity_Info: { return(3); } break;
         case pp_Type_Camera: { return(3); } break;
@@ -1210,7 +1244,7 @@ PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {
             return(pp_StructureType_enum);
         } break;
 
-        case pp_Type___m128: case pp_Type___m128i: case pp_Type_stbsp__context: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_TempMemory: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_File: case pp_Type_sglp_Settings: case pp_Type_sglp_API: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_V2: case pp_Type_Transform: case pp_Type_Bullet: case pp_Type_Player: case pp_Type_Enemy: case pp_Type_Block: case pp_Type_Entity: case pp_Type_Entity_Info: case pp_Type_Camera: case pp_Type_Game_State: {
+        case pp_Type___m128: case pp_Type___m128i: case pp_Type_stbsp__context: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_TempMemory: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_File: case pp_Type_sglp_Settings: case pp_Type_sglp_API: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_V2: case pp_Type_Transform: case pp_Type_Bullet: case pp_Type_Player: case pp_Type_Enemy: case pp_Type_Block: case pp_Type_JumpThrough_Block: case pp_Type_MovingBlock: case pp_Type_Entity: case pp_Type_Entity_Info: case pp_Type_Camera: case pp_Type_Game_State: {
             return(pp_StructureType_struct);
         } break;
     }
@@ -1354,6 +1388,8 @@ PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_Player: { return("Player"); } break;
         case pp_Type_Enemy: { return("Enemy"); } break;
         case pp_Type_Block: { return("Block"); } break;
+        case pp_Type_JumpThrough_Block: { return("JumpThrough_Block"); } break;
+        case pp_Type_MovingBlock: { return("MovingBlock"); } break;
         case pp_Type_Entity: { return("Entity"); } break;
         case pp_Type_pp_Type: { return("pp_Type"); } break;
         case pp_Type_Entity_Info: { return("Entity_Info"); } break;
@@ -1497,6 +1533,8 @@ PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
         case pp_Type_Player: { return sizeof(pp_Player); } break;
         case pp_Type_Enemy: { return sizeof(pp_Enemy); } break;
         case pp_Type_Block: { return sizeof(pp_Block); } break;
+        case pp_Type_JumpThrough_Block: { return sizeof(pp_JumpThrough_Block); } break;
+        case pp_Type_MovingBlock: { return sizeof(pp_MovingBlock); } break;
         case pp_Type_Entity: { return sizeof(pp_Entity); } break;
         case pp_Type_Entity_Info: { return sizeof(pp_Entity_Info); } break;
         case pp_Type_Camera: { return sizeof(pp_Camera); } break;
@@ -1670,7 +1708,7 @@ pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent
 //
 #define pp_get_enum_size_const(type) pp_get_enum_size_##type
 #define pp_get_enum_size_sglp_Key 55
-#define pp_get_enum_size_Sprite_ID 6
+#define pp_get_enum_size_Sprite_ID 7
 #define pp_get_enum_size_Direction 5
 #define pp_get_enum_size_Player_Direction 4
 #define pp_get_enum_size_Sound_ID 3
@@ -1681,7 +1719,7 @@ pp_serialize_struct_(void *var, pp_Type type, char const *name, uintptr_t indent
 PP_STATIC uintptr_t pp_get_enum_size_from_type(pp_Type type) {
     switch(pp_typedef_to_original(type)) {
         case pp_Type_sglp_Key: { return(55); } break;
-        case pp_Type_Sprite_ID: { return(6); } break;
+        case pp_Type_Sprite_ID: { return(7); } break;
         case pp_Type_Direction: { return(5); } break;
         case pp_Type_Player_Direction: { return(4); } break;
         case pp_Type_Sound_ID: { return(3); } break;
@@ -1760,6 +1798,7 @@ PP_STATIC intptr_t pp_string_to_enum(pp_Type type, char const *str) {
             else if(pp_string_compare(str, "Sprite_ID_bitmap_font")) { return(3); }
             else if(pp_string_compare(str, "Sprite_ID_bullet")) { return(4); }
             else if(pp_string_compare(str, "Sprite_ID_block")) { return(5); }
+            else if(pp_string_compare(str, "Sprite_ID_jumpthrough_block")) { return(6); }
         } break;
         case pp_Type_Direction: {
             if(pp_string_compare(str, "Direction_unknown")) { return(0); }
@@ -1857,6 +1896,7 @@ PP_STATIC char const * pp_enum_to_string(pp_Type type, intptr_t index) {
                 case 3: { return("Sprite_ID_bitmap_font"); } break;
                 case 4: { return("Sprite_ID_bullet"); } break;
                 case 5: { return("Sprite_ID_block"); } break;
+                case 6: { return("Sprite_ID_jumpthrough_block"); } break;
             }
         } break;
         case pp_Type_Direction: {
