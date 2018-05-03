@@ -338,6 +338,24 @@ V2 get_centre_pos(Transform t) {
     return(res);
 }
 
+// This gets the lower 10%.
+Transform get_feet(Transform t) {
+    Transform res = {0};
+
+    Float foot_size = 0.1f;
+
+    res.scale.x = t.scale.x;
+    res.scale.y = t.scale.y * foot_size;
+
+    res.pos.x = t.pos.x;
+    res.pos.y = t.pos.y + ((t.scale.y * 0.5f) * (1.0f - foot_size));
+
+    res.rot = t.rot;
+
+
+    return(res);
+}
+
 Bool overlap(Transform a, Transform b) {
     V2 centre_a = get_centre_pos(a);
     V2 centre_b = get_centre_pos(b);
@@ -385,6 +403,19 @@ Void draw_entity_text(sglp_API *api, Game_State *gs, Entity *entity, V2 mouse_po
     }
 }
 
+Void draw_block(sglp_API *api, Game_State *gs, Transform trans) {
+    Float x = trans.pos.x - gs->camera.pos.x;
+    Float y = trans.pos.y - gs->camera.pos.y;
+    sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(x, y,
+                                                      trans.scale.x, trans.scale.y,
+                                                      trans.rot);
+
+    Float tform[16] = {0};
+    sglm_mat4x4_as_float_arr(tform, &mat);
+
+    api->draw_black_box(tform);
+}
+
 // TODO - When this function draws text it'd be good if it made sure the text was always onscreen.
 // TODO - Be nice to have some way to display the player with a keypress.
 Void draw_debug_information(sglp_API *api, Game_State *gs) {
@@ -421,6 +452,12 @@ Void draw_debug_information(sglp_API *api, Game_State *gs) {
         draw_entity_text(api, gs, next, mouse_position, trans);
 
         next = next->next;
+    }
+
+    // Draw a box around the players feet.
+    if(1) {
+        Player *player = find_first_entity(gs->entity, pp_Type_Player);
+        draw_block(api, gs, get_feet(player->trans));
     }
 
 #endif
@@ -654,7 +691,7 @@ Void handle_player_movement(Player *player, Entity *root, sglp_API *api) {
     V2 friction = v2(0.005f, 0.005f);
     Float gravity = 0.004f; // TODO - Use this.
     Float jump_power = 0.15f;
-    Block *block_standing_on = 0;
+    Entity *block_standing_on = 0;
 
     // Handle landing on a block.
     if(current_speed.y > 0) {
@@ -665,8 +702,8 @@ Void handle_player_movement(Player *player, Entity *root, sglp_API *api) {
             if(is_block(next)) {
                 Block *block = (Block *)next;
                 // TODO - This shouldn't really be testing a full overlap, just an overlap of the players feet.
-                if(overlap(vert, block->trans)) {
-                    block_standing_on = block;
+                if(overlap(get_feet(vert), block->trans)) {
+                    block_standing_on = (Entity *)block;
                     player->trans.pos.y = block->trans.pos.y - (block->trans.scale.y * 0.5f) - (player->trans.scale.y * 0.5f) - current_speed.y;
                     break;
                 }
@@ -733,7 +770,7 @@ Void handle_player_movement(Player *player, Entity *root, sglp_API *api) {
         hor.pos.x += current_speed.x;
         Entity *next = root;
         while(next) {
-            if(is_block(next)) {
+            if(is_non_jumpthrough_block(next)) {
                 Block *block = (Block *)next;
                 if(overlap(hor, block->trans)) {
                     safe_hor = false;
@@ -808,6 +845,7 @@ Void update_enemy(Enemy *enemy, Game_State *gs) {
 
     // Set the player to the start if they touch an enemy.
     if(overlap(player->trans, enemy->trans)) {
+        // TODO - Reset the players speed when they die.
         player->trans.pos = player->start_pos;
     }
 
