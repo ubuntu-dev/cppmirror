@@ -444,7 +444,7 @@ struct pp_Bullet {
     pp_Transform trans; pp_Direction dir; pp_Void *parent; 
 };
 struct pp_Player {
-    pp_Transform trans; pp_V2 start_pos; pp_Player_Direction dir; pp_Float current_frame; pp_V2 current_speed; pp_Bool can_shoot; pp_Int shot_timer; 
+    pp_Transform trans; pp_V2 start_pos; pp_Player_Direction dir; pp_Float current_frame; pp_V2 current_speed; pp_Direction previous_gravity_direction; pp_Bool can_shoot; pp_Int shot_timer; 
 };
 struct pp_Enemy {
     pp_Transform trans; 
@@ -468,7 +468,7 @@ struct pp_Camera {
     pp_V2 pos; pp_V2 speed; pp_Bool follow_exactly; 
 };
 struct pp_Game_State {
-    pp_Entity *entity; pp_Camera camera; pp_Bool show_text_box; pp_Char *text_box_input; pp_Int input_delay; 
+    pp_Entity *entity; pp_Camera camera; pp_Direction gravity; pp_Bool show_text_box; pp_Char *text_box_input; pp_Int input_delay; 
 };
 
 // Turn a typedef'd type into it's original type.
@@ -1057,10 +1057,14 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 return(res);
             } break; 
             case 5: {
-                pp_MemberDefinition res = {pp_Type_Bool, "can_shoot", PP_OFFSETOF(pp_Player, can_shoot), 0, 0};
+                pp_MemberDefinition res = {pp_Type_Direction, "previous_gravity_direction", PP_OFFSETOF(pp_Player, previous_gravity_direction), 0, 0};
                 return(res);
             } break; 
             case 6: {
+                pp_MemberDefinition res = {pp_Type_Bool, "can_shoot", PP_OFFSETOF(pp_Player, can_shoot), 0, 0};
+                return(res);
+            } break; 
+            case 7: {
                 pp_MemberDefinition res = {pp_Type_Int, "shot_timer", PP_OFFSETOF(pp_Player, shot_timer), 0, 0};
                 return(res);
             } break; 
@@ -1173,14 +1177,18 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 return(res);
             } break; 
             case 2: {
-                pp_MemberDefinition res = {pp_Type_Bool, "show_text_box", PP_OFFSETOF(pp_Game_State, show_text_box), 0, 0};
+                pp_MemberDefinition res = {pp_Type_Direction, "gravity", PP_OFFSETOF(pp_Game_State, gravity), 0, 0};
                 return(res);
             } break; 
             case 3: {
-                pp_MemberDefinition res = {pp_Type_Char, "text_box_input", PP_OFFSETOF(pp_Game_State, text_box_input), 1, 0};
+                pp_MemberDefinition res = {pp_Type_Bool, "show_text_box", PP_OFFSETOF(pp_Game_State, show_text_box), 0, 0};
                 return(res);
             } break; 
             case 4: {
+                pp_MemberDefinition res = {pp_Type_Char, "text_box_input", PP_OFFSETOF(pp_Game_State, text_box_input), 1, 0};
+                return(res);
+            } break; 
+            case 5: {
                 pp_MemberDefinition res = {pp_Type_Int, "input_delay", PP_OFFSETOF(pp_Game_State, input_delay), 0, 0};
                 return(res);
             } break; 
@@ -1209,7 +1217,7 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_V2: { return(2); } break;
         case pp_Type_Transform: { return(3); } break;
         case pp_Type_Bullet: { return(3); } break;
-        case pp_Type_Player: { return(7); } break;
+        case pp_Type_Player: { return(8); } break;
         case pp_Type_Enemy: { return(1); } break;
         case pp_Type_Block: { return(1); } break;
         case pp_Type_JumpThrough_Block: { return(1); } break;
@@ -1217,7 +1225,7 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_Entity: { return(6); } break;
         case pp_Type_Entity_Info: { return(3); } break;
         case pp_Type_Camera: { return(3); } break;
-        case pp_Type_Game_State: { return(5); } break;
+        case pp_Type_Game_State: { return(6); } break;
     }
 
     PP_ASSERT(0);
