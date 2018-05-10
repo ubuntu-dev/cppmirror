@@ -1,7 +1,12 @@
 @echo off
 
-rem Setup Visual Studio 2017.
-call "C:\Program Files (x86)\Microsoft Visual Studio\2017\community\VC\Auxiliary\Build\vcvarsall.bat" x64 > NUL
+
+set VISUAL_STUDIO_VERSION=12
+if %VISUAL_STUDIO_VERSION%=="17" (
+    call "C:\Program Files (x86)\Microsoft Visual Studio\2017\community\VC\Auxiliary\Build\vcvarsall.bat" x64 > NUL
+) else (
+    call "C:\Program Files (x86)\Microsoft Visual Studio %VISUAL_STUDIO_VERSION%.0\VC\vcvarsall.bat" x64 > NUL
+)
 
 cd %~dp0
 
