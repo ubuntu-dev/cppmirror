@@ -444,7 +444,7 @@ struct pp_Bullet {
     pp_Transform trans; pp_Direction dir; pp_Void *parent; 
 };
 struct pp_Player {
-    pp_Transform trans; pp_V2 start_pos; pp_Player_Direction dir; pp_Float current_frame; pp_V2 current_speed; pp_Direction previous_gravity_direction; pp_Bool can_shoot; pp_Int shot_timer; 
+    pp_Transform trans; pp_V2 start_pos; pp_Player_Direction dir; pp_Float current_frame; pp_V2 current_speed; pp_Bool can_shoot; pp_Int shot_timer; 
 };
 struct pp_Enemy {
     pp_Transform trans; 
@@ -1057,14 +1057,10 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 return(res);
             } break; 
             case 5: {
-                pp_MemberDefinition res = {pp_Type_Direction, "previous_gravity_direction", PP_OFFSETOF(pp_Player, previous_gravity_direction), 0, 0};
-                return(res);
-            } break; 
-            case 6: {
                 pp_MemberDefinition res = {pp_Type_Bool, "can_shoot", PP_OFFSETOF(pp_Player, can_shoot), 0, 0};
                 return(res);
             } break; 
-            case 7: {
+            case 6: {
                 pp_MemberDefinition res = {pp_Type_Int, "shot_timer", PP_OFFSETOF(pp_Player, shot_timer), 0, 0};
                 return(res);
             } break; 
@@ -1217,7 +1213,7 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_V2: { return(2); } break;
         case pp_Type_Transform: { return(3); } break;
         case pp_Type_Bullet: { return(3); } break;
-        case pp_Type_Player: { return(8); } break;
+        case pp_Type_Player: { return(7); } break;
         case pp_Type_Enemy: { return(1); } break;
         case pp_Type_Block: { return(1); } break;
         case pp_Type_JumpThrough_Block: { return(1); } break;

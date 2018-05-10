@@ -430,6 +430,26 @@ Bool point_overlap(V2 p, Transform t) {
     return false;
 }
 
+// TODO - Pass just the speed, not the player in here.
+Bool is_falling(Player *player, Direction gravity_direction) {
+    Bool res = false;
+    Float delta = 0.0f;
+    if((gravity_direction == Direction_down && player->current_speed.y > delta) ||
+            (gravity_direction == Direction_up && player->current_speed.y < -delta) ||
+            (gravity_direction == Direction_right && player->current_speed.x > delta) ||
+            (gravity_direction == Direction_left && player->current_speed.x < -delta)) {
+        res = true;
+    }
+
+    return(res);
+}
+
+Bool is_jumping(Player *player, Direction gravity_direction) {
+    Bool res = is_falling(player, get_opposite(gravity_direction));
+
+    return(res);
+}
+
 Bool is_offscreen(Transform t) {
     if((t.pos.x > 1.0f || t.pos.x < 0.0f) || (t.pos.y > 1.0f || t.pos.y < 0.0f)) {
         return true;
@@ -470,6 +490,8 @@ Void draw_block(sglp_API *api, Game_State *gs, Transform trans) {
 Void draw_debug_information(sglp_API *api, Game_State *gs) {
 #if INTERNAL
 
+    Player *player = find_first_entity(gs->entity, pp_Type_Player);
+
     // TODO - This is actually kinda awful (and doesn't work).
     if(gs->show_text_box) {
         V2 size = v2(1.0f, 0.25f);
@@ -505,8 +527,12 @@ Void draw_debug_information(sglp_API *api, Game_State *gs) {
 
     // Draw a box around the players feet.
     if(1) {
-        Player *player = find_first_entity(gs->entity, pp_Type_Player);
         draw_block(api, gs, get_feet(player->trans, gs->gravity));
+    }
+
+    if(1) {
+        Char *s = is_falling(player, gs->gravity) ? "Falling" : "Jumping";
+        draw_word(s, api, gs, v2(0.5f, 0.5f), v2(0.025f, 0.025f));
     }
 
 #endif
@@ -615,7 +641,7 @@ void init(sglp_API *api, Game_State *gs) {
         gs->sprite[Sprite_ID_enemy_one] = api->load_image(api, img_data, 8, 1, Sprite_ID_enemy_one, width, height, number_of_components);
         stbi_image_free(img_data);
 
-        Enemy enemy = create_enemy(0.7f, 0.5f);
+        Enemy enemy = create_enemy(0.3f, 0.2f);
         gs->entity = push_entity(api, gs->entity, &enemy, pp_Type_Enemy);
     }
 
@@ -712,7 +738,6 @@ void init(sglp_API *api, Game_State *gs) {
         assert(player);
 
         gs->gravity = Direction_down;
-        player->previous_gravity_direction = gs->gravity;
     }
 
 
@@ -735,30 +760,6 @@ Bool is_block(Entity *entity) {
 Bool is_non_jumpthrough_block(Entity *entity) {
     Bool res = false;
     if(entity->type == pp_Type_Block) {
-        res = true;
-    }
-
-    return(res);
-}
-
-Bool is_falling(Player *player, Game_State *gs) {
-    Bool res = false;
-    if((gs->gravity == Direction_down && player->current_speed.y > 0) ||
-            (gs->gravity == Direction_up && player->current_speed.y < 0) ||
-            (gs->gravity == Direction_right && player->current_speed.x > 0) ||
-            (gs->gravity == Direction_left && player->current_speed.x < 0)) {
-        res = true;
-    }
-
-    return(res);
-}
-
-Bool is_jumping(Player *player, Direction gravity_direction) {
-    Bool res = false;
-    if((gravity_direction == Direction_down && player->current_speed.y < 0) ||
-            (gravity_direction == Direction_up && player->current_speed.y > 0) ||
-            (gravity_direction == Direction_right && player->current_speed.x < 0) ||
-            (gravity_direction == Direction_left && player->current_speed.x > 0)) {
         res = true;
     }
 
@@ -788,13 +789,15 @@ Void handle_player_movement(Player *player, Entity *root, sglp_API *api, Game_St
 
     Entity *block_standing_on = 0;
 
+    Bool is_gravity_vertical = is_vertical(gs->gravity);
+
     // Handle landing on a block.
-    if(is_falling(player, gs)) {
+    if(is_falling(player, gs->gravity)) {
 
         Transform trans = player->trans;
 
-        if(is_vertical(gs->gravity)) { trans.pos.y += current_speed.y; }
-        else                         { trans.pos.x += current_speed.x; }
+        if(is_gravity_vertical) { trans.pos.y += current_speed.y; }
+        else                    { trans.pos.x += current_speed.x; }
 
         Entity *next = root;
         while(next) {
@@ -817,16 +820,14 @@ Void handle_player_movement(Player *player, Entity *root, sglp_API *api, Game_St
 
             next = next->next;
         }
-
     }
 
     // Handle booping head on block.
     if(is_jumping(player, gs->gravity)) {
         Bool safe = true;
         Transform trans = player->trans;
-        Bool is_vert = is_vertical(gs->gravity);
-        if(is_vert) { trans.pos.y += current_speed.y; }
-        else        { trans.pos.x += current_speed.x; }
+        if(is_gravity_vertical) { trans.pos.y += current_speed.y; }
+        else                    { trans.pos.x += current_speed.x; }
 
         Entity *next = root;
         while(next) {
@@ -842,18 +843,29 @@ Void handle_player_movement(Player *player, Entity *root, sglp_API *api, Game_St
         }
 
         if(!safe) {
-            if(is_vert) { current_speed.y = 0.0f; }
-            else        { current_speed.x = 0.0f; }
+            if(is_gravity_vertical) { current_speed.y = 0.0f; }
+            else                    { current_speed.x = 0.0f; }
         }
     }
 
-    if(!block_standing_on) {
-        // Handle gravity
-        accelerate_in_direction(&current_speed, max_speed, gravity * api->dt, true, gs->gravity);
-    }
-    else {
+    // Gravity.
+    accelerate_in_direction(&current_speed, max_speed, gravity * api->dt, true, gs->gravity);
+
+    if(block_standing_on) {
+        Float falling_delta = 0.001f;
+        switch(gs->gravity) {
+            case Direction_down:  { if(current_speed.y > 0.0f) { current_speed.y =  falling_delta; } } break;
+            case Direction_up:    { if(current_speed.y < 0.0f) { current_speed.y = -falling_delta; } } break;
+            case Direction_right: { if(current_speed.x > 0.0f) { current_speed.x =  falling_delta; } } break;
+            case Direction_left:  { if(current_speed.x < 0.0f) { current_speed.x = -falling_delta; } } break;
+
+            default: { assert(0); } break;
+        }
+
         // Handle jumping.
-        if(api->key[sglp_key_space]) {
+        if(api->key[sglp_key_space] ||
+                (is_gravity_vertical && (api->key[sglp_key_up] || api->key[sglp_key_down])) ||
+                (!is_gravity_vertical && (api->key[sglp_key_right] || api->key[sglp_key_left]))) {
             switch(gs->gravity) {
                 case Direction_down:  { current_speed.y -= jump_power * api->dt; } break;
                 case Direction_up:    { current_speed.y += jump_power * api->dt; } break;
@@ -865,7 +877,7 @@ Void handle_player_movement(Player *player, Entity *root, sglp_API *api, Game_St
         }
     }
 
-    if(is_vertical(gs->gravity)) {
+    if(is_gravity_vertical) {
         if(api->key[sglp_key_left]) {
             current_speed.x += accelerate(current_speed.x, max_speed.x, acceleration.x * api->dt, false);
             player->dir = Player_Direction_left;
@@ -888,8 +900,7 @@ Void handle_player_movement(Player *player, Entity *root, sglp_API *api, Game_St
             }
         }
     }
-
-    if(!is_vertical(gs->gravity)) {
+    else {
         if(api->key[sglp_key_up]) {
             current_speed.y += accelerate(current_speed.y, max_speed.y, acceleration.y * api->dt, false);
             player->dir = Player_Direction_left;
@@ -917,9 +928,8 @@ Void handle_player_movement(Player *player, Entity *root, sglp_API *api, Game_St
     {
         Bool safe = true;
         Transform trans = player->trans;
-        Bool is_vert = is_vertical(gs->gravity);
-        if(is_vert) { trans.pos.x += current_speed.x; }
-        else        { trans.pos.y += current_speed.y; }
+        if(is_gravity_vertical) { trans.pos.x += current_speed.x; }
+        else                    { trans.pos.y += current_speed.y; }
 
         Entity *next = root;
         while(next) {
@@ -935,8 +945,8 @@ Void handle_player_movement(Player *player, Entity *root, sglp_API *api, Game_St
         }
 
         if(!safe) {
-            if(is_vert) { current_speed.x = 0.0f; }
-            else        { current_speed.y = 0.0f; }
+            if(is_gravity_vertical) { current_speed.x = 0.0f; }
+            else                    { current_speed.y = 0.0f; }
         }
     }
 
