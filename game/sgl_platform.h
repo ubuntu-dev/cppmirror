@@ -746,7 +746,7 @@ sglp_Sprite sglp_load_image(sglp_API *api, uint8_t *img_data, int32_t frame_cnt_
         // TODO(Jonny): Right now, a 1 component bitmap is converted into a 4 component one and loaded in. Is there
         //              a less-stupid way to do this?
         case 1: {
-            uint8_t *rgba_bitmap = (char unsigned *)sglp_malloc(width * height * 4);
+            uint8_t *rgba_bitmap = (char unsigned *)api->os_malloc(width * height * 4);
             uint8_t *src = img_data;
 
             uint8_t *dst_row = rgba_bitmap;
@@ -763,7 +763,7 @@ sglp_Sprite sglp_load_image(sglp_API *api, uint8_t *img_data, int32_t frame_cnt_
             sglp_global_opengl->glTexImage2D(SGLP_GL_TEXTURE_2D, 0, SGLP_GL_RGBA, width, height, 0, SGLP_GL_RGBA,
                                              SGLP_GL_UNSIGNED_BYTE, rgba_bitmap);
 
-            sglp_free(rgba_bitmap);
+            api->os_free(rgba_bitmap);
         } break;
 
         default: {
@@ -834,15 +834,12 @@ uint32_t sglp_load_and_compile_shaders(char const *fvertex, char const *ffragmen
         sglp_global_opengl->glLinkProgram(res);
         sglp_global_opengl->glUseProgram(res);
 
-    }
-    else if((!vert_compiled) && (!frag_compiled)) {
+    } else if((!vert_compiled) && (!frag_compiled)) {
         sglp_print_shader_err(vert_shader);
         sglp_print_shader_err(frag_shader);
-    }
-    else if(!vert_compiled) {
+    } else if(!vert_compiled) {
         sglp_print_shader_err(vert_shader);
-    }
-    else {
+    } else {
         sglp_print_shader_err(frag_shader);
     }
 
@@ -956,7 +953,7 @@ static sglp_AudioState sglp_global_audio_state;
 
 static void sglp_set_max_no_of_sounds(sglp_API *api, int32_t n) {
     sglp_global_loaded_sound_max = n;
-    sglp_global_loaded_sounds = (sglp_LoadedSound *)sglp_malloc(sizeof(sglp_LoadedSound) * sglp_global_loaded_sound_max);
+    sglp_global_loaded_sounds = (sglp_LoadedSound *)api->os_malloc(sizeof(sglp_LoadedSound) * sglp_global_loaded_sound_max);
 
     for(int i = 0; (i < sglp_global_loaded_sound_max); ++i) {
         sglp_global_loaded_sounds[i].id = 0xFFFFFFFF;
@@ -979,7 +976,7 @@ sglp_PlayingSound *sglp_get_playing_sound(int32_t id) {
 sglp_PlayingSound *sglp_play_new_audio(sglp_API *api, int32_t id) {
     sglp_PlayingSound *res = 0;
     if(!sglp_global_audio_state.first_free_playing_snd) {
-        sglp_global_audio_state.first_free_playing_snd = (sglp_PlayingSound *)sglp_malloc(sizeof(sglp_PlayingSound));
+        sglp_global_audio_state.first_free_playing_snd = (sglp_PlayingSound *)api->os_malloc(sizeof(sglp_PlayingSound));
     }
 
     res = sglp_global_audio_state.first_free_playing_snd;
@@ -1011,8 +1008,7 @@ void sglp_change_volume(sglp_PlayingSound *snd, float FadeDurationSeconds, float
     if(FadeDurationSeconds <= 0.0f) {
         snd->cur_volume0 = snd->target_volume0 = vol0;
         snd->cur_volume1 = snd->target_volume1 = vol1;
-    }
-    else {
+    } else {
         snd->target_volume0 = vol0;
         snd->target_volume1 = vol1;
 
@@ -1065,8 +1061,8 @@ static void sglp_output_playing_sounds(sglp_API *api, sglp_SoundOutputBuffer *sn
     float seconds_per_sample = 1.0f / (float)snd_buf->samples_per_second;
 
     // TODO - Use temp memory
-    float *float_channel0 = (float *)sglp_malloc(sizeof(float *) * snd_buf->sample_cnt);
-    float *float_channel1 = (float *)sglp_malloc(sizeof(float *) * snd_buf->sample_cnt);
+    float *float_channel0 = (float *)api->os_malloc(sizeof(float *) * snd_buf->sample_cnt);
+    float *float_channel1 = (float *)api->os_malloc(sizeof(float *) * snd_buf->sample_cnt);
 
     SGLP_ASSERT((snd_buf->sample_cnt & 3) == 0);
 
@@ -1168,8 +1164,7 @@ static void sglp_output_playing_sounds(sglp_API *api, sglp_SoundOutputBuffer *sn
                 *playing_snd_ptr = playing_snd->next;
                 playing_snd->next = sglp_global_audio_state.first_free_playing_snd;
                 sglp_global_audio_state.first_free_playing_snd = playing_snd;
-            }
-            else {
+            } else {
                 playing_snd_ptr = &playing_snd->next;
             }
         }
@@ -1187,8 +1182,8 @@ static void sglp_output_playing_sounds(sglp_API *api, sglp_SoundOutputBuffer *sn
         }
     }
 
-    sglp_free(float_channel1);
-    sglp_free(float_channel0);
+    api->os_free(float_channel1);
+    api->os_free(float_channel0);
 }
 
 //
@@ -1284,7 +1279,7 @@ sglp_Bool sglp_load_wav(sglp_API *api, int32_t id, void *data, uintptr_t size) {
         sglp_LoadedSound *loaded_snd = sglp_global_loaded_sounds + sglp_global_loaded_sound_cnt++;
         loaded_snd->id = id;
 
-        sglp_WAVEHeader *header = (sglp_WAVEHeader *)sglp_malloc(size);
+        sglp_WAVEHeader *header = (sglp_WAVEHeader *)api->os_malloc(size);
         sglp_memcpy(header, data, size);
         SGLP_ASSERT((header) && (header->riff_id == SGLP_WAVE_ChunkID_RIFF) && (header->wav_id == SGLP_WAVE_ChunkID_WAVE));
 
@@ -1310,8 +1305,7 @@ sglp_Bool sglp_load_wav(sglp_API *api, int32_t id, void *data, uintptr_t size) {
         if(no_channels == 1) {
             loaded_snd->samples[0] = (int16_t *)sample_data;
             loaded_snd->samples[1] = 0;
-        }
-        else if(no_channels == 2) {
+        } else if(no_channels == 2) {
             loaded_snd->samples[0] = sample_data;
             loaded_snd->samples[1] = sample_data + sample_cnt;
 
@@ -1320,8 +1314,7 @@ sglp_Bool sglp_load_wav(sglp_API *api, int32_t id, void *data, uintptr_t size) {
                 sample_data[2 * i] = sample_data[i];
                 sample_data[i]   = Source;
             }
-        }
-        else {
+        } else {
             res = SGLP_FALSE;
             SGLP_ASSERT(SGLP_FALSE);
         }
@@ -1352,7 +1345,7 @@ static void sglp_setup(sglp_API *api, int32_t max_no_of_sounds) {
 
 void sglp_free_file(sglp_API *api, sglp_File *file) {
     if(file->e) {
-        sglp_free(file->e);
+        api->os_free(file->e);
     }
 }
 
@@ -1554,8 +1547,7 @@ static sglp_Bool sglp_sdl_do_next_work_queue_entry(sglp_SdlWorkQueue *work_queue
             SDL_AtomicIncRef(&x);
             work_queue->cnt = x.value;
         }
-    }
-    else {
+    } else {
         res = SGLP_TRUE;
     }
 
@@ -1701,8 +1693,7 @@ static void sglp_sdl_set_opengl_attributes(void) {
         if(context) {
             // NOTE: CreateContext succeeded. Good.
             SDL_GL_DeleteContext(context);
-        }
-        else {
+        } else {
             // NOTE: CreateContext failed. Try setting OpenGL to a lower version
             SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
             SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
@@ -1717,8 +1708,7 @@ static sglp_Key sglp_sdl_key_to_sgl_key(SDL_Keycode k) {
     sglp_Key res = sglp_key_unknown;
     if(k >= SDLK_a && k <= SDLK_z) {
         res = (sglp_Key)k + ('A' - 'a');
-    }
-    else {
+    } else {
         switch(k) {
             case SDLK_RCTRL:  case SDLK_LCTRL:  { res = sglp_key_ctrl;   } break;
             case SDLK_RSHIFT: case SDLK_LSHIFT: { res = sglp_key_shift;  } break;
@@ -1816,8 +1806,7 @@ static void  sglp_sdl_handle_frame_rate_stuff(uint64_t *last_counter, uint64_t *
             seconds_elapsed_for_frame = sglp_sdl_get_seconds_elapsed(*last_counter,
                                                                      SDL_GetPerformanceCounter());
         }
-    }
-    else {
+    } else {
         // Missed Frame Rate!
     }
 
@@ -1920,8 +1909,7 @@ static void sglp_sdl_handle_audio(sglp_API *api, sglp_SdlSoundOutput *sound_outp
     if(byte_to_lock > target_cursor) {
         bytes_to_write = sound_output->secondary_buffer_size - byte_to_lock;
         bytes_to_write += target_cursor;
-    }
-    else {
+    } else {
         bytes_to_write = target_cursor - byte_to_lock;
     }
     SDL_UnlockAudio();
@@ -2017,8 +2005,7 @@ int main(int argc, char **argv) {
                 }
             }
         }
-    }
-    else {
+    } else {
         SDL_Log("Unable to initialize SDL: %s", SDL_GetError());
     }
 
@@ -2272,8 +2259,7 @@ static sglp_Bool sglp_win32_init_opengl(HWND win) {
         HMODULE hopengl32 = LoadLibraryA("opengl32.dll");
         if(!hopengl32) {
             SGLP_ASSERT(0);
-        }
-        else {
+        } else {
             wglGetProcAddress_t *gl32_wglGetProcAddress = (wglGetProcAddress_t *)GetProcAddress(hopengl32, "wglGetProcAddress");
             wglCreateContext_t  *gl32_wglCreateContext  = (wglCreateContext_t *) GetProcAddress(hopengl32, "wglCreateContext");
             wglMakeCurrent_t    *gl32_wglMakeCurrent    = (wglMakeCurrent_t *)   GetProcAddress(hopengl32, "wglMakeCurrent");
@@ -2398,8 +2384,7 @@ static void sglp_win32_toggle_fullscreen(HWND win) {
                                      monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top,
                                      SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
         }
-    }
-    else {
+    } else {
         sglp_user32_SetWindowLongA(win, GWL_STYLE, style | WS_OVERLAPPEDWINDOW);
         sglp_user32_SetWindowPlacement(win, &sglp_global_win_pos);
         sglp_user32_SetWindowPos(win, 0, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
@@ -2442,8 +2427,7 @@ static sglp_Bool sglp_load_user32dll(void) {
 #undef SGLP_USER32_LOAD
 
         res = funcs_loaded;
-    }
-    else {
+    } else {
         SGLP_ASSERT(0);
     }
 
@@ -2468,8 +2452,7 @@ static sglp_Bool sglp_load_gdi32dll(void) {
 #undef SGLP_GDI_LOAD
 
         res = funcs_loaded;
-    }
-    else {
+    } else {
         SGLP_ASSERT(0);
     }
 
@@ -2525,8 +2508,7 @@ static sglp_Bool sglp_do_next_work_queue_entry(sglp_Win32WorkQueue *work_queue) 
             entry.callback(entry.e);
             InterlockedIncrement((volatile long *)&work_queue->cnt);
         }
-    }
-    else {
+    } else {
         res = SGLP_TRUE;
     }
 
@@ -2628,8 +2610,7 @@ void *sglp_realloc(void *ptr, uintptr_t size) {
 
     if(ptr) {
         res = HeapReAlloc(GetProcessHeap(), 0x00000008/*HEAP_ZERO_MEMORY*/, ptr, size);
-    }
-    else {
+    } else {
         res = HeapAlloc(GetProcessHeap(), 0x00000008/*HEAP_ZERO_MEMORY*/, size);
     }
 
@@ -2924,8 +2905,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                 if(should_play_snd) {
                     if(!secondary_buffer) {
                         should_play_snd = SGLP_FALSE;
-                    }
-                    else {
+                    } else {
                         // Clear the sound buffer.
                         void *region1, *region2;
                         DWORD region1_size, region2_size;
@@ -2982,8 +2962,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 
                     if(!api.game_state_memory || !api.permanent_memory || !api.temp_memory) {
                         SGLP_ASSERT(0);
-                    }
-                    else {
+                    } else {
                         LARGE_INTEGER last_counter = sglp_win32_get_wall_clock();
                         LARGE_INTEGER flip_wall_clock = sglp_win32_get_wall_clock();
 
@@ -3038,20 +3017,17 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 
                                             if(left_stickx > 0) {
                                                 api.key[sglp_left_stick_x] = SGLP_NORMALISE(left_stickx, 0, 0xFFFF);
-                                            }
-                                            else if (left_stickx < 0) {
+                                            } else if (left_stickx < 0) {
                                                 api.key[sglp_left_stick_x] = -SGLP_NORMALISE(left_stickx, 0, 0xFFFF);
                                             }
 
                                             if(left_stickx > 0) {
                                                 api.key[sglp_left_stick_y] = SGLP_NORMALISE(left_sticky, 0, 0xFFFF);
-                                            }
-                                            else if (left_stickx < 0) {
+                                            } else if (left_stickx < 0) {
                                                 api.key[sglp_left_stick_y] = -SGLP_NORMALISE(left_sticky, 0, 0xFFFF);
                                             }
                                         }
-                                    }
-                                    else {
+                                    } else {
                                         // Controller not available.
                                     }
                                 }
@@ -3119,8 +3095,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                                     uint32_t bytes_to_write;
                                     if(byte_to_lock > target_cursor) {
                                         bytes_to_write = (snd_output.secondary_buf_size - byte_to_lock) + target_cursor;
-                                    }
-                                    else {
+                                    } else {
                                         bytes_to_write = target_cursor - byte_to_lock;
                                     }
 
@@ -3158,8 +3133,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                                             IDirectSoundBuffer_Unlock(secondary_buffer, region1, region1_size, region2, region2_size);
                                         }
                                     }
-                                }
-                                else {
+                                } else {
                                     snd_is_valid = SGLP_FALSE;
                                 }
                             }
@@ -3187,8 +3161,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
                                                                                                    sglp_win32_get_wall_clock(),
                                                                                                    perf_cnt_freq);
                                     }
-                                }
-                                else {
+                                } else {
                                     // Missed Frame Rate!
                                 }
 
@@ -3481,8 +3454,7 @@ static sglp_Bool sglp_linux_do_next_work_queue_entry(sglp_LinuxWorkQueue *work_q
             entry.callback(entry.e);
             __sync_fetch_and_add(&work_queue->cnt, 1);
         }
-    }
-    else {
+    } else {
         res = SGLP_TRUE;
     }
 
@@ -3510,7 +3482,7 @@ static void *sglp_linux_thread_proc(void *Parameter) {
 //
 // sglp_File IO
 //
-static sglp_File sglp_linux_read_file(sglp_API *api, char const *fname) {
+sglp_File sglp_read_file(sglp_API *api, char const *fname) {
     sglp_File res = {0};
 
     int32_t file_desc = open(fname, O_RDONLY);
@@ -3525,7 +3497,7 @@ static sglp_File sglp_linux_read_file(sglp_API *api, char const *fname) {
     return(res);
 }
 
-static sglp_File sglp_linux_read_file_and_null_terminate(sglp_API *api, char const *fname) {
+sglp_File sglp_read_file_and_null_terminate(sglp_API *api, char const *fname) {
     sglp_File res = {0};
 
     int32_t file_desc = open(fname, O_RDONLY);
@@ -3543,7 +3515,7 @@ static sglp_File sglp_linux_read_file_and_null_terminate(sglp_API *api, char con
 //
 // Utility stuff
 //
-static uint64_t sglp_linux_get_processor_timestamp(void) {
+uint64_t sglp_get_processor_timestamp(void) {
 #if 0
     uint64_t res, low, high;
 
@@ -3568,7 +3540,7 @@ static uint64_t sglp_linux_get_processor_timestamp(void) {
 //
 // Memory.
 //
-static void *sglp_linux_malloc(uintptr_t size) {
+void *sglp_malloc(uintptr_t size) {
     void *res = malloc(size);
     if(res) {
         sglp_memset(res, 0, size);
@@ -3577,13 +3549,13 @@ static void *sglp_linux_malloc(uintptr_t size) {
     return(res);
 }
 
-static void *sglp_linux_realloc(void *ptr, uintptr_t size) {
+void *sglp_realloc(void *ptr, uintptr_t size) {
     void *res = realloc(ptr, size);
 
     return(res);
 }
 
-static void sglp_linux_free(void *ptr) {
+void sglp_free(void *ptr) {
     if(ptr) {
         free(ptr);
     }
@@ -3639,7 +3611,7 @@ static sglp_Bool sglp_linux_init_audio(int samples_per_second, int buffer_size) 
         audio_settings.userdata = &sglp_linux_global_secondary_buffer;
 
         sglp_linux_global_secondary_buffer.size = buffer_size;
-        sglp_linux_global_secondary_buffer.data = sglp_linux_malloc(buffer_size);
+        sglp_linux_global_secondary_buffer.data = sglp_malloc(buffer_size);
 
         SDL_OpenAudio(&audio_settings, 0);
 
@@ -3703,8 +3675,7 @@ static void sglp_linux_handle_audio(sglp_API *api, sglp_LinuxSoundOutput *sound_
     if(byte_to_lock > target_cursor) {
         bytes_to_write = sound_output->secondary_buffer_size - byte_to_lock;
         bytes_to_write += target_cursor;
-    }
-    else {
+    } else {
         bytes_to_write = target_cursor - byte_to_lock;
     }
     sglp_linux_audio_unlock();
@@ -3730,6 +3701,7 @@ static sglp_LinuxSoundOutput sglp_linux_init_sound_output(float game_update_hz) 
 }
 
 // Set API
+#if 0
 static void sglp_linux_set_api(sglp_API *api) {
     api->free_file = sglp_free_file;
     api->read_file = sglp_linux_read_file;
@@ -3753,6 +3725,7 @@ static void sglp_linux_set_api(sglp_API *api) {
     api->settings.win_width = 1920 / 2;
     api->settings.win_height = 1080 / 2;
 }
+#endif
 
 typedef struct sglp_LinuxWindow {
     sglp_Bool success;
@@ -3824,8 +3797,7 @@ static void sglp_linux_handle_window_messages(sglp_API *api, sglp_LinuxWindow wi
 
                 case XK_Escape: { api->key[sglp_key_escape] = SGLP_TRUE; } break;
             }
-        }
-        else if(KeyRelease == event.xkey.type) {
+        } else if(KeyRelease == event.xkey.type) {
             KeySym X11Key = sglp_x11_XKeycodeToKeysym(win.display, event.xkey.keycode, 0);
             switch(X11Key) {
                 case XK_Up:    { api->key[sglp_key_up]    = SGLP_FALSE; } break;
@@ -3887,8 +3859,7 @@ static void sglp_linux_handle_frame_rate_stuff(sglp_API *api, uint64_t *last_cou
             seconds_elapsed_for_frame = sglp_linux_get_seconds_elapsed(*last_counter,
                                                                        api->get_processor_timestamp());
         }
-    }
-    else {
+    } else {
         // Missed Frame Rate!
     }
 
@@ -3903,14 +3874,21 @@ static void sglp_linux_handle_frame_rate_stuff(sglp_API *api, uint64_t *last_cou
 int main(int argc, char **argv) {
     sglp_API api = {0};
 
-    sglp_linux_set_api(&api);
+    // sglp_linux_set_api(&api);
+    sglp_setup_callbacks(&api);
+    sglp_global_opengl = &api.gl;
 
     if(sglp_linux_load_x11() && sglp_linux_load_lpthread() && sglp_linux_load_gl() && sglp_linux_load_opengl_funcs()) {
         sglp_platform_setup_settings_callback(&api.settings);
 
         sglp_LinuxWindow win = sglp_linux_create_opengl_window(&api);
 
-        api.permanent_memory = api.os_malloc(api.settings.permanent_memory_size);
+        uintptr_t total_size = api.settings.game_state_memory_size + api.settings.permanent_memory_size + api.settings.temp_memory_size;
+        void *game_memory_block = api.os_malloc(total_size);
+        api.game_state_memory = game_memory_block;
+        api.permanent_memory = (uint8_t *)game_memory_block + api.settings.game_state_memory_size;
+        api.temp_memory = (uint8_t *)game_memory_block + api.settings.game_state_memory_size + api.settings.permanent_memory_size;
+
         if(api.permanent_memory) {
             sglp_LinuxWorkQueue work_queue = {0};
 

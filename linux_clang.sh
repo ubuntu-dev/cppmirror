@@ -26,6 +26,6 @@ if [ "$BUILD_GAME" = "true" ]; then
     "../build/mirror" game.c
     popd
 
-    clang-"$CLANG_VERSION" -Wall -Wextra "game/game.c" -std=gnu99 -o game_exe $WARNINGS -g  `sdl2-config --cflags --libs` -ldl -lm -lrt
+    clang-"$CLANG_VERSION" -Wall -Wextra "game/game.c" "game/linux_platform.c" -std=gnu99 -o game_exe $WARNINGS -g  `sdl2-config --cflags --libs` -ldl -lm -lrt
     mv "./game_exe" "build/game"
 fi

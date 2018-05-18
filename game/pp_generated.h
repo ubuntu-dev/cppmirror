@@ -468,7 +468,7 @@ struct pp_Camera {
     pp_V2 pos; pp_V2 speed; pp_Bool follow_exactly; 
 };
 struct pp_Game_State {
-    pp_Entity *entity; pp_Camera camera; pp_Direction gravity; pp_Bool show_text_box; pp_Char *text_box_input; pp_Int input_delay; 
+    pp_Entity *entity; pp_Camera camera; pp_Direction gravity; 
 };
 
 // Turn a typedef'd type into it's original type.
@@ -1176,18 +1176,6 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 pp_MemberDefinition res = {pp_Type_Direction, "gravity", PP_OFFSETOF(pp_Game_State, gravity), 0, 0};
                 return(res);
             } break; 
-            case 3: {
-                pp_MemberDefinition res = {pp_Type_Bool, "show_text_box", PP_OFFSETOF(pp_Game_State, show_text_box), 0, 0};
-                return(res);
-            } break; 
-            case 4: {
-                pp_MemberDefinition res = {pp_Type_Char, "text_box_input", PP_OFFSETOF(pp_Game_State, text_box_input), 1, 0};
-                return(res);
-            } break; 
-            case 5: {
-                pp_MemberDefinition res = {pp_Type_Int, "input_delay", PP_OFFSETOF(pp_Game_State, input_delay), 0, 0};
-                return(res);
-            } break; 
         }
     }
 
@@ -1221,7 +1209,7 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_Entity: { return(6); } break;
         case pp_Type_Entity_Info: { return(3); } break;
         case pp_Type_Camera: { return(3); } break;
-        case pp_Type_Game_State: { return(6); } break;
+        case pp_Type_Game_State: { return(3); } break;
     }
 
     PP_ASSERT(0);
