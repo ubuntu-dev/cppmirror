@@ -148,41 +148,27 @@ typedef sgl_Bool Bool;
 //
 // Functions
 //
+
+//
+// Utils
 #define sgl_zero(dest, size) sgl_memset(dest, 0, size)
 void sgl_memset(void *dest, uint8_t x, uintptr_t size);
 void sgl_memcpy(void *dest, const void *src, uintptr_t num);
+
+//
+// String
 int sgl_string_len(char const *str);
 char sgl_to_upper(char c);
+char sgl_to_lower(char c);
+
 #define sgl_string_comp(a, b) sgl_string_comp_len(a, b, 0)
-sgl_Bool sgl_string_comp_len(char const *a, char const *b, uintptr_t len) {
-    sgl_Bool res = true;
-    int i;
-
-    if(len == 0) {
-        int a_len = sgl_string_len(a);
-        int b_len = sgl_string_len(b);
-        if(a_len != b_len) {
-            res = false;
-        }
-        else {
-            len = a_len;
-        }
-    }
-
-    if(res) {
-        for(i = 0; (i < len); ++i, ++a, ++b) {
-            if(*a != *b) {
-                res = false;
-                break;
-            }
-        }
-    }
-
-    return(res);
-}
-
+sgl_Bool sgl_string_comp_len(char const *a, char const *b, uintptr_t len);
 sgl_Bool sgl_is_letter(char c);
 sgl_Bool sgl_is_number(char c);
+sgl_Bool sgl_is_lower(char c);
+sgl_Bool sgl_is_upper(char c);
+sgl_Bool sgl_to_lower(char c);
+sgl_Bool sgl_to_upper(char c);
 
 #define SGL_KILOBYTES(v) ((v)                * (1024LL))
 #define SGL_MEGABYTES(v) ((SGL_KILOBYTES(v)) * (1024LL))
@@ -211,6 +197,9 @@ void *__cdecl memcpy(void *dest, void const *src, size_t count);
 
 #if defined(SGL_IMPLEMENTATION)
 
+//
+// malloc/memset
+//
 void sgl_memset(void *dest, uint8_t x, uintptr_t size) {
     uint8_t *dest8 = (uint8_t *)dest;
     for(uintptr_t i = 0; (i < size); ++i) {
@@ -226,6 +215,9 @@ void sgl_memcpy(void *dest, const void *src, uintptr_t num) {
     }
 }
 
+//
+// String
+//
 int sgl_string_len(char const *str) {
     int res = 0;
     while(str[res++]);
@@ -241,22 +233,91 @@ char sgl_to_upper(char c) {
     return(c);
 }
 
+char sgl_to_lower(char c) {
+    if((c >= 'A') && (c <= 'As')) {
+        c += ('a' - 'A');
+    }
+
+    return(c);
+}
+
+sgl_Bool sgl_string_comp_len(char const *a, char const *b, uintptr_t len) {
+    sgl_Bool res = true;
+    int i;
+
+    if(len == 0) {
+        int a_len = sgl_string_len(a);
+        int b_len = sgl_string_len(b);
+        if(a_len != b_len) {
+            res = false;
+        }
+        else {
+            len = a_len;
+        }
+    }
+
+    if(res) {
+        for(i = 0; (i < len); ++i, ++a, ++b) {
+            if(*a != *b) {
+                res = false;
+                break;
+            }
+        }
+    }
+
+    return(res);
+}
+
 sgl_Bool sgl_is_letter(char c) {
     if((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
-        return SGL_TRUE;
+        return(SGL_TRUE);
     }
     else {
-        return SGL_FALSE;
+        return(SGL_FALSE);
     }
 }
 
 sgl_Bool sgl_is_number(char c) {
     if(c >= '0' && c <= '9') {
-        return SGL_TRUE;
+        return(SGL_TRUE);
     }
     else {
-        return SGL_FALSE;
+        return(SGL_FALSE);
     }
+}
+
+sgl_Bool sgl_is_lower(char c) {
+    if(c >= 'a' && c <= 'z') {
+        return(SGL_TRUE);
+    }
+    else {
+        return(SGL_FALSE);
+    }
+}
+
+sgl_Bool sgl_is_upper(char c) {
+    if(c >= 'A' && c <= 'Z') {
+        return(SGL_TRUE);
+    }
+    else {
+        return(SGL_FALSE);
+    }
+}
+
+sgl_Bool sgl_to_lower(char c) {
+    if(sgl_is_upper(c)) {
+        c += ('a' - 'A');
+    }
+
+    return(c);
+}
+
+sgl_Bool sgl_to_upper(char c) {
+    if(sgl_is_lower(c)) {
+        c -= ('a' - 'A');
+    }
+
+    return(c);
 }
 
 //
