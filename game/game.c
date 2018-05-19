@@ -187,8 +187,7 @@ Entity *get_end_entity(Entity *root) {
     Entity *next = root;
     if(!root) {
         next = root;
-    }
-    else {
+    } else {
         while(next->next) {
             next = next->next;
         }
@@ -204,8 +203,7 @@ Entity *push_entity(sglp_API *api, Entity *root, Void *var, pp_Type type) {
     Entity *end = get_end_entity(root);
     if(!end) {
         root = next;
-    }
-    else {
+    } else {
         end->next = next;
     }
 
@@ -278,7 +276,7 @@ enum Sound_ID {
     ID_sound_background,
 };
 
-void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
+SGL_EXPORT void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
     settings->fullscreen = false;
 
     settings->allow_sound = false;
@@ -300,8 +298,7 @@ Float accelerate(Float cur, Float max, Float acc, Bool forward) {
     Float res = ((go_forward * max) - cur) * acc;
     if(res > max) {
         res = max;
-    }
-    else if(res < -max) {
+    } else if(res < -max) {
         res = -max;
     }
 
@@ -320,8 +317,7 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, V2 pos, V2 scale)
         if(letter == '\n') {
             running_y += scale.y;
             running_x = pos.x;
-        }
-        else {
+        } else {
             V2 pos_in_table = get_letter_position(letter);
             if(pos_in_table.x != -1 && pos_in_table.y != -1) {
                 sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale(running_x, running_y, scale.x, scale.y);
@@ -453,8 +449,7 @@ Bool is_jumping(Player *player, Direction gravity_direction) {
 Bool is_offscreen(Transform t) {
     if((t.pos.x > 1.0f || t.pos.x < 0.0f) || (t.pos.y > 1.0f || t.pos.y < 0.0f)) {
         return true;
-    }
-    else {
+    } else {
         return false;
     }
 }
@@ -882,43 +877,34 @@ Void handle_player_movement(Player *player, Entity *root, sglp_API *api, Game_St
             current_speed.x += accelerate(current_speed.x, max_speed.x, acceleration.x * api->dt, false);
             player->dir = Player_Direction_left;
             player->current_frame = Player_Direction_left;
-        }
-        else if(api->key[sglp_key_right]) {
+        } else if(api->key[sglp_key_right]) {
             current_speed.x += accelerate(current_speed.x, max_speed.x, acceleration.x * api->dt, true);
             player->dir = Player_Direction_right;
             player->current_frame = Player_Direction_right;
-        }
-        else {
+        } else {
             if(current_speed.x > friction.x * 0.5f) {
                 current_speed.x += accelerate(current_speed.x, max_speed.x, friction.x * api->dt, false);
-            }
-            else if(current_speed.x < -friction.x * 0.5f) {
+            } else if(current_speed.x < -friction.x * 0.5f) {
                 current_speed.x += accelerate(current_speed.x, max_speed.x, friction.x * api->dt, true);
-            }
-            else {
+            } else {
                 current_speed.x = 0;
             }
         }
-    }
-    else {
+    } else {
         if(api->key[sglp_key_up]) {
             current_speed.y += accelerate(current_speed.y, max_speed.y, acceleration.y * api->dt, false);
             player->dir = Player_Direction_left;
             player->current_frame = Player_Direction_left;
-        }
-        else if(api->key[sglp_key_down]) {
+        } else if(api->key[sglp_key_down]) {
             current_speed.y += accelerate(current_speed.y, max_speed.y, acceleration.y * api->dt, true);
             player->dir = Player_Direction_right;
             player->current_frame = Player_Direction_right;
-        }
-        else {
+        } else {
             if(current_speed.y > friction.y * 0.5f) {
                 current_speed.y += accelerate(current_speed.y, max_speed.y, friction.y * api->dt, false);
-            }
-            else if(current_speed.y < -friction.y * 0.5f) {
+            } else if(current_speed.y < -friction.y * 0.5f) {
                 current_speed.y += accelerate(current_speed.y, max_speed.y, friction.y * api->dt, true);
-            }
-            else {
+            } else {
                 current_speed.y = 0;
             }
         }
@@ -1023,8 +1009,7 @@ Void update_enemy(Enemy *enemy, Game_State *gs) {
 
             next = next->next;
         }
-    }
-    else {
+    } else {
         assert(0);
     }
 }
@@ -1132,8 +1117,7 @@ Void update(sglp_API *api, Game_State *gs) {
             next = next->next;
         }
 #if INTERNAL
-    }
-    else {
+    } else {
         // TODO - This won't let you delete letters or put in spaces.
         if(gs->input_delay >= 0) {
             gs->input_delay -= api->dt;
@@ -1154,15 +1138,14 @@ Void update(sglp_API *api, Game_State *gs) {
 #endif
 }
 
-void sglp_platform_update_and_render_callback(sglp_API *api) {
+SGL_EXPORT void sglp_platform_update_and_render_callback(sglp_API *api) {
     global_api = api;
 
     Game_State *gs = (Game_State *)api->game_state_memory;
 
     if(api->init_game) {
         init(api, gs);
-    }
-    else {
+    } else {
         update(api, gs);
         render(api, gs);
     }

@@ -3870,16 +3870,66 @@ static void sglp_linux_handle_frame_rate_stuff(sglp_API *api, uint64_t *last_cou
     *flip_wall_clock = api->get_processor_timestamp();
 }
 
+typedef struct sglp_LinuxGamecode {
+    void *shared_library;
+    void (*setup_settings)(sglp_Settings *settings);
+    void (*update_and_render)(sglp_API *api);
+    sglp_Bool success;
+} sglp_LinuxGamecode;
+
+static void sglp_linux_setup_settings_callback(sglp_LinuxGamecode *game_code, sglp_Settings *settings) {
+#if defined(SGLP_LOAD_GAME_FROM_DLL)
+    if(game_code->success && game_code->setup_settings) {
+        game_code->setup_settings(settings);
+    }
+#else
+    sglp_platform_setup_settings_callback(settings);
+#endif
+}
+
+static void sglp_linux_update_and_render_callback(sglp_LinuxGamecode *game_code, sglp_API *api) {
+#if defined(SGLP_LOAD_GAME_FROM_DLL)
+    if(game_code->success && game_code->update_and_render) {
+        game_code->update_and_render(api);
+    }
+#else
+    sglp_platform_update_and_render_callback(api);
+#endif
+}
+
+static sglp_LinuxGamecode sglp_linux_load_game_code(char const *original_lib, char const *temp_lib) {
+    sglp_LinuxGamecode res = {0};
+    res.shared_library = dlopen(original_lib, RTLD_LAZY);
+
+    if(res.shared_library) {
+        res.setup_settings = (void(*)(sglp_Settings *))dlsym(res.shared_library, "sglp_platform_setup_settings_callback");
+        res.update_and_render = (void(*)(sglp_API *))dlsym(res.shared_library, "sglp_platform_update_and_render_callback");
+
+        if(res.setup_settings && res.update_and_render) {
+            res.success = SGLP_TRUE;
+        }
+    }
+
+    return(res);
+}
+
+
 // TODO - Add a temp memory buffer to go with permanent.
 int main(int argc, char **argv) {
     sglp_API api = {0};
 
-    // sglp_linux_set_api(&api);
+    // TODO - Hardcoded.
+    char const *original_lib = "/home/jonathan/Desktop/projects/mirror/build/game";
+    char const *temp_lib = "/home/jonathan/Desktop/projects/mirror/build/game_temp";
+
+    sglp_LinuxGamecode game_code = sglp_linux_load_game_code(original_lib, temp_lib);
+
     sglp_setup_callbacks(&api);
     sglp_global_opengl = &api.gl;
 
     if(sglp_linux_load_x11() && sglp_linux_load_lpthread() && sglp_linux_load_gl() && sglp_linux_load_opengl_funcs()) {
-        sglp_platform_setup_settings_callback(&api.settings);
+
+        sglp_linux_setup_settings_callback(&game_code, &api.settings);
 
         sglp_LinuxWindow win = sglp_linux_create_opengl_window(&api);
 
@@ -3933,7 +3983,7 @@ int main(int argc, char **argv) {
 
                 sglp_linux_handle_window_messages(&api, win);
 
-                sglp_platform_update_and_render_callback(&api);
+                sglp_linux_update_and_render_callback(&game_code, &api);
                 api.init_game = SGLP_FALSE;
 
                 sglp_gl_glXSwapBuffers(win.display, win.win);

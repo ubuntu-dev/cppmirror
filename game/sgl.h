@@ -71,6 +71,31 @@ extern "C" {
 #endif
 
 //
+// Export macros
+//
+#define SGL_EXPORT
+#define SGL_IMPORT
+// MSVC
+#if SGL_COMPILER_MSVC
+#if defined(SGL_EXPORT)
+#undef SGL_EXPORT
+#endif
+#define SGL_EXPORT __declspec(dllexport)
+
+#if defined(SGL_IMPORT)
+#undef SGL_IMPORT
+#endif
+#define SGL_IMPORT __declspec(dllimport)
+// GCC/Clang
+#elif SGL_COMPILER_GCC || SGL_COMPILER_CLANG
+#if defined(SGL_EXPORT)
+#undef SGL_EXPORT
+#endif
+
+#define SGL_EXPORT __attribute__((visibility("default")))
+#endif
+
+//
 // Types
 //
 #include <stdint.h>
