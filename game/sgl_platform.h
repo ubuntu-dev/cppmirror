@@ -3202,6 +3202,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 #include <unistd.h>
 #include <dlfcn.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 
 #include <stdarg.h> // Var Args
 
@@ -3874,12 +3875,13 @@ typedef struct sglp_LinuxGamecode {
     void *shared_library;
     void (*setup_settings)(sglp_Settings *settings);
     void (*update_and_render)(sglp_API *api);
-    sglp_Bool success;
+    sglp_Bool loaded;
+    int last_write_time;
 } sglp_LinuxGamecode;
 
 static void sglp_linux_setup_settings_callback(sglp_LinuxGamecode *game_code, sglp_Settings *settings) {
 #if defined(SGLP_LOAD_GAME_FROM_DLL)
-    if(game_code->success && game_code->setup_settings) {
+    if(game_code->loaded && game_code->setup_settings) {
         game_code->setup_settings(settings);
     }
 #else
@@ -3889,7 +3891,7 @@ static void sglp_linux_setup_settings_callback(sglp_LinuxGamecode *game_code, sg
 
 static void sglp_linux_update_and_render_callback(sglp_LinuxGamecode *game_code, sglp_API *api) {
 #if defined(SGLP_LOAD_GAME_FROM_DLL)
-    if(game_code->success && game_code->update_and_render) {
+    if(game_code->loaded && game_code->update_and_render) {
         game_code->update_and_render(api);
     }
 #else
@@ -3897,32 +3899,47 @@ static void sglp_linux_update_and_render_callback(sglp_LinuxGamecode *game_code,
 #endif
 }
 
-static sglp_LinuxGamecode sglp_linux_load_game_code(char const *original_lib, char const *temp_lib) {
-    sglp_LinuxGamecode res = {0};
-    res.shared_library = dlopen(original_lib, RTLD_LAZY);
+static void sglp_linux_load_game_code(char const *path, sglp_LinuxGamecode *game_code) {
+    if(!game_code->loaded) {
+        game_code->shared_library = dlopen(path, RTLD_LAZY);
 
-    if(res.shared_library) {
-        res.setup_settings = (void(*)(sglp_Settings *))dlsym(res.shared_library, "sglp_platform_setup_settings_callback");
-        res.update_and_render = (void(*)(sglp_API *))dlsym(res.shared_library, "sglp_platform_update_and_render_callback");
+        if(game_code->shared_library) {
+            game_code->setup_settings = (void(*)(sglp_Settings *))dlsym(game_code->shared_library, "sglp_platform_setup_settings_callback");
+            game_code->update_and_render = (void(*)(sglp_API *))dlsym(game_code->shared_library, "sglp_platform_update_and_render_callback");
 
-        if(res.setup_settings && res.update_and_render) {
-            res.success = SGLP_TRUE;
+            if(game_code->setup_settings && game_code->update_and_render) {
+                struct stat attr;
+                stat(path, &attr);
+                game_code->last_write_time = attr.st_ino;
+                game_code->loaded = SGLP_TRUE;
+            }
         }
     }
-
-    return(res);
 }
 
+static void sglp_linux_reload_game_code(char const *path, sglp_LinuxGamecode *game_code) {
+    struct stat attr;
+    stat(path, &attr);
+    if(attr.st_ino != game_code->last_write_time) {
+        sglp_Bool loaded = dlclose(game_code->shared_library) == 0;
+        SGLP_ASSERT(loaded);
+
+        game_code->setup_settings = 0;
+        game_code->update_and_render = 0;
+        game_code->loaded = SGLP_FALSE;
+
+        sglp_linux_load_game_code(path, game_code);
+    }
+}
 
 // TODO - Add a temp memory buffer to go with permanent.
 int main(int argc, char **argv) {
     sglp_API api = {0};
 
-    // TODO - Hardcoded.
-    char const *original_lib = "/home/jonathan/Desktop/projects/mirror/build/game";
-    char const *temp_lib = "/home/jonathan/Desktop/projects/mirror/build/game_temp";
+    char const *game_path = "/home/jonathan/Desktop/projects/mirror/build/game"; // TODO - Hardcoded.
 
-    sglp_LinuxGamecode game_code = sglp_linux_load_game_code(original_lib, temp_lib);
+    sglp_LinuxGamecode game_code = {0};
+    sglp_linux_load_game_code(game_path, &game_code);
 
     sglp_setup_callbacks(&api);
     sglp_global_opengl = &api.gl;
@@ -3979,6 +3996,7 @@ int main(int argc, char **argv) {
             api.init_game = SGLP_TRUE;
             sglp_Bool quit = SGLP_FALSE; // TODO(Jonny): Should quit be in sglp_API?
             while(!quit) {
+                sglp_linux_reload_game_code(game_path, &game_code);
                 api.dt = ms_per_frame;
 
                 sglp_linux_handle_window_messages(&api, win);
