@@ -12,8 +12,9 @@
 
 #if !defined(_SGL_H)
 
-#if defined(__cplusplus)
-extern "C" {
+#if defined(__cplusplus) && !defined(SGL_NO_EXTERN_C)
+    #define SGL_EXTERN_C_BEGIN extern "C" {
+    SGL_EXTERN_C_BEGIN
 #endif
 
 //
@@ -30,44 +31,44 @@ extern "C" {
 #define SGL_OS_LINUX 0
 
 #if defined(__clang__)
-#undef SGL_COMPILER_CLANG
-#define SGL_COMPILER_CLANG 1
+    #undef SGL_COMPILER_CLANG
+    #define SGL_COMPILER_CLANG 1
 #elif defined(_MSC_VER)
-#undef SGL_COMPILER_MSVC
-#define SGL_COMPILER_MSVC 1
+    #undef SGL_COMPILER_MSVC
+    #define SGL_COMPILER_MSVC 1
 #elif (defined(__GNUC__) || defined(__GNUG__)) // This has to be after __clang__, because Clang also defines this.
-#undef SGL_COMPILER_GCC
-#define SGL_COMPILER_GCC 1
+    #undef SGL_COMPILER_GCC
+    #define SGL_COMPILER_GCC 1
 #else
-#error "Could not detect compiler."
+    #error "Could not detect compiler."
 #endif
 
 #if defined(__linux__)
-#undef SGL_OS_LINUX
-#define SGL_OS_LINUX 1
+    #undef SGL_OS_LINUX
+    #define SGL_OS_LINUX 1
 #elif defined(_WIN32)
-#undef SGL_OS_WIN32
-#define SGL_OS_WIN32 1
+    #undef SGL_OS_WIN32
+    #define SGL_OS_WIN32 1
 #else
-#error "Could not detect OS"
+    #error "Could not detect OS"
 #endif
 
 #if SGL_OS_LINUX
-#if (__x86_64__ || __ppc64__)
-#undef SGL_ENVIRONMENT64
-#define SGL_ENVIRONMENT64 1
-#else
-#undef SGL_ENVIRONMENT32
-#define SGL_ENVIRONMENT32 1
-#endif
+    #if (__x86_64__ || __ppc64__)
+        #undef SGL_ENVIRONMENT64
+        #define SGL_ENVIRONMENT64 1
+    #else
+        #undef SGL_ENVIRONMENT32
+        #define SGL_ENVIRONMENT32 1
+    #endif
 #elif SGL_OS_WIN32
-#if defined(_WIN64)
-#undef SGL_ENVIRONMENT64
-#define SGL_ENVIRONMENT64 1
-#else
-#undef SGL_ENVIRONMENT32
-#define SGL_ENVIRONMENT32 1
-#endif
+    #if defined(_WIN64)
+        #undef SGL_ENVIRONMENT64
+        #define SGL_ENVIRONMENT64 1
+    #else
+        #undef SGL_ENVIRONMENT32
+        #define SGL_ENVIRONMENT32 1
+    #endif
 #endif
 
 //
@@ -77,22 +78,22 @@ extern "C" {
 #define SGL_IMPORT
 // MSVC
 #if SGL_COMPILER_MSVC
-#if defined(SGL_EXPORT)
-#undef SGL_EXPORT
-#endif
-#define SGL_EXPORT __declspec(dllexport)
+    #if defined(SGL_EXPORT)
+        #undef SGL_EXPORT
+    #endif
+    #define SGL_EXPORT __declspec(dllexport)
 
-#if defined(SGL_IMPORT)
-#undef SGL_IMPORT
-#endif
-#define SGL_IMPORT __declspec(dllimport)
-// GCC/Clang
+    #if defined(SGL_IMPORT)
+        #undef SGL_IMPORT
+    #endif
+    #define SGL_IMPORT __declspec(dllimport)
+    // GCC/Clang
 #elif SGL_COMPILER_GCC || SGL_COMPILER_CLANG
-#if defined(SGL_EXPORT)
-#undef SGL_EXPORT
-#endif
+    #if defined(SGL_EXPORT)
+        #undef SGL_EXPORT
+    #endif
 
-#define SGL_EXPORT __attribute__((visibility("default")))
+    #define SGL_EXPORT __attribute__((visibility("default")))
 #endif
 
 //
@@ -130,31 +131,31 @@ typedef int sgl_Bool;
 
 // Use #define SGL_NO_BOOL to avoid create Bool typedef here.
 #if !defined(SGL_NO_TYPES)
-typedef sgl_Uint64 Uint64;
-typedef sgl_Uint32 Uint32;
-typedef sgl_Uint16 Uint16;
-typedef sgl_Uint8 Uint8;
-typedef sgl_Int64 Int64;
-typedef sgl_Int32 Int32;
-typedef sgl_Int16 Int16;
-typedef sgl_Int8 Int8;
-typedef sgl_Int Int;
-typedef sgl_Uint Uint;
-typedef sgl_Byte Byte;
-typedef sgl_Uintptr Uintptr;
-typedef sgl_Intptr Intptr;
-typedef sgl_Float32 Float32;
-typedef sgl_Float64 Float64;
-typedef sgl_Float Float;
-typedef sgl_Void Void;
-typedef sgl_Char Char;
+    typedef sgl_Uint64 Uint64;
+    typedef sgl_Uint32 Uint32;
+    typedef sgl_Uint16 Uint16;
+    typedef sgl_Uint8 Uint8;
+    typedef sgl_Int64 Int64;
+    typedef sgl_Int32 Int32;
+    typedef sgl_Int16 Int16;
+    typedef sgl_Int8 Int8;
+    typedef sgl_Int Int;
+    typedef sgl_Uint Uint;
+    typedef sgl_Byte Byte;
+    typedef sgl_Uintptr Uintptr;
+    typedef sgl_Intptr Intptr;
+    typedef sgl_Float32 Float32;
+    typedef sgl_Float64 Float64;
+    typedef sgl_Float Float;
+    typedef sgl_Void Void;
+    typedef sgl_Char Char;
 
-#if defined(Bool)
-#undef Bool
-#endif
-typedef sgl_Bool Bool;
-#define true SGL_TRUE
-#define false SGL_FALSE
+    #if defined(Bool)
+        #undef Bool
+    #endif
+    typedef sgl_Bool Bool;
+    #define true SGL_TRUE
+    #define false SGL_FALSE
 #endif //!defined(SGL_NO_TYPES)
 
 //
@@ -165,9 +166,9 @@ typedef sgl_Bool Bool;
 
 // A quick and useful assert
 #if SGL_INTERNAL
-#define SGL_ASSERT(exp) do {static int ignore = 0; if(!ignore) {if(!(exp)) {*(Uintptr volatile *)0 = 0; } } } while(0)
+    #define SGL_ASSERT(exp) do {static int ignore = 0; if(!ignore) {if(!(exp)) {*(Uintptr volatile *)0 = 0; } } } while(0)
 #else
-#define SGL_ASSERT(exp) {}
+    #define SGL_ASSERT(exp) {}
 #endif
 
 //
@@ -203,18 +204,18 @@ sgl_Bool sgl_to_upper(char c);
 #define SGL_NO_CRT 0
 
 #if defined(SGL_NO_CRT_WINDOW_APP) || defined(SGL_NO_CRT_CONSOLE_APP) || defined(SGL_NO_CRT_DLL)
-#undef SGL_NO_CRT
-#define SGL_NO_CRT 1
+    #undef SGL_NO_CRT
+    #define SGL_NO_CRT 1
 #endif // #if defined(SGL_NO_CRT_WINDOW_APP) || defined(SGL_NO_CRT_CONSOLE_APP)
 
 
 #if SGL_COMPILER_MSVC && SGL_NO_CRT
 
-#pragma function(memset)
-void *__cdecl memset(void *dest, int c, size_t count);
+    #pragma function(memset)
+    void *__cdecl memset(void *dest, int c, size_t count);
 
-#pragma function(memcpy)
-void *__cdecl memcpy(void *dest, void const *src, size_t count);
+    #pragma function(memcpy)
+    void *__cdecl memcpy(void *dest, void const *src, size_t count);
 
 #endif // SGL_COMPILER_MSVC && SGL_NO_CRT
 
@@ -225,7 +226,7 @@ void *__cdecl memcpy(void *dest, void const *src, size_t count);
 //
 void sgl_memset(void *dest, uint8_t x, uintptr_t size) {
     uint8_t *dest8 = (uint8_t *)dest;
-    for(uintptr_t i = 0; (i < size); ++i) {
+    for (uintptr_t i = 0; (i < size); ++i) {
         dest8[i] = x;
     }
 }
@@ -233,7 +234,7 @@ void sgl_memset(void *dest, uint8_t x, uintptr_t size) {
 void sgl_memcpy(void *dest, const void *src, uintptr_t num) {
     uint8_t *dest8 = (uint8_t *)dest;
     uint8_t *src8 = (uint8_t *)src;
-    for(uintptr_t i = 0; (i < num); ++i) {
+    for (uintptr_t i = 0; (i < num); ++i) {
         *dest8++ = *src8++;
     }
 }
@@ -243,83 +244,83 @@ void sgl_memcpy(void *dest, const void *src, uintptr_t num) {
 //
 int sgl_string_len(char const *str) {
     int res = 0;
-    while(str[res++]);
+    while (str[res++]);
 
-    return(res);
+    return (res);
 }
 
 sgl_Bool sgl_string_comp_len(char const *a, char const *b, uintptr_t len) {
     sgl_Bool res = true;
     int i;
 
-    if(len == 0) {
+    if (len == 0) {
         int a_len = sgl_string_len(a);
         int b_len = sgl_string_len(b);
-        if(a_len != b_len) {
+        if (a_len != b_len) {
             res = false;
         } else {
             len = a_len;
         }
     }
 
-    if(res) {
-        for(i = 0; (i < len); ++i, ++a, ++b) {
-            if(*a != *b) {
+    if (res) {
+        for (i = 0; (i < len); ++i, ++a, ++b) {
+            if (*a != *b) {
                 res = false;
                 break;
             }
         }
     }
 
-    return(res);
+    return (res);
 }
 
 sgl_Bool sgl_is_letter(char c) {
-    if((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
-        return(SGL_TRUE);
+    if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
+        return (SGL_TRUE);
     } else {
-        return(SGL_FALSE);
+        return (SGL_FALSE);
     }
 }
 
 sgl_Bool sgl_is_number(char c) {
-    if(c >= '0' && c <= '9') {
-        return(SGL_TRUE);
+    if (c >= '0' && c <= '9') {
+        return (SGL_TRUE);
     } else {
-        return(SGL_FALSE);
+        return (SGL_FALSE);
     }
 }
 
 sgl_Bool sgl_is_lower(char c) {
-    if(c >= 'a' && c <= 'z') {
-        return(SGL_TRUE);
+    if (c >= 'a' && c <= 'z') {
+        return (SGL_TRUE);
     } else {
-        return(SGL_FALSE);
+        return (SGL_FALSE);
     }
 }
 
 sgl_Bool sgl_is_upper(char c) {
-    if(c >= 'A' && c <= 'Z') {
-        return(SGL_TRUE);
+    if (c >= 'A' && c <= 'Z') {
+        return (SGL_TRUE);
     } else {
-        return(SGL_FALSE);
+        return (SGL_FALSE);
     }
 }
 
 sgl_Bool sgl_to_lower(char c) {
-    if(sgl_is_upper(c)) {
+    if (sgl_is_upper(c)) {
         c += ('a' - 'A');
     }
 
-    return(c);
+    return (c);
 }
 
 sgl_Bool sgl_to_upper(char c) {
-    if(sgl_is_lower(c)) {
+    if (sgl_is_lower(c)) {
         c -= ('a' - 'A');
     }
 
-    return(c);
+    return (c);
 }
 
 //
@@ -336,11 +337,11 @@ void *__cdecl memset(void *dest, int c, size_t count) {
 
     uint8_t val = *(uint8_t *)&c; // Done a little weird to try and avoid sign extending/diminishing.
     uint8_t *dest8 = (uint8_t *)dest;
-    while(count--) {
+    while (count--) {
         *dest8++ = val;
     }
 
-    return(dest);
+    return (dest);
 }
 
 #pragma function(memcpy)
@@ -351,7 +352,7 @@ void *__cdecl memcpy(void *dest, void const *src, size_t count) {
         *dst8++ = *src8++;
     }
 
-    return(dest);
+    return (dest);
 }
 
 // This function is used to probe the stack and expand the 4k (or 8k in x64) size. However, I don't think it's possible to
@@ -390,7 +391,7 @@ void __stdcall mainCRTStartup(void) {
 #if defined(SGL_NO_CRT_DLL)
 // TODO - I don't think I need to do anything in here?
 BOOL __stdcall DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
-    return(SGLP_TRUE);
+    return (SGLP_TRUE);
 }
 void __stdcall _DllMainCRTStartup(void) {
     DllMain(0, 0, 0);
@@ -402,8 +403,9 @@ void __stdcall _DllMainCRTStartup(void) {
 
 #endif
 
-#if defined(__cplusplus)
-} // extern "C"
+#if defined(__cplusplus) && !defined(SGL_NO_EXTERN_C)
+    #define SGL_EXTERN_C_END }
+    SGL_EXTERN_C_BEGIN
 #endif
 
 #define _SGL_H

@@ -25,8 +25,9 @@
 
 #if !defined(_SGL_PLATFORM_H)
 
-#if defined(__cplusplus)
-extern "C" {
+#if defined(__cplusplus) && !defined(SGLP_NO_EXTERN_C)
+    #define SGLP_EXTERN_C_BEGIN extern "C" {
+    SGLP_EXTERN_C_BEGIN
 #endif
 
 #define SGLP_COMPILER_MSVC 0
@@ -40,51 +41,51 @@ extern "C" {
 #define SGLP_OS_LINUX 0
 
 #if defined(__clang__)
-#undef SGLP_COMPILER_CLANG
-#define SGLP_COMPILER_CLANG 1
+    #undef SGLP_COMPILER_CLANG
+    #define SGLP_COMPILER_CLANG 1
 #elif defined(_MSC_VER)
-#undef SGLP_COMPILER_MSVC
-#define SGLP_COMPILER_MSVC 1
+    #undef SGLP_COMPILER_MSVC
+    #define SGLP_COMPILER_MSVC 1
 #elif (defined(__GNUC__) || defined(__GNUG__)) // This has to be after __clang__, because Clang also defines this.
-#undef SGLP_COMPILER_GCC
-#define SGLP_COMPILER_GCC 1
+    #undef SGLP_COMPILER_GCC
+    #define SGLP_COMPILER_GCC 1
 #else
-#error "Could not detect compiler."
+    #error "Could not detect compiler."
 #endif
 
 #if defined(__linux__)
-#undef SGLP_OS_LINUX
-#define SGLP_OS_LINUX 1
+    #undef SGLP_OS_LINUX
+    #define SGLP_OS_LINUX 1
 #elif defined(_WIN32)
-#undef SGLP_OS_WIN32
-#define SGLP_OS_WIN32 1
+    #undef SGLP_OS_WIN32
+    #define SGLP_OS_WIN32 1
 #else
-#error "Could not detect OS"
+    #error "Could not detect OS"
 #endif
 
 #if SGLP_OS_LINUX
-#if (__x86_64__ || __ppc64__)
-#undef SGLP_ENVIRONMENT64
-#define SGLP_ENVIRONMENT64 1
-#else
-#undef SGLP_ENVIRONMENT32
-#define SGLP_ENVIRONMENT32 1
-#endif
+    #if (__x86_64__ || __ppc64__)
+        #undef SGLP_ENVIRONMENT64
+        #define SGLP_ENVIRONMENT64 1
+    #else
+        #undef SGLP_ENVIRONMENT32
+        #define SGLP_ENVIRONMENT32 1
+    #endif
 #elif SGLP_OS_WIN32
-#if defined(_WIN64)
-#undef SGLP_ENVIRONMENT64
-#define SGLP_ENVIRONMENT64 1
-#else
-#undef SGLP_ENVIRONMENT32
-#define SGLP_ENVIRONMENT32 1
-#endif
+    #if defined(_WIN64)
+        #undef SGLP_ENVIRONMENT64
+        #define SGLP_ENVIRONMENT64 1
+    #else
+        #undef SGLP_ENVIRONMENT32
+        #define SGLP_ENVIRONMENT32 1
+    #endif
 #endif
 
 // stdcall
 #define SGLP_STDCALL
 #if SGLP_COMPILER_MSVC
-#undef SGLP_STDCALL
-#define SGLP_STDCALL __stdcall
+    #undef SGLP_STDCALL
+    #define SGLP_STDCALL __stdcall
 #endif
 
 #include <stdint.h>
@@ -147,7 +148,7 @@ void sglp_free(void *ptr);
 
 // Can be redefined by the user
 #if !defined(SGLP_DEFAULT_MEMORY_ALIGNMENT)
-#define SGLP_DEFAULT_MEMORY_ALIGNMENT 8
+    #define SGLP_DEFAULT_MEMORY_ALIGNMENT 8
 #endif
 
 // Permanent memory
@@ -514,11 +515,11 @@ void sglp_platform_update_and_render_callback(sglp_API *api);
 #if defined(SGLP_IMPLEMENTATION)
 
 #if !defined(SGLP_ASSERT)
-#if SGLP_COMPILER_MSVC
-#define SGLP_ASSERT(x) do { if(!(x)) { __debugbreak(); } } while(0)
-#else
-#define SGLP_ASSERT(x) do { if(!(x)) { *(uintptr_t volatile *)0 = 0; } } while(0) // TODO(Jonny): Find out what debugbreak is actually on Linux.
-#endif
+    #if SGLP_COMPILER_MSVC
+        #define SGLP_ASSERT(x) do { if(!(x)) { __debugbreak(); } } while(0)
+    #else
+        #define SGLP_ASSERT(x) do { if(!(x)) { *(uintptr_t volatile *)0 = 0; } } while(0) // TODO(Jonny): Find out what debugbreak is actually on Linux.
+    #endif
 #endif
 
 //
@@ -686,8 +687,8 @@ static void sglp_generate_2d_mesh(sglp_Sprite *sprite, float no_frames_x, float 
 #define SGLP_VERT_ROW 3
 
     float vertices[SGLP_VERT_COL][SGLP_VERT_ROW] = {
-        {-1.0f,  1.0f, 0.0f},
-        {-1.0f, -1.0f, 0.0f},
+        { -1.0f,  1.0f, 0.0f},
+        { -1.0f, -1.0f, 0.0f},
         {1.0f,   1.0f, 0.0f},
         {1.0f,  -1.0f, 0.0f}
     };
@@ -1660,7 +1661,7 @@ static SDL_GLContext sglp_sdl_init_opengl(SDL_Window *window) {
 }
 
 static SDL_Window *sglp_sdl_create_dummy_window(void) {
-    return SDL_CreateWindow("Temp", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 0, 0, SDL_WINDOW_HIDDEN|SDL_WINDOW_OPENGL);
+    return SDL_CreateWindow("Temp", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 0, 0, SDL_WINDOW_HIDDEN | SDL_WINDOW_OPENGL);
 }
 
 static void sglp_sdl_set_opengl_attributes(void) {
@@ -2147,7 +2148,7 @@ static sglp_Bool sglp_init_dsound(HWND win, int32_t samples_per_second, int32_t 
 
     HMODULE hdsound = LoadLibraryA("dsound.dll");
     if(hdsound) {
-        typedef HRESULT SGLP_STDCALL DirectSoundCreate(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter);
+        typedef HRESULT SGLP_STDCALL DirectSoundCreate(LPCGUID pcGuidDevice, LPDIRECTSOUND * ppDS, LPUNKNOWN pUnkOuter);
         DirectSoundCreate *direct_sound_create = (DirectSoundCreate *)GetProcAddress(hdsound, "DirectSoundCreate");
 
         LPDIRECTSOUND dsound = 0;
@@ -2657,7 +2658,7 @@ static sglp_Key sglp_win_key_to_sgl_key(WPARAM k) {
 
         case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G': case 'H': case 'I': case 'J': case 'K': case 'L':
         case 'M': case 'N': case 'O': case 'P': case 'Q': case 'R': case 'S': case 'T': case 'U':
-        case 'V': case 'W': case 'X': case 'Y':case 'Z': {
+        case 'V': case 'W': case 'X': case 'Y': case 'Z': {
             res = (sglp_Key)k;
         } break;
     }
@@ -3191,7 +3192,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 #if SGLP_OS_LINUX
 
 #if !defined(_GNU_SOURCE)
-#define _GNU_SOURCE
+    #define _GNU_SOURCE
 #endif
 
 #include <X11/X.h>
@@ -3211,7 +3212,7 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 #include <stdlib.h>
 
 #if !defined(SGLP_NO_INCLUDE_SDL)
-#include <SDL2/SDL.h>
+    #include <SDL2/SDL.h>
 #endif
 
 //
@@ -3924,10 +3925,7 @@ static void sglp_linux_reload_game_code(char const *path, sglp_LinuxGamecode *ga
         sglp_Bool loaded = dlclose(game_code->shared_library) == 0;
         SGLP_ASSERT(loaded);
 
-        game_code->setup_settings = 0;
-        game_code->update_and_render = 0;
-        game_code->loaded = SGLP_FALSE;
-
+        sglp_memset(game_code, 0, sizeof(*game_code));
         sglp_linux_load_game_code(path, game_code);
     }
 }
@@ -4025,8 +4023,10 @@ int main(int argc, char **argv) {
 
 #endif // #if defined(SGLP_IMPLEMENTATION)
 
-#if defined(__cplusplus)
-} // extern "C"
+
+#if defined(__cplusplus) && !defined(SGLP_NO_EXTERN_C)
+    #define SGLP_EXTERN_C_END }
+    SGLP_EXTERN_C_END
 #endif
 
 #define _SGLP_PLATFORM_H

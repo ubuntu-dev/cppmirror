@@ -13,8 +13,9 @@
 
 #if !defined(_SGLM_MATH_H)
 
-#if defined(__cplusplus)
-extern "C" {
+#if defined(__cplusplus) && !defined(SGLM_NO_EXTERN_C)
+    #define SGLM_EXTERN_C_BEGIN extern "C" {
+    SGLM_EXTERN_C_BEGIN
 #endif
 
 //
@@ -32,55 +33,55 @@ extern "C" {
 
 // Compiler
 #if defined(__clang__)
-#undef SGLM_COMPILER_CLANG
-#define SGLM_COMPILER_CLANG 1
+    #undef SGLM_COMPILER_CLANG
+    #define SGLM_COMPILER_CLANG 1
 #elif defined(_MSC_VER)
-#undef SGLM_COMPILER_MSVC
-#define SGLM_COMPILER_MSVC 1
+    #undef SGLM_COMPILER_MSVC
+    #define SGLM_COMPILER_MSVC 1
 #elif (defined(__GNUC__) || defined(__GNUG__)) // This has to be after __clang__, because Clang also defines this.
-#undef SGLM_COMPILER_GCC
-#define SGLM_COMPILER_GCC 1
+    #undef SGLM_COMPILER_GCC
+    #define SGLM_COMPILER_GCC 1
 #else
-#error "Could not detect compiler."
+    #error "Could not detect compiler."
 #endif
 
 // OS.
 #if defined(__linux__)
-#undef SGLM_OS_LINUX
-#define SGLM_OS_LINUX 1
+    #undef SGLM_OS_LINUX
+    #define SGLM_OS_LINUX 1
 #elif defined(_WIN32)
-#undef SGLM_OS_WIN32
-#define SGLM_OS_WIN32 1
+    #undef SGLM_OS_WIN32
+    #define SGLM_OS_WIN32 1
 #else
-#error "Could not detect OS"
+    #error "Could not detect OS"
 #endif
 
 // Environment.
 #if SGLM_OS_LINUX
-#if (__x86_64__ || __ppc64__)
-#undef SGLM_ENVIRONMENT64
-#define SGLM_ENVIRONMENT64 1
-#else
-#undef SGLM_ENVIRONMENT32
-#define SGLM_ENVIRONMENT32 1
-#endif
+    #if (__x86_64__ || __ppc64__)
+        #undef SGLM_ENVIRONMENT64
+        #define SGLM_ENVIRONMENT64 1
+    #else
+        #undef SGLM_ENVIRONMENT32
+        #define SGLM_ENVIRONMENT32 1
+    #endif
 #elif SGLM_OS_WIN32
-#if defined(_WIN64)
-#undef SGLM_ENVIRONMENT64
-#define SGLM_ENVIRONMENT64 1
-#else
-#undef SGLM_ENVIRONMENT32
-#define SGLM_ENVIRONMENT32 1
-#endif
+    #if defined(_WIN64)
+        #undef SGLM_ENVIRONMENT64
+        #define SGLM_ENVIRONMENT64 1
+    #else
+        #undef SGLM_ENVIRONMENT32
+        #define SGLM_ENVIRONMENT32 1
+    #endif
 #endif
 
 #if defined(SGLM_IMPLEMENTATION)
 
 #if SGLM_OS_WIN32
-// TODO(Jonny): Is this specific to MSVC or to Windows?
-#include <intrin.h>
+    // TODO(Jonny): Is this specific to MSVC or to Windows?
+    #include <intrin.h>
 #else
-#include <x86intrin.h>
+    #include <x86intrin.h>
 #endif
 
 //
@@ -149,11 +150,11 @@ sglm_Mat4x4 sglm_mat4x4_get_rot_z(int angle);
 float *sglm_mat4x4_as_float_arr(float *arr, sglm_Mat4x4 *mat);
 
 #if !defined(SGLM_ASSERT)
-#if SGLM_COMPILER_MSVC
-#define SGLM_ASSERT(x) do { if(!(x)) { __debugbreak(); } } while(0)
-#else
-#define SGLM_ASSERT(x) do { if(!(x)) { *(int volatile *)0 = 0; } } while(0) // TODO(Jonny): Find out what debugbreak is actually on Linux.
-#endif
+    #if SGLM_COMPILER_MSVC
+        #define SGLM_ASSERT(x) do { if(!(x)) { __debugbreak(); } } while(0)
+    #else
+        #define SGLM_ASSERT(x) do { if(!(x)) { *(int volatile *)0 = 0; } } while(0) // TODO(Jonny): Find out what debugbreak is actually on Linux.
+    #endif
 #endif
 
 __m128 sglm_vec_absolute(__m128 vec) {
@@ -167,10 +168,10 @@ __m128 sglm_vec_sine(__m128 vec_num) {
     __m128 vec_abs, vec_res, vec_2pi, vec;
 
     vec_2pi = _mm_set1_ps(SGLM_PI * 2);
-    vec =_mm_cmpnlt_ps(vec_num, _mm_set1_ps(SGLM_PI));
+    vec = _mm_cmpnlt_ps(vec_num, _mm_set1_ps(SGLM_PI));
     vec = _mm_and_ps(vec, vec_2pi);
     vec_num = _mm_sub_ps(vec_num, vec);
-    vec =_mm_cmpngt_ps(vec_num, _mm_set1_ps(-SGLM_PI));
+    vec = _mm_cmpngt_ps(vec_num, _mm_set1_ps(-SGLM_PI));
     vec = _mm_and_ps(vec, vec_2pi);
     vec_num = _mm_add_ps(vec_num, vec);
 
@@ -253,8 +254,7 @@ sglm_Bool sglm_v2_compare(sglm_V2 a, sglm_V2 b) {
     sglm_Bool res;
     if((a.x == b.x) && (a.y == b.y)) {
         res = 1; // true
-    }
-    else {
+    } else {
         res = 0; // false
     }
 
@@ -511,8 +511,9 @@ sglm_Mat4x4 sglm_mat4x4_mul(sglm_Mat4x4 *a, sglm_Mat4x4 *b) {
 
 #endif // defined(SGLM_IMPLEMENTATION)
 
-#if defined(__cplusplus)
-} // extern "C"
+#if defined(__cplusplus) && !defined(SGLM_NO_EXTERN_C)
+    #define SGLM_EXTERN_C_END } // extern "C"
+    SGLM_EXTERN_C_END
 #endif
 
 

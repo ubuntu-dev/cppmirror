@@ -262,7 +262,7 @@ File write_data(Parse_Result pr) {
     OutputBuffer ob = {0};
     ob.size = 1024 * 1024;
     //ob.buffer = new Char[ob.size];
-    ob.buffer = system_malloc_arr(sizeof *ob.buffer, ob.size);
+    ob.buffer = system_malloc_arr(sizeof * ob.buffer, ob.size);
     if(ob.buffer) {
         write_ob(&ob,
                  "#if !defined(PP_GENERATED_H)\n"
@@ -414,8 +414,7 @@ File write_data(Parse_Result pr) {
 
                 if(ed->type.len) {
                     write_ob(&ob, "enum %.*s : %.*s;\n", ed->name.len, ed->name.e, ed->type.len, ed->type.e);
-                }
-                else {
+                } else {
                     write_ob(&ob, "typedef enum %.*s %.*s;\n", ed->name.len, ed->name.e, ed->name.len, ed->name.e);
                 }
             }
@@ -496,7 +495,7 @@ File write_data(Parse_Result pr) {
         }
 
         Int type_count = 0;
-        String *types = system_malloc_arr(sizeof *types, max_type_count + 2); // Plus 2 because I manually add __m128 and __m128i
+        String *types = system_malloc_arr(sizeof * types, max_type_count + 2); // Plus 2 because I manually add __m128 and __m128i
 
         if(types) {
             // Meta types enum.
@@ -585,8 +584,7 @@ File write_data(Parse_Result pr) {
                              "enum pp_%.*s : %.*s;\n",
                              ed->name.len, ed->name.e,
                              ed->type.len, ed->type.e);
-                }
-                else {
+                } else {
                     write_ob(&ob,
                              "typedef int pp_%.*s;\n",
                              ed->name.len, ed->name.e);
@@ -643,16 +641,14 @@ File write_data(Parse_Result pr) {
                         if(md->anonymous_struct != anonymous_struct) {
                             if(anonymous_struct) {
                                 anonymous_struct = AnonymousStruct_none;
-                            }
-                            else {
+                            } else {
                                 anonymous_struct = md->anonymous_struct;
                             }
 
                             if(anonymous_struct) {
                                 Char *s = anonymous_struct_to_type(anonymous_struct);
                                 write_ob(&ob, " %s {", s);
-                            }
-                            else {
+                            } else {
                                 write_ob(&ob, "};");
                             }
                         }
