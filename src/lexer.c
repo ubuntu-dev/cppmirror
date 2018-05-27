@@ -1512,6 +1512,7 @@ Void parse_stream(Char *stream, Parse_Result *res) {
                         td->fresh = token_to_string(name_before_paren);
                     }
                 } else {
+#if 0
                     AttemptFunctionResult r = attempt_to_parse_function(token, &tokenizer);
                     if(r.success) {
                         if(res->funcs.cnt + 1 >= res->func_max) {
@@ -1525,6 +1526,7 @@ Void parse_stream(Char *stream, Parse_Result *res) {
                         // TODO(Jonny): Realloc if nessessary.
                         res->funcs.e[res->funcs.cnt++] = r.fd;
                     }
+#endif
                 }
             } break;
         }
