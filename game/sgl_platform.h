@@ -3202,9 +3202,10 @@ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR command_
 #include <sys/mman.h>
 #include <unistd.h>
 #include <dlfcn.h>
-#include <sys/time.h>
-#include <sys/stat.h>
 
+#include <sys/time.h>
+#include <time.h>
+#include <sys/stat.h>
 #include <stdarg.h> // Var Args
 
 #include <GL/glx.h>
@@ -3629,6 +3630,7 @@ static sglp_Bool sglp_linux_init_audio(int samples_per_second, int buffer_size) 
 
 static void sglp_linux_fill_sound_buffer(sglp_LinuxSoundOutput *sound_output, int byte_to_lock, int bytes_to_write,
                                          sglp_SoundOutputBuffer *source_buffer) {
+    int i;
     void *region1 = (uint8_t *)sglp_linux_global_secondary_buffer.data + byte_to_lock;
     int region1_size = bytes_to_write;
     if(region1_size + byte_to_lock > sound_output->secondary_buffer_size) {
@@ -3641,7 +3643,7 @@ static void sglp_linux_fill_sound_buffer(sglp_LinuxSoundOutput *sound_output, in
     int region1_sample_count = region1_size / sound_output->bytes_per_sample;
     int16_t *dest_sample = (int16_t *)region1;
     int16_t *source_sample = source_buffer->samples;
-    for(int i = 0; (i < region1_sample_count); ++i) {
+    for(i = 0; (i < region1_sample_count); ++i) {
         *dest_sample++ = *source_sample++;
         *dest_sample++ = *source_sample++;
         ++sound_output->running_sample_index;
@@ -3649,7 +3651,7 @@ static void sglp_linux_fill_sound_buffer(sglp_LinuxSoundOutput *sound_output, in
 
     int region2_sample_count = region2_size / sound_output->bytes_per_sample;
     dest_sample = (int16_t *)region2;
-    for(int i = 0; (i < region2_sample_count); ++i) {
+    for(i = 0; (i < region2_sample_count); ++i) {
         *dest_sample++ = *source_sample++;
         *dest_sample++ = *source_sample++;
         ++sound_output->running_sample_index;
