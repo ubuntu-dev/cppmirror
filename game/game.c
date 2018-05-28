@@ -5,9 +5,6 @@
 #define PP_SPRINTF stbsp_snprintf
 #include "pp_generated.h"
 
-// #define SGLP_IMPLEMENTATION
-#include "sgl_platform.h"
-
 #define SGLM_IMPLEMENTATION
 #include "sgl_math.h"
 
@@ -15,15 +12,18 @@
 #define SGL_NO_CRT_DLL
 #include "sgl.h"
 
+#define SGLP_CALLBACK_FILE_LINKAGE SGL_EXPORT
+#include "sgl_platform.h"
+
 static sglp_API *global_api;
 
 #define STBI_NO_STDIO
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
 #define STBI_ASSERT SGL_ASSERT
-#define STBI_MALLOC global_api->os_malloc
-#define STBI_REALLOC global_api->os_realloc
-#define STBI_FREE global_api->os_free
+#define STBI_MALLOC global_api->sglp_malloc
+#define STBI_REALLOC global_api->sglp_realloc
+#define STBI_FREE global_api->sglp_free
 PP_IGNORE
 #include "stb_image.h"
 
@@ -45,8 +45,8 @@ enum Sprite_ID {
     Sprite_ID_enemy_one,
     Sprite_ID_bitmap_font,
     Sprite_ID_bullet,
-    Sprite_ID_block,
-    Sprite_ID_jumpthrough_block,
+    Sprite_ID_ground,
+    Sprite_ID_jumpthrough_ground,
 };
 
 struct Transform {
@@ -108,17 +108,12 @@ struct Enemy {
     Transform trans;
 };
 
-struct Block {
+struct Ground {
     Transform trans;
 };
 
-struct JumpThrough_Block {
+struct JumpThrough_Ground {
     Transform trans;
-};
-
-struct MovingBlock {
-    Transform trans;
-    V2 speed;
 };
 
 struct Entity {
@@ -127,7 +122,8 @@ struct Entity {
         Player player;
         Enemy enemy;
         Bullet bullet;
-        Block block;
+        Ground block;
+        JumpThrough_Ground jumpthrough_ground;
     };
 
     pp_Type type;
@@ -165,18 +161,18 @@ Entity_Info get_entity_info(Entity *entity) {
             res.sprite_id = Sprite_ID_bullet;
         } break;
 
-        case pp_Type_Block: {
-            Block *block = (Block *)entity;
+        case pp_Type_Ground: {
+            Ground *ground = (Ground *)entity;
 
-            res.trans = &block->trans;
-            res.sprite_id = Sprite_ID_block;
+            res.trans = &ground->trans;
+            res.sprite_id = Sprite_ID_ground;
         } break;
 
-        case pp_Type_JumpThrough_Block: {
-            JumpThrough_Block *block = (JumpThrough_Block *)entity;
+        case pp_Type_JumpThrough_Ground: {
+            JumpThrough_Ground *jumpthrough_ground = (JumpThrough_Ground *)entity;
 
-            res.trans = &block->trans;
-            res.sprite_id = Sprite_ID_jumpthrough_block;
+            res.trans = &jumpthrough_ground->trans;
+            res.sprite_id = Sprite_ID_jumpthrough_ground;
         } break;
     }
 
@@ -276,7 +272,7 @@ enum Sound_ID {
     ID_sound_background,
 };
 
-SGL_EXPORT void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
+SGLP_CALLBACK_FILE_LINKAGE void sglp_platform_setup_settings_callback(sglp_Settings *settings) {
     settings->fullscreen = false;
 
     settings->allow_sound = false;
@@ -324,7 +320,7 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, V2 pos, V2 scale)
                 float tform[16] = {0};
 
                 sglm_mat4x4_as_float_arr(tform, &mat);
-                api->draw_sprite_frame_matrix(gs->sprite[Sprite_ID_bitmap_font], pos_in_table.x, pos_in_table.y, tform);
+                api->sglp_draw_sprite_frame_matrix(api, gs->sprite[Sprite_ID_bitmap_font], pos_in_table.x, pos_in_table.y, tform);
 
                 running_x += scale.x;
             }
@@ -364,6 +360,7 @@ Bool is_vertical(Direction d) {
 
     return (res);
 }
+
 
 // This gets the lower 10%.
 Transform get_feet(Transform t, Direction dir) {
@@ -463,7 +460,7 @@ Void draw_entity_text(sglp_API *api, Game_State *gs, Entity *entity, V2 mouse_po
         Char *buffer = api->sglp_push_off_temp_memory(&tm, buffer_size);
         pp_serialize_struct_type(entity, entity->type, buffer, buffer_size);
         draw_word(buffer, api, gs, mouse_position, word_size);
-        api->pop_temp_memory(api, &tm);
+        api->sglp_pop_temp_memory(api, &tm);
     }
 }
 
@@ -477,7 +474,7 @@ Void draw_block(sglp_API *api, Game_State *gs, Transform trans) {
     Float tform[16] = {0};
     sglm_mat4x4_as_float_arr(tform, &mat);
 
-    api->draw_black_box(tform);
+    api->sglp_draw_black_box(api, tform);
 }
 
 // TODO - When this function draws text it'd be good if it made sure the text was always onscreen.
@@ -496,7 +493,7 @@ Void draw_debug_information(sglp_API *api, Game_State *gs) {
         Float tform[16] = {0};
         sglm_mat4x4_as_float_arr(tform, &mat);
 
-        api->draw_black_box(tform);
+        api->sglp_draw_black_box(api, tform);
 
 
         V2 word_size = v2(0.025f, 0.025f);
@@ -534,7 +531,7 @@ Void draw_debug_information(sglp_API *api, Game_State *gs) {
 }
 
 void render(sglp_API *api, Game_State *gs) {
-    api->clear_screen_for_frame();
+    api->sglp_clear_screen_for_frame(api);
 
     // Render all entities.
     Entity *next = gs->entity;
@@ -550,7 +547,7 @@ void render(sglp_API *api, Game_State *gs) {
             Float tform[16] = {0};
             sglm_mat4x4_as_float_arr(tform, &mat);
 
-            api->draw_sprite(gs->sprite[entity_info.sprite_id], entity_info.current_frame, tform);
+            api->sglp_draw_sprite(api, gs->sprite[entity_info.sprite_id], entity_info.current_frame, tform);
         }
 
         next = next->next;
@@ -595,8 +592,8 @@ Bullet create_bullet(void) {
     return (res);
 }
 
-Block create_block(Float x, Float y, Float scalex, Float scaley) {
-    Block res = {0};
+Ground create_ground(Float x, Float y, Float scalex, Float scaley) {
+    Ground res = {0};
 
     res.trans.pos = v2(x, y);
     res.trans.scale = v2(scalex, scaley);
@@ -604,8 +601,8 @@ Block create_block(Float x, Float y, Float scalex, Float scaley) {
     return (res);
 }
 
-JumpThrough_Block create_jump_through_block(Float x, Float y, Float scalex, Float scaley) {
-    JumpThrough_Block res = {0};
+JumpThrough_Ground create_jump_through_ground(Float x, Float y, Float scalex, Float scaley) {
+    JumpThrough_Ground res = {0};
 
     res.trans.pos = v2(x, y);
     res.trans.scale = v2(scalex, scaley);
@@ -616,12 +613,12 @@ JumpThrough_Block create_jump_through_block(Float x, Float y, Float scalex, Floa
 void init(sglp_API *api, Game_State *gs) {
     // Load the player.
     {
-        int width, height, number_of_components;
-        sglp_File file = api->read_file(api, "player.png");
+        Int width, height, number_of_components;
+        sglp_File file = api->sglp_read_file(api, "player.png");
 
-        uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
+        uint8_t *img_data = stbi_load_from_memory(file.e, (Int)file.size, &width, &height, &number_of_components, 0);
         // TODO - Free file?
-        gs->sprite[Sprite_ID_player] = api->load_image(api, img_data, 12, 1, Sprite_ID_player, width, height, number_of_components);
+        gs->sprite[Sprite_ID_player] = api->sglp_load_image(api, img_data, 12, 1, Sprite_ID_player, width, height, number_of_components);
         stbi_image_free(img_data);
 
         Player player = create_player(0.5f, 0.7f);
@@ -630,10 +627,10 @@ void init(sglp_API *api, Game_State *gs) {
 
     // Load the enemy.
     {
-        int width, height, number_of_components;
-        sglp_File file = api->read_file(api, "enemy_one.png");
-        uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
-        gs->sprite[Sprite_ID_enemy_one] = api->load_image(api, img_data, 8, 1, Sprite_ID_enemy_one, width, height, number_of_components);
+        Int width, height, number_of_components;
+        sglp_File file = api->sglp_read_file(api, "enemy_one.png");
+        uint8_t *img_data = stbi_load_from_memory(file.e, (Int)file.size, &width, &height, &number_of_components, 0);
+        gs->sprite[Sprite_ID_enemy_one] = api->sglp_load_image(api, img_data, 8, 1, Sprite_ID_enemy_one, width, height, number_of_components);
         stbi_image_free(img_data);
 
         Enemy enemy = create_enemy(0.3f, 0.2f);
@@ -642,19 +639,19 @@ void init(sglp_API *api, Game_State *gs) {
 
     // Load font.
     {
-        int width, height, number_of_components;
-        sglp_File file = api->read_file(api, "freemono.png");
-        uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
-        gs->sprite[Sprite_ID_bitmap_font] = api->load_image(api, img_data, 16, 16, Sprite_ID_bitmap_font, width, height, number_of_components);
+        Int width, height, number_of_components;
+        sglp_File file = api->sglp_read_file(api, "freemono.png");
+        uint8_t *img_data = stbi_load_from_memory(file.e, (Int)file.size, &width, &height, &number_of_components, 0);
+        gs->sprite[Sprite_ID_bitmap_font] = api->sglp_load_image(api, img_data, 16, 16, Sprite_ID_bitmap_font, width, height, number_of_components);
         stbi_image_free(img_data);
     }
 
     // Load bullets
     {
         Int width, height, number_of_components;
-        sglp_File file = api->read_file(api, "bullet.png");
-        uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
-        gs->sprite[Sprite_ID_bullet] = api->load_image(api, img_data, 1, 1, Sprite_ID_bullet, width, height, number_of_components);
+        sglp_File file = api->sglp_read_file(api, "bullet.png");
+        uint8_t *img_data = stbi_load_from_memory(file.e, (Int)file.size, &width, &height, &number_of_components, 0);
+        gs->sprite[Sprite_ID_bullet] = api->sglp_load_image(api, img_data, 1, 1, Sprite_ID_bullet, width, height, number_of_components);
         stbi_image_free(img_data);
 
         for (Int i = 0; (i < 4); ++i) {
@@ -663,37 +660,37 @@ void init(sglp_API *api, Game_State *gs) {
         }
     }
 
-    // Blocks
+    // Ground
     {
         Int width, height, number_of_components;
-        sglp_File file = api->read_file(api, "block.png");
-        uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
-        gs->sprite[Sprite_ID_block] = api->load_image(api, img_data, 1, 1, Sprite_ID_block, width, height, number_of_components);
+        sglp_File file = api->sglp_read_file(api, "block.png");
+        uint8_t *img_data = stbi_load_from_memory(file.e, (Int)file.size, &width, &height, &number_of_components, 0);
+        gs->sprite[Sprite_ID_ground] = api->sglp_load_image(api, img_data, 1, 1, Sprite_ID_ground, width, height, number_of_components);
         stbi_image_free(img_data);
     }
 
-    // Jumpthrough Block
+    // Jumpthrough Ground
     {
         Int width, height, number_of_components;
-        sglp_File file = api->read_file(api, "block1.png");
-        uint8_t *img_data = stbi_load_from_memory(file.e, (int)file.size, &width, &height, &number_of_components, 0);
-        gs->sprite[Sprite_ID_jumpthrough_block] = api->load_image(api, img_data, 1, 1, Sprite_ID_jumpthrough_block, width, height, number_of_components);
+        sglp_File file = api->sglp_read_file(api, "block1.png");
+        uint8_t *img_data = stbi_load_from_memory(file.e, (Int)file.size, &width, &height, &number_of_components, 0);
+        gs->sprite[Sprite_ID_jumpthrough_ground] = api->sglp_load_image(api, img_data, 1, 1, Sprite_ID_jumpthrough_ground, width, height, number_of_components);
         stbi_image_free(img_data);
     }
 
-    // Position blocks
+    // Position ground
     {
-        Block hor_block = create_block(0.5f, 1.0f, 1.5f, 0.1f);
-        gs->entity = push_entity(api, gs->entity, &hor_block, pp_Type_Block);
+        Ground hor_block = create_ground(0.5f, 1.0f, 1.5f, 0.1f);
+        gs->entity = push_entity(api, gs->entity, &hor_block, pp_Type_Ground);
 
-        Block hor_block2 = create_block(0.7f, 0.7f, 0.5f, 0.1f);
-        gs->entity = push_entity(api, gs->entity, &hor_block2, pp_Type_Block);
+        Ground hor_block2 = create_ground(0.7f, 0.7f, 0.5f, 0.1f);
+        gs->entity = push_entity(api, gs->entity, &hor_block2, pp_Type_Ground);
 
-        Block vert_block = create_block(0.1f, 0.5f, 0.1f, 1.0f);
-        gs->entity = push_entity(api, gs->entity, &vert_block, pp_Type_Block);
+        Ground vert_block = create_ground(0.1f, 0.5f, 0.1f, 1.0f);
+        gs->entity = push_entity(api, gs->entity, &vert_block, pp_Type_Ground);
 
-        Block vert_block2 = create_block(0.7f, 0.5f, 0.1f, 1.0f);
-        gs->entity = push_entity(api, gs->entity, &vert_block2, pp_Type_Block);
+        Ground vert_block2 = create_ground(0.7f, 0.5f, 0.1f, 1.0f);
+        gs->entity = push_entity(api, gs->entity, &vert_block2, pp_Type_Ground);
     }
 
     // Camera
@@ -710,20 +707,20 @@ void init(sglp_API *api, Game_State *gs) {
 
     // Load background music.
     {
-        sglp_File background_wav = api->read_file(api, "music_test.wav");
-        Bool success = api->load_wav(api, ID_sound_background, background_wav.e, background_wav.size);
+        sglp_File background_wav = api->sglp_read_file(api, "music_test.wav");
+        Bool success = api->sglp_load_wav(api, ID_sound_background, background_wav.e, background_wav.size);
         if (success) {
-            api->free_file(api, &background_wav);
-            api->play_audio(api, ID_sound_background);
+            api->sglp_free_file(api, &background_wav);
+            api->sglp_play_audio(api, ID_sound_background);
         }
     }
 
     // Load bloop.
     {
-        sglp_File bloop_wav = api->read_file(api, "bloop_00.wav");
-        Bool success = api->load_wav(api, ID_sound_bloop, bloop_wav.e, bloop_wav.size);
+        sglp_File bloop_wav = api->sglp_read_file(api, "bloop_00.wav");
+        Bool success = api->sglp_load_wav(api, ID_sound_bloop, bloop_wav.e, bloop_wav.size);
         if (success) {
-            api->free_file(api, &bloop_wav);
+            api->sglp_free_file(api, &bloop_wav);
         }
     }
 
@@ -738,14 +735,13 @@ void init(sglp_API *api, Game_State *gs) {
 
 #if INTERNAL
     gs->text_box_input = api->sglp_push_permanent_memory(api, 256 * 256);
-    // sgl_memcpy(gs->text_box_input, "Hello!", 6);
 #endif
 }
 
 // TODO - These are awful.
 Bool is_block(Entity *entity) {
     Bool res = false;
-    if (entity->type == pp_Type_Block || entity->type == pp_Type_JumpThrough_Block) {
+    if (entity->type == pp_Type_Ground || entity->type == pp_Type_JumpThrough_Ground) {
         res = true;
     }
 
@@ -754,7 +750,7 @@ Bool is_block(Entity *entity) {
 
 Bool is_non_jumpthrough_block(Entity *entity) {
     Bool res = false;
-    if (entity->type == pp_Type_Block) {
+    if (entity->type == pp_Type_Ground) {
         res = true;
     }
 
@@ -951,7 +947,7 @@ Void update_player(Player *player, Entity *player_entity, sglp_API *api, Game_St
     if (api->key['Z'] && player->can_shoot) {
         player->shot_timer = 200;
         player->can_shoot = false;
-        api->play_audio(api, ID_sound_bloop);
+        api->sglp_play_audio(api, ID_sound_bloop);
 
         Bullet *bullet = find_first_entity(gs->entity, pp_Type_Bullet);
         bullet->dir = player_direction_to_direction(player->dir);
@@ -1138,7 +1134,7 @@ Void update(sglp_API *api, Game_State *gs) {
 #endif
 }
 
-SGL_EXPORT void sglp_platform_update_and_render_callback(sglp_API *api) {
+SGLP_CALLBACK_FILE_LINKAGE void sglp_platform_update_and_render_callback(sglp_API *api) {
     global_api = api;
 
     Game_State *gs = (Game_State *)api->game_state_memory;

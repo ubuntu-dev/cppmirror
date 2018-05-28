@@ -206,11 +206,9 @@ Void *push_size_with_alignment(TempMemory *tm, Uintptr size, Int alignment) {
     if(alignment == -1) {
         if(size <= 4) {
             alignment = 4;
-        }
-        else if(size <= 8) {
+        } else if(size <= 8) {
             alignment = 8;
-        }
-        else {
+        } else {
             alignment = 16;
         }
     }
@@ -220,8 +218,7 @@ Void *push_size_with_alignment(TempMemory *tm, Uintptr size, Int alignment) {
     if(tm->used + alignment_offset < tm->size) {
         res = tm->e + tm->used + alignment_offset;
         tm->used += size + alignment_offset;
-    }
-    else {
+    } else {
         assert(0);
     }
 

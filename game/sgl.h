@@ -150,10 +150,12 @@ typedef int sgl_Bool;
     typedef sgl_Void Void;
     typedef sgl_Char Char;
 
-    #if defined(Bool)
-        #undef Bool
+    #if !defined(SGL_NO_BOOL)
+        #if defined(Bool)
+            #undef Bool
+        #endif
+        typedef sgl_Bool Bool;
     #endif
-    typedef sgl_Bool Bool;
     #define true SGL_TRUE
     #define false SGL_FALSE
 #endif //!defined(SGL_NO_TYPES)
@@ -391,7 +393,7 @@ void __stdcall mainCRTStartup(void) {
 #if defined(SGL_NO_CRT_DLL)
 // TODO - I don't think I need to do anything in here?
 BOOL __stdcall DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
-    return (SGLP_TRUE);
+    return (SGL_TRUE);
 }
 void __stdcall _DllMainCRTStartup(void) {
     DllMain(0, 0, 0);
