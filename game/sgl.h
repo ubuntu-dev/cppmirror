@@ -168,7 +168,7 @@ typedef int sgl_Bool;
 
 // A quick and useful assert
 #if SGL_INTERNAL
-    #define SGL_ASSERT(exp) do {static int ignore = 0; if(!ignore) {if(!(exp)) {*(Uintptr volatile *)0 = 0; } } } while(0)
+    #define SGL_ASSERT(exp) do { static int ignore = 0; if(!ignore) { if(!(exp)) {*(Uintptr volatile *)0 = 0; } } } while(0)
 #else
     #define SGL_ASSERT(exp) {}
 #endif
@@ -246,16 +246,17 @@ void sgl_memcpy(void *dest, const void *src, uintptr_t num) {
 //
 int sgl_string_len(char const *str) {
     int res = 0;
-    while (str[res++]);
+    if(str) {
+        while(str[res++]);
+    }
 
-    return (res);
+    return(res);
 }
 
 sgl_Bool sgl_string_comp_len(char const *a, char const *b, uintptr_t len) {
     sgl_Bool res = true;
-    int i;
 
-    if (len == 0) {
+    if(len == 0) {
         int a_len = sgl_string_len(a);
         int b_len = sgl_string_len(b);
         if (a_len != b_len) {
@@ -265,8 +266,8 @@ sgl_Bool sgl_string_comp_len(char const *a, char const *b, uintptr_t len) {
         }
     }
 
-    if (res) {
-        for (i = 0; (i < len); ++i, ++a, ++b) {
+    if(res) {
+        for (uintptr_t i = 0; (i < len); ++i, ++a, ++b) {
             if (*a != *b) {
                 res = false;
                 break;
@@ -278,39 +279,39 @@ sgl_Bool sgl_string_comp_len(char const *a, char const *b, uintptr_t len) {
 }
 
 sgl_Bool sgl_is_letter(char c) {
-    if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
-        return (SGL_TRUE);
+    if((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
+        return(SGL_TRUE);
     } else {
-        return (SGL_FALSE);
+        return(SGL_FALSE);
     }
 }
 
 sgl_Bool sgl_is_number(char c) {
-    if (c >= '0' && c <= '9') {
-        return (SGL_TRUE);
+    if(c >= '0' && c <= '9') {
+        return(SGL_TRUE);
     } else {
-        return (SGL_FALSE);
+        return(SGL_FALSE);
     }
 }
 
 sgl_Bool sgl_is_lower(char c) {
-    if (c >= 'a' && c <= 'z') {
-        return (SGL_TRUE);
+    if(c >= 'a' && c <= 'z') {
+        return(SGL_TRUE);
     } else {
-        return (SGL_FALSE);
+        return(SGL_FALSE);
     }
 }
 
 sgl_Bool sgl_is_upper(char c) {
-    if (c >= 'A' && c <= 'Z') {
-        return (SGL_TRUE);
+    if(c >= 'A' && c <= 'Z') {
+        return(SGL_TRUE);
     } else {
-        return (SGL_FALSE);
+        return(SGL_FALSE);
     }
 }
 
 sgl_Bool sgl_to_lower(char c) {
-    if (sgl_is_upper(c)) {
+    if(sgl_is_upper(c)) {
         c += ('a' - 'A');
     }
 
@@ -318,7 +319,7 @@ sgl_Bool sgl_to_lower(char c) {
 }
 
 sgl_Bool sgl_to_upper(char c) {
-    if (sgl_is_lower(c)) {
+    if(sgl_is_lower(c)) {
         c -= ('a' - 'A');
     }
 
