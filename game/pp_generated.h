@@ -513,7 +513,7 @@ struct pp_Entity {
      union {pp_Player player; pp_Enemy enemy; pp_Bullet bullet; pp_Ground ground; pp_JumpThrough_Ground jumpthrough_ground; pp_Block block; pp_TextObject text; };pp_Type type; pp_Entity *next; 
 };
 struct pp_Room {
-    pp_Entity *root; pp_Room *up; pp_Room *down; pp_Room *left; pp_Room *right; 
+    pp_V2 top_left; pp_Entity *root; pp_Room *up; pp_Room *down; pp_Room *left; pp_Room *right; 
 };
 struct pp_Entity_Info {
     pp_Bool valid; pp_Transform *trans; pp_Sprite_ID sprite_id; pp_Int current_frame; 
@@ -1347,22 +1347,26 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
     else if(real_type == pp_Type_Room) {
         switch(index) {
             case 0: {
-                pp_MemberDefinition res = {pp_Type_Entity, "root", PP_OFFSETOF(pp_Room, root), 1, 0};
+                pp_MemberDefinition res = {pp_Type_V2, "top_left", PP_OFFSETOF(pp_Room, top_left), 0, 0};
                 return(res);
             } break; 
             case 1: {
-                pp_MemberDefinition res = {pp_Type_Room, "up", PP_OFFSETOF(pp_Room, up), 1, 0};
+                pp_MemberDefinition res = {pp_Type_Entity, "root", PP_OFFSETOF(pp_Room, root), 1, 0};
                 return(res);
             } break; 
             case 2: {
-                pp_MemberDefinition res = {pp_Type_Room, "down", PP_OFFSETOF(pp_Room, down), 1, 0};
+                pp_MemberDefinition res = {pp_Type_Room, "up", PP_OFFSETOF(pp_Room, up), 1, 0};
                 return(res);
             } break; 
             case 3: {
-                pp_MemberDefinition res = {pp_Type_Room, "left", PP_OFFSETOF(pp_Room, left), 1, 0};
+                pp_MemberDefinition res = {pp_Type_Room, "down", PP_OFFSETOF(pp_Room, down), 1, 0};
                 return(res);
             } break; 
             case 4: {
+                pp_MemberDefinition res = {pp_Type_Room, "left", PP_OFFSETOF(pp_Room, left), 1, 0};
+                return(res);
+            } break; 
+            case 5: {
                 pp_MemberDefinition res = {pp_Type_Room, "right", PP_OFFSETOF(pp_Room, right), 1, 0};
                 return(res);
             } break; 
@@ -1477,7 +1481,7 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_Block: { return(2); } break;
         case pp_Type_TextObject: { return(3); } break;
         case pp_Type_Entity: { return(9); } break;
-        case pp_Type_Room: { return(5); } break;
+        case pp_Type_Room: { return(6); } break;
         case pp_Type_Entity_Info: { return(4); } break;
         case pp_Type_Camera: { return(3); } break;
         case pp_Type_Game_State: { return(8); } break;
