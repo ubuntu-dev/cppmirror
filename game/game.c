@@ -505,7 +505,7 @@ Bool point_overlap(V2 p, Transform t) {
 Bool is_falling(V2 current_speed, Direction gravity_direction) {
     Bool res = false;
     Float delta = 0.0f;
-    if ((gravity_direction == Direction_down && current_speed.y > delta) ||
+    if((gravity_direction == Direction_down && current_speed.y > delta) ||
             (gravity_direction == Direction_up && current_speed.y < -delta) ||
             (gravity_direction == Direction_right && current_speed.x > delta) ||
             (gravity_direction == Direction_left && current_speed.x < -delta)) {
@@ -522,21 +522,24 @@ Bool is_jumping(V2 current_speed, Direction gravity_direction) {
 }
 
 Bool is_offscreen(Transform t) {
-    if ((t.position.x > 1.0f || t.position.x < 0.0f) || (t.position.y > 1.0f || t.position.y < 0.0f)) {
+    if((t.position.x > 1.0f || t.position.x < 0.0f) || (t.position.y > 1.0f || t.position.y < 0.0f)) {
         return true;
     } else {
         return false;
     }
 }
 
-Void draw_entity_text(sglp_API *api, Game_State *gs, Entity *entity, V2 mouse_position, Transform transform) {
-    if (point_overlap(mouse_position, transform)) {
+Void draw_entity_text(sglp_API *api, Game_State *gs, Entity *entity, V2 mouse_position, V2 top_left, Transform transform) {
+    V2 mouse_position_in_world = v2(mouse_position.x + top_left.x, mouse_position.y + top_left.y);
+
+    if(point_overlap(mouse_position_in_world, transform)) {
         V2 word_size = v2(0.025f, 0.025f);
 
         Int buffer_size = 256 * 256;
         sglp_TempMemory tm = api->sglp_push_temp_memory(api, buffer_size);
         Char *buffer = api->sglp_push_off_temp_memory(&tm, buffer_size);
         pp_serialize_struct_type(entity, entity->type, buffer, buffer_size);
+
         draw_word(buffer, api, gs, mouse_position, word_size);
         api->sglp_pop_temp_memory(api, &tm);
     }
@@ -580,6 +583,15 @@ Void draw_debug_information(sglp_API *api, Game_State *gs) {
 
     V2 mouse_position = v2(api->mouse_x, api->mouse_y);
 
+    if(1) {
+        Int buffer_size = 256 * 256;
+        sglp_TempMemory temp_memory = api->sglp_push_temp_memory(api, buffer_size);
+        Char *buffer = api->sglp_push_off_temp_memory(&temp_memory, buffer_size);
+        pp_serialize_struct(&mouse_position, V2, buffer, buffer_size);
+        draw_word(buffer, api, gs, v2(0.5f, 0.5f), v2(0.025f, 0.025f));
+        api->sglp_pop_temp_memory(api, &temp_memory);
+    }
+
     Entity *next = gs->current_room->root;
     while(next) {
         V2 position_to_draw = {0};
@@ -590,7 +602,7 @@ Void draw_debug_information(sglp_API *api, Game_State *gs) {
             case pp_Type_Bullet: { transform = next->bullet.transform; } break;
         }
 
-        draw_entity_text(api, gs, next, mouse_position, transform);
+        draw_entity_text(api, gs, next, mouse_position, gs->current_room->top_left, transform);
 
         next = next->next;
     }
@@ -654,7 +666,7 @@ void render(sglp_API *api, Game_State *gs) {
     render_room(api, gs, gs->current_room->right);
 
     // TODO - Read the mouse position from sgl_platform.
-    //draw_debug_information(api, gs);
+    draw_debug_information(api, gs);
 }
 
 Enemy create_enemy(float x, float y) {
@@ -693,9 +705,14 @@ Bullet create_bullet(void) {
 }
 
 // TODO - Right now this takes a centre position and a x/y size from that. I'd prefer it take a top-left position and width/height from there.
-Ground create_ground(Float x, Float y, Float scalex, Float scaley) {
+Ground create_ground(Float x, Float y) {
     Ground res = {0};
 
+    //res.transform.position = v2(x, y);
+    //res.transform.scale = v2(0.1f, 0.1f);
+
+    Float scalex = 0.1f;
+    Float scaley = 0.1f;
     res.transform.position = v2(x + (scalex * 0.5f), y + (scaley * 0.5f));
     res.transform.scale = v2(scalex, scaley);
 
@@ -748,49 +765,35 @@ TextObject create_text(sglp_API *api, Char *string, V2 position, V2 word_size) {
     return(res);
 }
 
-Void create_first_room(Room *room, sglp_API *api, Game_State *gs) {
-    room->top_left = v2(0.0f, 0.0f);
+Void create_room(sglp_API *api, Room *room, V2 top_left, Char *format, Int len) {
+    assert(sgl_string_len(format) == 100);
 
-    Ground hor_block = create_ground(0.0f, 0.9f, 1.0f, 0.1f);
-    add_entity_to_room(api, room, &hor_block, pp_Type_Ground);
+    room->top_left = top_left;
 
-    Ground vert_block = create_ground(0.0f, 0.0f, 0.1f, 1.0f);
-    add_entity_to_room(api, room, &vert_block, pp_Type_Ground);
+    Int width = 10;
+    Int height = 10;
 
-    TextObject text = create_text(api, "Use the left and right arrows\nto move left and right.", v2(0.1f, 0.1f), v2(0.05f, 0.05f));
-    add_entity_to_room(api, room, &text, pp_Type_TextObject);
+    for(Int i = 0; (i < width); ++i) {
+        for(Int j = 0; (j < height); ++j) {
+            Float x = (Float)j * 0.1f;
+            Float y = (Float)i * 0.1f;
+
+            Char c = format[(i * width) + j];
+            switch(c) {
+                case 'p': {
+                    Player ent = create_player(x, y);
+                    add_entity_to_room(api, room, &ent, pp_Type_Player);
+                } break;
+
+                case 'x': {
+                    Ground ent = create_ground(x, y);
+                    add_entity_to_room(api, room, &ent, pp_Type_Ground);
+                } break;
+            }
+        }
+    }
 }
 
-Void create_second_room(Room *room, sglp_API *api, Game_State *gs) {
-    room->top_left = v2(1.0f, 0.0f);
-
-    Ground hor_block1 = create_ground(0.0f, 0.9f, 0.5f, 0.1f);
-    add_entity_to_room(api, room, &hor_block1, pp_Type_Ground);
-
-    Ground vert_block = create_ground(0.5f, 0.6f, 0.1f, 0.4f);
-    add_entity_to_room(api, room, &vert_block, pp_Type_Ground);
-
-    Ground hor_block2 = create_ground(0.5f, 0.6f, 0.5f, 0.1f);
-    add_entity_to_room(api, room, &hor_block2, pp_Type_Ground);
-
-    TextObject text = create_text(api, "Use the up and down arrow\nkeys to jump.", v2(0.1f, 0.1f), v2(0.05f, 0.05f));
-    add_entity_to_room(api, room, &text, pp_Type_TextObject);
-}
-
-Void create_third_room(Room *room, sglp_API *api, Game_State *gs) {
-    room->top_left = v2(2.0f, 0.0f);
-
-    Ground hor_block1 = create_ground(0.0f, 0.6f, 0.3f, 0.1f);
-    add_entity_to_room(api, room, &hor_block1, pp_Type_Ground);
-
-    Ground hor_block2 = create_ground(0.0f, 0.1f, 1.0f, 0.1f);
-    add_entity_to_room(api, room, &hor_block2, pp_Type_Ground);
-
-    TextObject text = create_text(api, "Use the W and S keys to change\nthe gravity direction.", v2(0.1f, 0.1f), v2(0.05f, 0.05f));
-    add_entity_to_room(api, room, &text, pp_Type_TextObject);
-}
-
-// TODO - I need some way to design levels. Maybe load them from a .txt file for now?
 void init(sglp_API *api, Game_State *gs) {
 
     load_image(api, gs->sprite, "player.png",    Sprite_ID_player,             12,  1);
@@ -801,68 +804,43 @@ void init(sglp_API *api, Game_State *gs) {
     load_image(api, gs->sprite, "block.png",     Sprite_ID_jumpthrough_ground,  1,  1);
     load_image(api, gs->sprite, "block.png",     Sprite_ID_block,               1,  1);
 
-    create_first_room(&gs->room[0], api, gs);
+    Char *room_one =
+        "          "
+        "          "
+        "          "
+        "          "
+        "          "
+        "          "
+        "     p    "
+        "          "
+        "xxxxxxxxxx"
+        "          ";
+    create_room(api, &gs->room[0], v2(0.0f, 0.0f), room_one, sgl_string_len(room_one));
 
-    create_second_room(&gs->room[1], api, gs);
+    Char *room_two =
+        "          "
+        "          "
+        "          "
+        "          "
+        "          "
+        "          "
+        "    xxxxxx"
+        "    x     "
+        "xxxxx     "
+        "          ";
+    create_room(api, &gs->room[1], v2(1.0f, 0.0f), room_two, sgl_string_len(room_two));
+
+    // TODO - Stich together rooms properly.
+    gs->current_room = &gs->room[0];
     gs->room[0].right = &gs->room[1];
     gs->room[1].left = &gs->room[0];
 
-    create_third_room(&gs->room[2], api, gs);
-    gs->room[1].right = &gs->room[2];
-    gs->room[2].left = &gs->room[1];
-
-    gs->current_room = &gs->room[0];
-
-    // Player.
-    {
-        Player player = create_player(0.5f, 0.7f);
-        add_entity_to_room(api, gs->current_room, &player, pp_Type_Player);
-    }
-
-    // Enemies.
-    /*{
-        Enemy enemy = create_enemy(0.3f, 0.2f);
-        push_entity(api, gs->current_room, &enemy, pp_Type_Enemy);
-    }*/
-
-    // Bullets
-    /*for (Int i = 0; (i < 4); ++i) {
-        Bullet bullet = create_bullet();
-        push_entity(api, gs->current_room, &bullet, pp_Type_Bullet);
-    }*/
-
-    // Block
-    {
-        /*Block block = create_block(0.3f, 0.8f);
-        push_entity(api, gs->current_room, &block, pp_Type_Block);*/
-    }
-
-
-    // Position ground
-#if 0
-    {
-        Ground hor_block = create_ground(0.5f, 1.0f, 1.5f, 0.1f);
-        push_entity(api, gs->current_room, &hor_block, pp_Type_Ground);
-
-        Ground vert_block = create_ground(0.1f, 0.5f, 0.1f, 1.0f);
-        push_entity(api, gs->current_room, &vert_block, pp_Type_Ground);
-
-        /*Ground hor_block2 = create_ground(0.7f, 0.7f, 0.5f, 0.1f);
-        gs->entity = push_entity(api, gs->entity, &hor_block2, pp_Type_Ground);
-
-        Ground vert_block = create_ground(0.1f, 0.5f, 0.1f, 1.0f);
-        gs->entity = push_entity(api, gs->entity, &vert_block, pp_Type_Ground);
-
-        Ground vert_block2 = create_ground(0.7f, 0.5f, 0.1f, 1.0f);
-        gs->entity = push_entity(api, gs->entity, &vert_block2, pp_Type_Ground);*/
-    }
-
     // Text
-    {
-        TextObject text = create_text(api, "Use the left and right arrows\nto move left and right.", v2(0.1f, 0.1f), v2(0.05f, 0.05f));
-        push_entity(api, gs->current_room, &text, pp_Type_TextObject);
-    }
+#if 0
+    TextObject text = create_text(api, "Use the left and right arrows\nto move left and right.", v2(0.1f, 0.1f), v2(0.05f, 0.05f));
+    push_entity(api, gs->current_room, &text, pp_Type_TextObject);
 #endif
+
     // Camera
     {
         Player *player = find_first_entity(gs->current_room->root, pp_Type_Player);
@@ -1205,6 +1183,7 @@ Void move_entity_to_new_room(Void *var, Room *old_room, Room *new_room) {
     {
         Entity *next = old_room->root;
         while(next) {
+
             if(next->next == target) {
                 one_before_target = next;
             }
@@ -1213,9 +1192,14 @@ Void move_entity_to_new_room(Void *var, Room *old_room, Room *new_room) {
         }
     }
 
-    assert(one_before_target);
+    if(one_before_target) {
+        // If we found one before the target then set it to "skip" the target.
+        one_before_target->next = target->next;
+    } else {
+        // Otherwise assume the target was the room and set the new room to target -> next.
+        old_room->root = target->next;
+    }
 
-    one_before_target->next = target->next; // Set one before the target to "skip" the target.
     target->next = 0; // Clear the target's next.
 
     Entity *end = get_end_entity(new_room->root);
