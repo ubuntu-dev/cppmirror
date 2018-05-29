@@ -51,10 +51,19 @@ enum Sprite_ID {
 };
 
 struct Transform {
-    V2 pos;
+    V2 position;
     V2 scale;
-    Float rot;
+    Float rotation;
 };
+Transform create_transform(V2 position, V2 scale, Float rotation) {
+    Transform res;
+    res.position = position;
+    res.scale = scale;
+    res.rotation = rotation;
+
+    return(res);
+}
+
 
 enum Direction {
     Direction_unknown,
@@ -65,14 +74,14 @@ enum Direction {
 };
 
 struct Bullet {
-    Transform trans;
+    Transform transform;
     Direction dir;
     Void *parent;
 };
 Bullet bullet(void) {
     Bullet res = {0};
-    res.trans.scale.x = 0.025f;
-    res.trans.scale.y = 0.025f;
+    res.transform.scale.x = 0.025f;
+    res.transform.scale.y = 0.025f;
 
     return (res);
 }
@@ -85,7 +94,7 @@ enum Player_Direction {
     Player_Direction_down = 6,
 };
 struct Player {
-    Transform trans;
+    Transform transform;
     V2 start_pos;
     Player_Direction dir;
     Float current_frame;
@@ -106,25 +115,25 @@ Direction player_direction_to_direction(Player_Direction pd) {
 }
 
 struct Enemy {
-    Transform trans;
+    Transform transform;
 };
 
 struct Ground {
-    Transform trans;
+    Transform transform;
 };
 
 struct JumpThrough_Ground {
-    Transform trans;
+    Transform transform;
 };
 
 struct Block {
-    Transform trans;
+    Transform transform;
     V2 current_speed;
 };
 
 struct TextObject {
     char *str;
-    V2 pos;
+    V2 position;
     V2 word_size;
 };
 
@@ -155,9 +164,13 @@ struct Room {
 
 struct Entity_Info {
     Bool valid;
-    Transform *trans;
     Sprite_ID sprite_id;
-    Int current_frame;
+
+    V2 *position;
+    V2 *scale;
+    Float *rotation;
+
+    Float *current_frame;
 };
 
 Entity_Info get_entity_info(Entity *entity) {
@@ -165,51 +178,72 @@ Entity_Info get_entity_info(Entity *entity) {
     switch (entity->type) {
         case pp_Type_Player: {
             Player *x = (Player *)entity;
-
-            res.valid = true;
-            res.trans = &x->trans;
             res.sprite_id = Sprite_ID_player;
-            res.current_frame = x->current_frame;
+            res.valid = true;
+
+            res.position = &x->transform.position;
+            res.scale = &x->transform.scale;
+            res.rotation = &x->transform.rotation;
+
+            res.current_frame = &x->current_frame;
         } break;
 
         case pp_Type_Enemy:  {
             Enemy *x = (Enemy *)entity;
-
-            res.valid = true;
-            res.trans = &x->trans;
             res.sprite_id = Sprite_ID_enemy_one;
+            res.valid = true;
+
+            res.position = &x->transform.position;
+            res.scale = &x->transform.scale;
+            res.rotation = &x->transform.rotation;
         } break;
 
         case pp_Type_Bullet: {
             Bullet *x = (Bullet *)entity;
-
-            res.valid = true;
-            res.trans = &x->trans;
             res.sprite_id = Sprite_ID_bullet;
+            res.valid = true;
+
+            res.position = &x->transform.position;
+            res.scale = &x->transform.scale;
+            res.rotation = &x->transform.rotation;
         } break;
 
         case pp_Type_Ground: {
             Ground *x = (Ground *)entity;
-
-            res.valid = true;
-            res.trans = &x->trans;
             res.sprite_id = Sprite_ID_ground;
+            res.valid = true;
+
+            res.position = &x->transform.position;
+            res.scale = &x->transform.scale;
+            res.rotation = &x->transform.rotation;
         } break;
 
         case pp_Type_JumpThrough_Ground: {
             JumpThrough_Ground *x = (JumpThrough_Ground *)entity;
-
-            res.valid = true;
-            res.trans = &x->trans;
             res.sprite_id = Sprite_ID_jumpthrough_ground;
+            res.valid = true;
+
+            res.position = &x->transform.position;
+            res.scale = &x->transform.scale;
+            res.rotation = &x->transform.rotation;
         } break;
 
         case pp_Type_Block: {
             Block *x = (Block *)entity;
-
-            res.valid = true;
-            res.trans = &x->trans;
             res.sprite_id = Sprite_ID_block;
+            res.valid = true;
+
+            res.position = &x->transform.position;
+            res.scale = &x->transform.scale;
+            res.rotation = &x->transform.rotation;
+        } break;
+
+        case pp_Type_TextObject: {
+            TextObject *x = (TextObject *)entity;
+            res.sprite_id = Sprite_ID_bitmap_font;
+            res.valid = true;
+
+            res.position = &x->position;
         } break;
     }
 
@@ -229,7 +263,7 @@ Entity *get_end_entity(Entity *root) {
     return (next);
 }
 
-void push_entity(sglp_API *api, Room *room, Void *var, pp_Type type) {
+Void add_entity_to_room(sglp_API *api, Room *room, Void *var, pp_Type type) {
     Entity *next = api->sglp_push_permanent_struct(api, Entity);
     uintptr_t size = pp_get_size_from_type(type);
 
@@ -242,6 +276,12 @@ void push_entity(sglp_API *api, Room *room, Void *var, pp_Type type) {
 
     sgl_memcpy(next, var, size);
     next->type = type;
+
+    Entity_Info entity_info = get_entity_info(next);
+    assert(entity_info.valid);
+
+    entity_info.position->x += room->top_left.x;
+    entity_info.position->y += room->top_left.y;
 }
 
 Void *find_first_entity(Entity *root, pp_Type type) {
@@ -277,7 +317,7 @@ Void *find_next_entity(Void *root, pp_Type type) {
 }
 
 struct Camera {
-    V2 pos;
+    V2 position;
     V2 speed;
     // Void *entity_to_follow;
     Bool follow_exactly;
@@ -294,7 +334,7 @@ struct Game_State {
 
     Camera camera;
 
-    Direction gravity;
+    Direction gravity_direction;
 
 #if INTERNAL
     Bool show_text_box;
@@ -340,17 +380,17 @@ Float accelerate(Float cur, Float max, Float acc, Bool forward) {
 }
 
 V2 get_letter_position(char Letter);
-void draw_word(char const *str, sglp_API *api, Game_State *gs, V2 pos, V2 scale) {
+void draw_word(char const *str, sglp_API *api, Game_State *gs, V2 position, V2 scale) {
     scale.x *= 0.5f;
     Int string_length = sgl_string_len(str);
-    Float running_x = pos.x;
-    Float running_y = pos.y;
+    Float running_x = position.x;
+    Float running_y = position.y;
     for (Int i = 0; (i < string_length - 1); ++i) {
         Char letter = str[i];
 
         if (letter == '\n') {
             running_y += scale.y;
-            running_x = pos.x;
+            running_x = position.x;
         } else {
             V2 pos_in_table = get_letter_position(letter);
             if (pos_in_table.x != -1 && pos_in_table.y != -1) {
@@ -368,8 +408,8 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, V2 pos, V2 scale)
 
 V2 get_centre_pos(Transform t) {
     V2 res;
-    res.x = t.pos.x - (t.scale.x * 0.5f);
-    res.y = t.pos.y - (t.scale.y * 0.5f);
+    res.x = t.position.x - (t.scale.x * 0.5f);
+    res.y = t.position.y - (t.scale.y * 0.5f);
 
     return (res);
 }
@@ -409,19 +449,19 @@ Transform get_feet(Transform t, Direction dir) {
     res.scale.x = t.scale.x;
     res.scale.y = t.scale.y;
 
-    res.pos.x = t.pos.x;
-    res.pos.y = t.pos.y;
+    res.position.x = t.position.x;
+    res.position.y = t.position.y;
 
-    res.rot = t.rot;
+    res.rotation = t.rotation;
 
     if (is_vertical(dir)) { res.scale.y = t.scale.y * foot_size; }
     else                 { res.scale.x = t.scale.x * foot_size; }
 
     switch (dir) {
-        case Direction_down:  { res.pos.y = t.pos.y + ((t.scale.y * 0.5f) * (1.0f - foot_size)); } break;
-        case Direction_up:    { res.pos.y = t.pos.y - ((t.scale.y * 0.5f) * (1.0f - foot_size)); } break;
-        case Direction_right: { res.pos.x = t.pos.x + ((t.scale.x * 0.5f) * (1.0f - foot_size)); } break;
-        case Direction_left:  { res.pos.x = t.pos.x - ((t.scale.x * 0.5f) * (1.0f - foot_size)); } break;
+        case Direction_down:  { res.position.y = t.position.y + ((t.scale.y * 0.5f) * (1.0f - foot_size)); } break;
+        case Direction_up:    { res.position.y = t.position.y - ((t.scale.y * 0.5f) * (1.0f - foot_size)); } break;
+        case Direction_right: { res.position.x = t.position.x + ((t.scale.x * 0.5f) * (1.0f - foot_size)); } break;
+        case Direction_left:  { res.position.x = t.position.x - ((t.scale.x * 0.5f) * (1.0f - foot_size)); } break;
 
         default: { assert(0); } break;
     }
@@ -450,8 +490,8 @@ Bool overlap(Transform a, Transform b) {
 }
 
 Bool point_overlap(V2 p, Transform t) {
-    Float x = t.pos.x - (t.scale.x * 0.5f);
-    Float y = t.pos.y - (t.scale.y * 0.5f);
+    Float x = t.position.x - (t.scale.x * 0.5f);
+    Float y = t.position.y - (t.scale.y * 0.5f);
     if ((p.x > x && p.x < x + t.scale.x)) {
         if ((p.y > y && p.y < y + t.scale.y)) {
             return true;
@@ -482,15 +522,15 @@ Bool is_jumping(V2 current_speed, Direction gravity_direction) {
 }
 
 Bool is_offscreen(Transform t) {
-    if ((t.pos.x > 1.0f || t.pos.x < 0.0f) || (t.pos.y > 1.0f || t.pos.y < 0.0f)) {
+    if ((t.position.x > 1.0f || t.position.x < 0.0f) || (t.position.y > 1.0f || t.position.y < 0.0f)) {
         return true;
     } else {
         return false;
     }
 }
 
-Void draw_entity_text(sglp_API *api, Game_State *gs, Entity *entity, V2 mouse_position, Transform trans) {
-    if (point_overlap(mouse_position, trans)) {
+Void draw_entity_text(sglp_API *api, Game_State *gs, Entity *entity, V2 mouse_position, Transform transform) {
+    if (point_overlap(mouse_position, transform)) {
         V2 word_size = v2(0.025f, 0.025f);
 
         Int buffer_size = 256 * 256;
@@ -502,12 +542,12 @@ Void draw_entity_text(sglp_API *api, Game_State *gs, Entity *entity, V2 mouse_po
     }
 }
 
-Void draw_block(sglp_API *api, Game_State *gs, Transform trans) {
-    Float x = trans.pos.x - gs->camera.pos.x;
-    Float y = trans.pos.y - gs->camera.pos.y;
+Void draw_block(sglp_API *api, Game_State *gs, Transform transform) {
+    Float x = transform.position.x - gs->camera.position.x;
+    Float y = transform.position.y - gs->camera.position.y;
     sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(x, y,
-                                                      trans.scale.x, trans.scale.y,
-                                                      trans.rot);
+                                                      transform.scale.x, transform.scale.y,
+                                                      transform.rotation);
 
     Float tform[16] = {0};
     sglm_mat4x4_as_float_arr(tform, &mat);
@@ -543,25 +583,25 @@ Void draw_debug_information(sglp_API *api, Game_State *gs) {
     Entity *next = gs->current_room->root;
     while(next) {
         V2 position_to_draw = {0};
-        Transform trans = {0};
+        Transform transform = {0};
         switch(next->type) {
-            case pp_Type_Player: { trans = next->player.trans; } break;
-            case pp_Type_Enemy:  { trans = next->enemy.trans;  } break;
-            case pp_Type_Bullet: { trans = next->bullet.trans; } break;
+            case pp_Type_Player: { transform = next->player.transform; } break;
+            case pp_Type_Enemy:  { transform = next->enemy.transform;  } break;
+            case pp_Type_Bullet: { transform = next->bullet.transform; } break;
         }
 
-        draw_entity_text(api, gs, next, mouse_position, trans);
+        draw_entity_text(api, gs, next, mouse_position, transform);
 
         next = next->next;
     }
 
     // Draw a box around the players feet.
     if(1) {
-        draw_block(api, gs, get_feet(player->trans, gs->gravity));
+        draw_block(api, gs, get_feet(player->transform, gs->gravity_direction));
     }
 
     if(0) {
-        Char *s = is_falling(player->current_speed, gs->gravity) ? "Falling" : "Jumping";
+        Char *s = is_falling(player->current_speed, gs->gravity_direction) ? "Falling" : "Jumping";
         draw_word(s, api, gs, v2(0.5f, 0.5f), v2(0.025f, 0.025f));
     }
 
@@ -574,22 +614,24 @@ void render_room(sglp_API *api, Game_State *gs, Room *room) {
         while(next) {
             if(next->type == pp_Type_TextObject) {
                 TextObject *text = &next->text;
-                Float x = text->pos.x - gs->camera.pos.x;
-                Float y = text->pos.y - gs->camera.pos.y;
+                Float x = text->position.x - gs->camera.position.x;
+                Float y = text->position.y - gs->camera.position.y;
                 draw_word(text->str, api, gs, v2(x, y), text->word_size);
             } else {
                 Entity_Info entity_info = get_entity_info(next);
+                assert(entity_info.valid);
 
-                if(entity_info.valid) {
-                    Float x = entity_info.trans->pos.x - gs->camera.pos.x;
-                    Float y = entity_info.trans->pos.y - gs->camera.pos.y;
+                if(entity_info.position && entity_info.scale && entity_info.rotation) {
+                    Float x = entity_info.position->x - gs->camera.position.x;
+                    Float y = entity_info.position->y - gs->camera.position.y;
                     sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(x, y,
-                                                                      entity_info.trans->scale.x, entity_info.trans->scale.y,
-                                                                      entity_info.trans->rot);
+                                                                      entity_info.scale->x, entity_info.scale->y,
+                                                                      *entity_info.rotation);
                     Float tform[16] = {0};
                     sglm_mat4x4_as_float_arr(tform, &mat);
 
-                    api->sglp_draw_sprite(api, gs->sprite[entity_info.sprite_id], entity_info.current_frame, tform);
+                    Int current_frame = (entity_info.current_frame) ? sgl_floor_float_to_int(*entity_info.current_frame) : 0;
+                    api->sglp_draw_sprite(api, gs->sprite[entity_info.sprite_id], current_frame, tform);
                 }
             }
 
@@ -611,33 +653,6 @@ void render(sglp_API *api, Game_State *gs) {
     render_room(api, gs, gs->current_room->left);
     render_room(api, gs, gs->current_room->right);
 
-#if 0
-    Entity *next = gs->current_room->root;
-    while(next) {
-        if(next->type == pp_Type_TextObject) {
-            TextObject *text = &next->text;
-            draw_word(text->str, api, gs, text->pos, text->word_size);
-        } else {
-            Entity_Info entity_info = get_entity_info(next);
-
-            assert(entity_info.valid);
-            if(entity_info.trans && entity_info.sprite_id) {
-                Float x = entity_info.trans->pos.x - gs->camera.pos.x;
-                Float y = entity_info.trans->pos.y - gs->camera.pos.y;
-                sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(x, y,
-                                                                  entity_info.trans->scale.x, entity_info.trans->scale.y,
-                                                                  entity_info.trans->rot);
-                Float tform[16] = {0};
-                sglm_mat4x4_as_float_arr(tform, &mat);
-
-                api->sglp_draw_sprite(api, gs->sprite[entity_info.sprite_id], entity_info.current_frame, tform);
-            }
-        }
-
-        next = next->next;
-    }
-#endif
-
     // TODO - Read the mouse position from sgl_platform.
     //draw_debug_information(api, gs);
 }
@@ -645,11 +660,11 @@ void render(sglp_API *api, Game_State *gs) {
 Enemy create_enemy(float x, float y) {
     Enemy res = {0};
 
-    res.trans.scale.x = 0.1f;
-    res.trans.scale.y = 0.1f;
+    res.transform.scale.x = 0.1f;
+    res.transform.scale.y = 0.1f;
 
-    res.trans.pos.x = x;
-    res.trans.pos.y = y;
+    res.transform.position.x = x;
+    res.transform.position.y = y;
 
     return (res);
 }
@@ -657,13 +672,13 @@ Enemy create_enemy(float x, float y) {
 Player create_player(float x, float y) {
     Player res = {0};
 
-    res.trans.scale.x = 0.1f;
-    res.trans.scale.y = 0.1f;
+    res.transform.scale.x = 0.1f;
+    res.transform.scale.y = 0.1f;
 
-    res.trans.pos.x = x;
-    res.trans.pos.y = y;
+    res.transform.position.x = x;
+    res.transform.position.y = y;
 
-    res.start_pos = res.trans.pos;
+    res.start_pos = res.transform.position;
     res.dir = Player_Direction_left;
 
     return (res);
@@ -672,7 +687,7 @@ Player create_player(float x, float y) {
 Bullet create_bullet(void) {
     Bullet res = {0};
 
-    res.trans.pos = v2(400, 400);
+    res.transform.position = v2(400, 400);
 
     return (res);
 }
@@ -681,8 +696,8 @@ Bullet create_bullet(void) {
 Ground create_ground(Float x, Float y, Float scalex, Float scaley) {
     Ground res = {0};
 
-    res.trans.pos = v2(x + (scalex * 0.5f), y + (scaley * 0.5f));
-    res.trans.scale = v2(scalex, scaley);
+    res.transform.position = v2(x + (scalex * 0.5f), y + (scaley * 0.5f));
+    res.transform.scale = v2(scalex, scaley);
 
     return (res);
 }
@@ -690,8 +705,8 @@ Ground create_ground(Float x, Float y, Float scalex, Float scaley) {
 JumpThrough_Ground create_jump_through_ground(Float x, Float y, Float scalex, Float scaley) {
     JumpThrough_Ground res = {0};
 
-    res.trans.pos = v2(x - (scalex * 0.5f), y - (scaley * 0.5f));
-    res.trans.scale = v2(scalex, scaley);
+    res.transform.position = v2(x - (scalex * 0.5f), y - (scaley * 0.5f));
+    res.transform.scale = v2(scalex, scaley);
 
     return(res);
 }
@@ -699,8 +714,8 @@ JumpThrough_Ground create_jump_through_ground(Float x, Float y, Float scalex, Fl
 Block create_block(Float x, Float y) {
     Block res = {0};
 
-    res.trans.pos = v2(x, y);
-    res.trans.scale = v2(0.1f, 0.1f);
+    res.transform.position = v2(x, y);
+    res.transform.scale = v2(0.1f, 0.1f);
 
     return(res);
 }
@@ -721,13 +736,13 @@ Char *push_and_copy_string(sglp_API *api, Char *string) {
     return(new);
 }
 
-TextObject create_text(sglp_API *api, Char *string, V2 pos, V2 word_size) {
+TextObject create_text(sglp_API *api, Char *string, V2 position, V2 word_size) {
     TextObject res = {0};
 
     // TODO - It'd be cool if I manually inserted newlines in here if the word was going offscreen (crossed over
     //        the whole number line).
     res.str = push_and_copy_string(api, string);
-    res.pos = pos;
+    res.position = position;
     res.word_size = word_size;
 
     return(res);
@@ -737,42 +752,42 @@ Void create_first_room(Room *room, sglp_API *api, Game_State *gs) {
     room->top_left = v2(0.0f, 0.0f);
 
     Ground hor_block = create_ground(0.0f, 0.9f, 1.0f, 0.1f);
-    push_entity(api, room, &hor_block, pp_Type_Ground);
+    add_entity_to_room(api, room, &hor_block, pp_Type_Ground);
 
     Ground vert_block = create_ground(0.0f, 0.0f, 0.1f, 1.0f);
-    push_entity(api, room, &vert_block, pp_Type_Ground);
+    add_entity_to_room(api, room, &vert_block, pp_Type_Ground);
 
     TextObject text = create_text(api, "Use the left and right arrows\nto move left and right.", v2(0.1f, 0.1f), v2(0.05f, 0.05f));
-    push_entity(api, room, &text, pp_Type_TextObject);
+    add_entity_to_room(api, room, &text, pp_Type_TextObject);
 }
 
 Void create_second_room(Room *room, sglp_API *api, Game_State *gs) {
     room->top_left = v2(1.0f, 0.0f);
 
-    Ground hor_block1 = create_ground(1.0f, 0.9f, 0.5f, 0.1f);
-    push_entity(api, room, &hor_block1, pp_Type_Ground);
+    Ground hor_block1 = create_ground(0.0f, 0.9f, 0.5f, 0.1f);
+    add_entity_to_room(api, room, &hor_block1, pp_Type_Ground);
 
-    Ground vert_block = create_ground(1.5f, 0.6f, 0.1f, 0.4f);
-    push_entity(api, room, &vert_block, pp_Type_Ground);
+    Ground vert_block = create_ground(0.5f, 0.6f, 0.1f, 0.4f);
+    add_entity_to_room(api, room, &vert_block, pp_Type_Ground);
 
-    Ground hor_block2 = create_ground(1.5f, 0.6f, 0.5f, 0.1f);
-    push_entity(api, room, &hor_block2, pp_Type_Ground);
+    Ground hor_block2 = create_ground(0.5f, 0.6f, 0.5f, 0.1f);
+    add_entity_to_room(api, room, &hor_block2, pp_Type_Ground);
 
-    TextObject text = create_text(api, "Use the up and down arrow\nkeys to jump.", v2(1.1f, 0.1f), v2(0.05f, 0.05f));
-    push_entity(api, room, &text, pp_Type_TextObject);
+    TextObject text = create_text(api, "Use the up and down arrow\nkeys to jump.", v2(0.1f, 0.1f), v2(0.05f, 0.05f));
+    add_entity_to_room(api, room, &text, pp_Type_TextObject);
 }
 
 Void create_third_room(Room *room, sglp_API *api, Game_State *gs) {
     room->top_left = v2(2.0f, 0.0f);
 
-    Ground hor_block1 = create_ground(2.0f, 0.6f, 0.3f, 0.1f);
-    push_entity(api, room, &hor_block1, pp_Type_Ground);
+    Ground hor_block1 = create_ground(0.0f, 0.6f, 0.3f, 0.1f);
+    add_entity_to_room(api, room, &hor_block1, pp_Type_Ground);
 
-    Ground hor_block2 = create_ground(2.0f, 0.1f, 1.0f, 0.1f);
-    push_entity(api, room, &hor_block2, pp_Type_Ground);
+    Ground hor_block2 = create_ground(0.0f, 0.1f, 1.0f, 0.1f);
+    add_entity_to_room(api, room, &hor_block2, pp_Type_Ground);
 
-    TextObject text = create_text(api, "Use the W and S keys to change\nthe gravity direction.", v2(2.1f, 0.1f), v2(0.05f, 0.05f));
-    push_entity(api, room, &text, pp_Type_TextObject);
+    TextObject text = create_text(api, "Use the W and S keys to change\nthe gravity direction.", v2(0.1f, 0.1f), v2(0.05f, 0.05f));
+    add_entity_to_room(api, room, &text, pp_Type_TextObject);
 }
 
 // TODO - I need some way to design levels. Maybe load them from a .txt file for now?
@@ -796,15 +811,12 @@ void init(sglp_API *api, Game_State *gs) {
     gs->room[1].right = &gs->room[2];
     gs->room[2].left = &gs->room[1];
 
-    //create_third_room(&gs->room[1], api, gs);
-    //gs->room[1]->right = gs->room[2];
-
     gs->current_room = &gs->room[0];
 
     // Player.
     {
         Player player = create_player(0.5f, 0.7f);
-        push_entity(api, gs->current_room, &player, pp_Type_Player);
+        add_entity_to_room(api, gs->current_room, &player, pp_Type_Player);
     }
 
     // Enemies.
@@ -859,8 +871,8 @@ void init(sglp_API *api, Game_State *gs) {
         gs->camera.speed = v2(0.05f, 0.05f);
         // gs->camera.entity_to_follow = player;
         gs->camera.follow_exactly = false;
-        gs->camera.pos.x = (int)player->trans.pos.x;
-        gs->camera.pos.y = (int)player->trans.pos.y;
+        gs->camera.position.x = (int)player->transform.position.x;
+        gs->camera.position.y = (int)player->transform.position.y;
     }
 
     // Load background music.
@@ -883,7 +895,7 @@ void init(sglp_API *api, Game_State *gs) {
     }
 
     // Gravity
-    gs->gravity = Direction_down;
+    gs->gravity_direction = Direction_down;
 
 #if INTERNAL
     gs->text_box_input = api->sglp_push_permanent_memory(api, 256 * 256);
@@ -920,99 +932,28 @@ Void accelerate_in_direction(V2 *current_speed, V2 max_speed, Float acceleration
     }
 }
 
-Void update_block(Block *block, Game_State *gs, sglp_API *api) {
-    V2 current_speed = block->current_speed;
-    V2 max_speed = v2(0.01f, 0.01f);
-    Float gravity = 0.004f;
-    Bool is_gravity_vertical = is_vertical(gs->gravity);
-
-    // Handle landing on a block.
-    if(is_falling(current_speed, gs->gravity)) {
-        Transform trans = block->trans;
-
-        if(is_gravity_vertical) { trans.pos.y += current_speed.y; }
-        else                    { trans.pos.x += current_speed.x; }
-
-        Entity *next = gs->current_room->root;
-        while(next) {
-            if(is_solid(next)) {
-                Entity_Info ei = get_entity_info(next);
-                if(ei.valid && overlap(get_feet(trans, gs->gravity), get_head(*ei.trans, gs->gravity))) {
-                    switch (gs->gravity) {
-                        case Direction_down:  { block->trans.pos.y = ei.trans->pos.y - (ei.trans->scale.y * 0.5f) - (block->trans.scale.y * 0.5f) - current_speed.y; } break;
-                        case Direction_up:    { block->trans.pos.y = ei.trans->pos.y + (ei.trans->scale.y * 0.5f) + (block->trans.scale.y * 0.5f) - current_speed.y; } break;
-                        case Direction_right: { block->trans.pos.x = ei.trans->pos.x - (ei.trans->scale.x * 0.5f) - (block->trans.scale.x * 0.5f) - current_speed.x; } break;
-                        case Direction_left:  { block->trans.pos.x = ei.trans->pos.x + (ei.trans->scale.x * 0.5f) + (block->trans.scale.x * 0.5f) - current_speed.x; } break;
-
-                        default: { assert(0); } break;
-                    }
-
-                    current_speed.x = 0;
-                    current_speed.y = 0;
-
-                    break;
-                }
-            }
-
-            next = next->next;
-        }
-    }
-
-    // Gravity.
-    accelerate_in_direction(&current_speed, max_speed, gravity * api->dt, true, gs->gravity);
-
-    // Handle hitting the sides of blocks.
-    {
-        Bool safe = true;
-        Transform trans = block->trans;
-        if(is_gravity_vertical) { trans.pos.x += current_speed.x; }
-        else                    { trans.pos.y += current_speed.y; }
-
-        Entity *next = gs->current_room->root;
-        while(next) {
-            if(is_non_jumpthrough_block(next)) {
-                Entity_Info ei = get_entity_info(next);
-                if(ei.valid && overlap(trans, *ei.trans)) {
-                    safe = false;
-                    break;
-                }
-            }
-
-            next = next->next;
-        }
-
-        if(!safe) {
-            if(is_gravity_vertical) { current_speed.x = 0.0f; }
-            else                    { current_speed.y = 0.0f; }
-        }
-    }
-
-    // TODO - What should happen if a block crushes the player?
-
-    block->current_speed.x = current_speed.x;
-    block->current_speed.y = current_speed.y;
-
-    block->trans.pos.x += block->current_speed.x;
-    block->trans.pos.y += block->current_speed.y;
-}
 
 // TODO - This modifies the transform. Might be better to return a new struct with the new transform/entity standing on.
-Entity *handling_landing_on_block_internal(Entity *next, Transform *trans, V2 current_speed, Direction gravity_direction) {
+Entity *handling_landing_on_block_internal(Entity *next, Transform *transform, V2 current_speed, Direction gravity_direction) {
     Entity *standing_on = 0;
 
-    Transform copy_transform = *trans;
-    if(is_vertical(gravity_direction)) { copy_transform.pos.y += current_speed.y; }
-    else                               { copy_transform.pos.x += current_speed.x; }
+    Transform copy_transform = *transform;
+    if(is_vertical(gravity_direction)) { copy_transform.position.y += current_speed.y; }
+    else                               { copy_transform.position.x += current_speed.x; }
 
     while(next) {
         if(is_solid(next)) {
-            Entity_Info ei = get_entity_info(next);
-            if(ei.valid && overlap(get_feet(copy_transform, gravity_direction), get_head(*ei.trans, gravity_direction))) {
+            Entity_Info entity_info = get_entity_info(next);
+            assert(entity_info.valid && entity_info.position && entity_info.scale && entity_info.rotation);
+
+            Transform ground_transform = create_transform(*entity_info.position, *entity_info.scale, *entity_info.rotation);
+
+            if(overlap(get_feet(copy_transform, gravity_direction), get_head(ground_transform, gravity_direction))) {
                 switch(gravity_direction) {
-                    case Direction_down:  { trans->pos.y = ei.trans->pos.y - (ei.trans->scale.y * 0.5f) - (trans->scale.y * 0.5f) - current_speed.y; } break;
-                    case Direction_up:    { trans->pos.y = ei.trans->pos.y + (ei.trans->scale.y * 0.5f) + (trans->scale.y * 0.5f) - current_speed.y; } break;
-                    case Direction_right: { trans->pos.x = ei.trans->pos.x - (ei.trans->scale.x * 0.5f) - (trans->scale.x * 0.5f) - current_speed.x; } break;
-                    case Direction_left:  { trans->pos.x = ei.trans->pos.x + (ei.trans->scale.x * 0.5f) + (trans->scale.x * 0.5f) - current_speed.x; } break;
+                    case Direction_down:  { transform->position.y = ground_transform.position.y - (ground_transform.scale.y * 0.5f) - (transform->scale.y * 0.5f) - current_speed.y; } break;
+                    case Direction_up:    { transform->position.y = ground_transform.position.y + (ground_transform.scale.y * 0.5f) + (transform->scale.y * 0.5f) - current_speed.y; } break;
+                    case Direction_right: { transform->position.x = ground_transform.position.x - (ground_transform.scale.x * 0.5f) - (transform->scale.x * 0.5f) - current_speed.x; } break;
+                    case Direction_left:  { transform->position.x = ground_transform.position.x + (ground_transform.scale.x * 0.5f) + (transform->scale.x * 0.5f) - current_speed.x; } break;
 
                     default: { assert(0); } break;
                 }
@@ -1028,13 +969,13 @@ Entity *handling_landing_on_block_internal(Entity *next, Transform *trans, V2 cu
     return(standing_on);
 }
 
-Entity *handle_landing_on_block(Room *room, Transform *trans, V2 current_speed, Direction gravity_direction) {
+Entity *handle_landing_on_block(Room *room, Transform *transform, V2 current_speed, Direction gravity_direction) {
     Entity *standing_on = 0;
     if(is_falling(current_speed, gravity_direction)) {
 
-        standing_on = handling_landing_on_block_internal(room->root, trans, current_speed, gravity_direction);
+        standing_on = handling_landing_on_block_internal(room->root, transform, current_speed, gravity_direction);
 
-#define HANDLE_DIRECTION(xx) if(!standing_on && room->xx) { standing_on = handling_landing_on_block_internal(room->xx->root, trans, current_speed, gravity_direction); }
+#define HANDLE_DIRECTION(xx) if(!standing_on && room->xx) { standing_on = handling_landing_on_block_internal(room->xx->root, transform, current_speed, gravity_direction); }
 
         HANDLE_DIRECTION(up)
         HANDLE_DIRECTION(down)
@@ -1047,12 +988,14 @@ Entity *handle_landing_on_block(Room *room, Transform *trans, V2 current_speed, 
     return(standing_on);
 }
 
-Bool handle_booping_head_on_block_internal(Entity *next, Transform trans) {
+Bool handle_booping_head_on_block_internal(Entity *next, Transform transform) {
     Bool hit = false;
     while(next) {
         if(is_non_jumpthrough_block(next)) {
-            Entity_Info ei = get_entity_info(next);
-            if(ei.valid && overlap(trans, *ei.trans)) {
+            Entity_Info entity_info = get_entity_info(next);
+            assert(entity_info.valid && entity_info.position && entity_info.scale && entity_info.rotation);
+
+            if(overlap(transform, create_transform(*entity_info.position, *entity_info.scale, *entity_info.rotation))) {
                 hit = true;
                 break;
             }
@@ -1065,15 +1008,15 @@ Bool handle_booping_head_on_block_internal(Entity *next, Transform trans) {
 }
 
 
-Bool handle_booping_head_on_block(Room *room, Transform trans, V2 current_speed, Direction gravity_direction) {
+Bool handle_booping_head_on_block(Room *room, Transform transform, V2 current_speed, Direction gravity_direction) {
     Bool hit = false;
     if(is_jumping(current_speed, gravity_direction)) {
-        if(is_vertical(gravity_direction)) { trans.pos.y += current_speed.y; }
-        else                               { trans.pos.x += current_speed.x; }
+        if(is_vertical(gravity_direction)) { transform.position.y += current_speed.y; }
+        else                               { transform.position.x += current_speed.x; }
 
-        hit = handle_booping_head_on_block_internal(room->root, trans);
+        hit = handle_booping_head_on_block_internal(room->root, transform);
 
-#define HANDLE_DIRECTION(xx) if(!hit && room->xx) { handle_booping_head_on_block_internal(room->xx->root, trans); }
+#define HANDLE_DIRECTION(xx) if(!hit && room->xx) { handle_booping_head_on_block_internal(room->xx->root, transform); }
 
         HANDLE_DIRECTION(up)
         HANDLE_DIRECTION(down)
@@ -1086,13 +1029,15 @@ Bool handle_booping_head_on_block(Room *room, Transform trans, V2 current_speed,
     return(hit);
 }
 
-Bool handle_hitting_side_of_block_internal(Entity *next, Transform trans) {
+Bool handle_hitting_side_of_block_internal(Entity *next, Transform transform) {
     Bool hit = false;
 
     while(next) {
         if(is_non_jumpthrough_block(next)) {
-            Entity_Info ei = get_entity_info(next);
-            if(ei.valid && overlap(trans, *ei.trans)) {
+            Entity_Info entity_info = get_entity_info(next);
+            assert(entity_info.valid && entity_info.position && entity_info.scale && entity_info.rotation);
+
+            if(overlap(transform, create_transform(*entity_info.position, *entity_info.scale, *entity_info.rotation))) {
                 hit = true;
                 break;
             }
@@ -1104,15 +1049,15 @@ Bool handle_hitting_side_of_block_internal(Entity *next, Transform trans) {
     return(hit);
 }
 
-Bool handle_hitting_side_of_block(Room *room, Transform trans, V2 current_speed, Direction gravity_direction) {
+Bool handle_hitting_side_of_block(Room *room, Transform transform, V2 current_speed, Direction gravity_direction) {
     // Handle hitting the sides of blocks.
 
-    if(is_vertical(gravity_direction)) { trans.pos.x += current_speed.x; }
-    else                               { trans.pos.y += current_speed.y; }
+    if(is_vertical(gravity_direction)) { transform.position.x += current_speed.x; }
+    else                               { transform.position.y += current_speed.y; }
 
-    Bool hit = handle_hitting_side_of_block_internal(room->root, trans);
+    Bool hit = handle_hitting_side_of_block_internal(room->root, transform);
 
-#define HANDLE_DIRECTION(xx) if(!hit && room->xx) { hit = handle_hitting_side_of_block_internal(room->xx->root, trans); }
+#define HANDLE_DIRECTION(xx) if(!hit && room->xx) { hit = handle_hitting_side_of_block_internal(room->xx->root, transform); }
 
     HANDLE_DIRECTION(up)
     HANDLE_DIRECTION(down)
@@ -1124,11 +1069,41 @@ Bool handle_hitting_side_of_block(Room *room, Transform trans, V2 current_speed,
     return(hit);
 }
 
+Void update_block(Block *block, Game_State *gs, sglp_API *api) {
+    V2 current_speed = block->current_speed;
+    V2 max_speed = v2(0.01f, 0.01f);
+    Float gravity = 0.004f;
+    Bool is_gravity_vertical = is_vertical(gs->gravity_direction);
+
+    // Handle landing on a block.
+    Entity *entity_standing_on = handle_landing_on_block(gs->current_room, &block->transform, current_speed, gs->gravity_direction);
+    if(entity_standing_on) {
+        current_speed.x = 0.0f;
+        current_speed.y = 0.0f;
+    }
+
+    // Gravity.
+    accelerate_in_direction(&current_speed, max_speed, gravity * api->dt, true, gs->gravity_direction);
+
+    if(handle_hitting_side_of_block(gs->current_room, block->transform, current_speed, gs->gravity_direction)) {
+        if(is_gravity_vertical) { current_speed.x = 0.0f; }
+        else                    { current_speed.y = 0.0f; }
+    }
+
+    // TODO - What should happen if a block crushes the player?
+
+    block->current_speed.x = current_speed.x;
+    block->current_speed.y = current_speed.y;
+
+    block->transform.position.x += block->current_speed.x;
+    block->transform.position.y += block->current_speed.y;
+}
+
 // TODO - I do a lot of 'overlap' collisions in here, which could fail if something is travelling really fast. I should
 //        protect against this?
 Void handle_player_movement(Player *player, sglp_API *api, Room *room, Direction gravity_direction) {
     V2 current_speed = player->current_speed;
-    V2 max_speed = v2(0.005f, 0.005f);
+    V2 max_speed = v2(0.003f, 0.003f);
     V2 acceleration = v2(0.002f, 0.002f);
     V2 friction = v2(0.005f, 0.005f);
     Float gravity = 0.002f;
@@ -1136,8 +1111,8 @@ Void handle_player_movement(Player *player, sglp_API *api, Room *room, Direction
 
     Bool is_gravity_vertical = is_vertical(gravity_direction);
 
-    Entity *block_standing_on = handle_landing_on_block(room, &player->trans, current_speed, gravity_direction);
-    if(handle_booping_head_on_block(room, player->trans, current_speed, gravity_direction)) {
+    Entity *block_standing_on = handle_landing_on_block(room, &player->transform, current_speed, gravity_direction);
+    if(handle_booping_head_on_block(room, player->transform, current_speed, gravity_direction)) {
         if(is_gravity_vertical) { current_speed.y = 0.0f; }
         else                    { current_speed.x = 0.0f; }
     }
@@ -1209,7 +1184,7 @@ Void handle_player_movement(Player *player, sglp_API *api, Room *room, Direction
         }
     }
 
-    if(handle_hitting_side_of_block(room, player->trans, current_speed, gravity_direction)) {
+    if(handle_hitting_side_of_block(room, player->transform, current_speed, gravity_direction)) {
         if(is_gravity_vertical) { current_speed.x = 0.0f; }
         else                    { current_speed.y = 0.0f; }
     }
@@ -1217,8 +1192,8 @@ Void handle_player_movement(Player *player, sglp_API *api, Room *room, Direction
     player->current_speed.x = current_speed.x;
     player->current_speed.y = current_speed.y;
 
-    player->trans.pos.x += player->current_speed.x;
-    player->trans.pos.y += player->current_speed.y;
+    player->transform.position.x += player->current_speed.x;
+    player->transform.position.y += player->current_speed.y;
 
 }
 
@@ -1238,7 +1213,7 @@ Void move_entity_to_new_room(Void *var, Room *old_room, Room *new_room) {
         }
     }
 
-    assert(one_before_targ
+    assert(one_before_target);
 
     one_before_target->next = target->next; // Set one before the target to "skip" the target.
     target->next = 0; // Clear the target's next.
@@ -1246,45 +1221,48 @@ Void move_entity_to_new_room(Void *var, Room *old_room, Room *new_room) {
     Entity *end = get_end_entity(new_room->root);
     end->next = target;
 
-    /*Entity_Info ei = get_entity_info(target);
-    if(ei.valid) {
+#if 0
+    Entity_Info entity_info = get_entity_info(target);
+    if(entity_info.valid) {
         Float diff_x = new_room->top_left.x - old_room->top_left.x;
         Float diff_y = new_room->top_left.y - old_room->top_left.y;
 
-        ei.trans->pos.x -= diff_x;
-        ei.trans->pos.y -= diff_y;
-    }*/
+        entity_info.transform->position.x -= diff_x;
+        entity_info.transform->position.y -= diff_y;
+    }
+#endif
 }
 
 Void update_player(Player *player, sglp_API *api, Game_State *gs) {
-    handle_player_movement(player, api, gs->current_room, gs->gravity);
+    handle_player_movement(player, api, gs->current_room, gs->gravity_direction);
 
     // TODO - If the player goes to a invalid "room", it means they've fallen off the map. So handle that case.
-    if(player->trans.pos.x < gs->current_room->top_left.x) {
+    if(player->transform.position.x < gs->current_room->top_left.x) {
         move_entity_to_new_room(player, gs->current_room, gs->current_room->left);
         gs->current_room = gs->current_room->left;
-    } else if(player->trans.pos.x > gs->current_room->top_left.x + 1.0f) {
+    } else if(player->transform.position.x > gs->current_room->top_left.x + 1.0f) {
         move_entity_to_new_room(player, gs->current_room, gs->current_room->right);
         gs->current_room = gs->current_room->right;
     }
 
-    if(player->trans.pos.y < gs->current_room->top_left.y) {
+    if(player->transform.position.y < gs->current_room->top_left.y) {
         move_entity_to_new_room(player, gs->current_room, gs->current_room->up);
         gs->current_room = gs->current_room->up;
-    } else if(player->trans.pos.y > gs->current_room->top_left.y + 1.0f) {
+    } else if(player->transform.position.y > gs->current_room->top_left.y + 1.0f) {
         move_entity_to_new_room(player, gs->current_room, gs->current_room->down);
         gs->current_room = gs->current_room->down;
     }
 
     // Shooting.
-    /*if (api->key['Z'] && player->can_shoot) {
+#if 0
+    if (api->key['Z'] && player->can_shoot) {
         player->shot_timer = 200;
         player->can_shoot = false;
         api->sglp_play_audio(api, ID_sound_bloop);
 
         Bullet *bullet = find_first_entity(gs->current_room.root, pp_Type_Bullet);
         bullet->dir = player_direction_to_direction(player->dir);
-        bullet->trans = player->trans;
+        bullet->transform = player->transform;
         bullet->parent = (Entity *)player;
     }
 
@@ -1293,7 +1271,8 @@ Void update_player(Player *player, sglp_API *api, Game_State *gs) {
         if (player->shot_timer <= 0) {
             player->can_shoot = true;
         }
-    }*/
+    }
+#endif
 
     // Update frame.
     player->current_frame += 0.5f;
@@ -1304,15 +1283,15 @@ Void update_player(Player *player, sglp_API *api, Game_State *gs) {
     // DEBUG - Rotation
 #if 0
     float rot_speed = 5.0f;
-    if (api->key[sglp_key_left])  { player->trans.rot += rot_speed; }
-    if (api->key[sglp_key_right]) { player->trans.rot -= rot_speed; }
+    if (api->key[sglp_key_left])  { player->transform.rotation += rot_speed; }
+    if (api->key[sglp_key_right]) { player->transform.rotation -= rot_speed; }
 
     // DEBUG - scaling
     float scaling_speed = 0.01f;
-    if (api->key['I']) { player->trans.scale.y += scaling_speed; }
-    if (api->key['K']) { player->trans.scale.y -= scaling_speed; }
-    if (api->key['J']) { player->trans.scale.x -= scaling_speed; }
-    if (api->key['L']) { player->trans.scale.x += scaling_speed; }
+    if (api->key['I']) { player->transform.scale.y += scaling_speed; }
+    if (api->key['K']) { player->transform.scale.y -= scaling_speed; }
+    if (api->key['J']) { player->transform.scale.x -= scaling_speed; }
+    if (api->key['L']) { player->transform.scale.x += scaling_speed; }
 #endif
 }
 
@@ -1320,9 +1299,9 @@ Void update_enemy(Enemy *enemy, Game_State *gs) {
     Player *player = find_first_entity(gs->current_room->root, pp_Type_Player);
     if (player) {
         // Set the player to the start if they touch an enemy.
-        if (overlap(player->trans, enemy->trans)) {
+        if (overlap(player->transform, enemy->transform)) {
             // TODO - Reset the players speed when they die.
-            player->trans.pos = player->start_pos;
+            player->transform.position = player->start_pos;
         }
 
         // Kill the enemy if they touch the player's bullet.
@@ -1330,7 +1309,7 @@ Void update_enemy(Enemy *enemy, Game_State *gs) {
         while (next) {
             if (next->type == pp_Type_Bullet) {
                 Bullet *bullet = &next->bullet;
-                if (overlap(bullet->trans, enemy->trans)) {
+                if (overlap(bullet->transform, enemy->transform)) {
                     // next->valid = false; // TODO - Can't set to invalid right now.
                     bullet->dir = Direction_unknown;
                 }
@@ -1348,23 +1327,23 @@ void update_bullet(Bullet *bullet, Game_State *gs) {
     if (bullet->dir != Direction_unknown) {
         Float bullet_speed = 0.002f;
 
-        if (bullet->dir == Direction_left)       { bullet->trans.pos.x -= bullet_speed; }
-        else if (bullet->dir == Direction_right) { bullet->trans.pos.x += bullet_speed; }
+        if(bullet->dir == Direction_left)       { bullet->transform.position.x -= bullet_speed; }
+        else if(bullet->dir == Direction_right) { bullet->transform.position.x += bullet_speed; }
 
-        if (bullet->dir == Direction_up)         { bullet->trans.pos.y -= bullet_speed; }
-        else if (bullet->dir == Direction_down)  { bullet->trans.pos.y += bullet_speed; }
+        if     (bullet->dir == Direction_up)   { bullet->transform.position.y -= bullet_speed; }
+        else if(bullet->dir == Direction_down) { bullet->transform.position.y += bullet_speed; }
 
-        if (is_offscreen(bullet->trans)) {
+        if (is_offscreen(bullet->transform)) {
             bullet->dir = Direction_unknown;
         }
     }
 
     if (bullet->dir == Direction_unknown) {
-        bullet->trans.pos = v2(400, 400);
+        bullet->transform.position = v2(400, 400);
         Entity *parent = bullet->parent;
         if (parent) {
             switch (parent->type) {
-                case pp_Type_Player: parent->player.can_shoot = true; break;
+                case pp_Type_Player: { parent->player.can_shoot = true; } break;
 
                 default: assert(0); break;
             }
@@ -1395,16 +1374,16 @@ Void update_camera(Game_State *gs) {
     Player *player = find_first_entity(gs->current_room->root, pp_Type_Player);
 
     // TODO - This doesn't work for negative player positions.
-    Float target_x = (float)((int)player->trans.pos.x);
-    Float target_y = (float)((int)player->trans.pos.y);
+    Float target_x = (float)((int)player->transform.position.x);
+    Float target_y = (float)((int)player->transform.position.y);
 
-    if (camera->pos.x < target_x - camera->speed.x)      { camera->pos.x += camera->speed.x; }
-    else if (camera->pos.x > target_x + camera->speed.x) { camera->pos.x -= camera->speed.x; }
-    else                                                { camera->pos.x = target_x;         }
+    if     (camera->position.x < target_x - camera->speed.x) { camera->position.x += camera->speed.x; }
+    else if(camera->position.x > target_x + camera->speed.x) { camera->position.x -= camera->speed.x; }
+    else                                                     { camera->position.x = target_x;         }
 
-    if (camera->pos.y < target_y - camera->speed.y)      { camera->pos.y += camera->speed.y; }
-    else if (camera->pos.y > target_y + camera->speed.y) { camera->pos.y -= camera->speed.y; }
-    else                                                { camera->pos.y = target_y;         }
+    if(camera->position.y < target_y - camera->speed.y)      { camera->position.y += camera->speed.y; }
+    else if(camera->position.y > target_y + camera->speed.y) { camera->position.y -= camera->speed.y; }
+    else                                                     { camera->position.y = target_y;         }
 }
 
 Void update_room(sglp_API *api, Game_State *gs, Room *room) {
@@ -1428,10 +1407,10 @@ Void update_room(sglp_API *api, Game_State *gs, Room *room) {
 Void update(sglp_API *api, Game_State *gs) {
 
     // Change gravity direction
-    if (api->key['W'])      { gs->gravity = Direction_up;    }
-    else if (api->key['S']) { gs->gravity = Direction_down;  }
-    else if (api->key['A']) { gs->gravity = Direction_left;  }
-    else if (api->key['D']) { gs->gravity = Direction_right; }
+    if (api->key['W'])      { gs->gravity_direction = Direction_up;    }
+    else if (api->key['S']) { gs->gravity_direction = Direction_down;  }
+    else if (api->key['A']) { gs->gravity_direction = Direction_left;  }
+    else if (api->key['D']) { gs->gravity_direction = Direction_right; }
 
 #if INTERNAL
     if (api->key[sglp_key_ctrl] && api->key[sglp_key_space]) {

@@ -183,6 +183,10 @@ typedef int sgl_Bool;
 void sgl_memset(void *dest, uint8_t x, uintptr_t size);
 void sgl_memcpy(void *dest, const void *src, uintptr_t num);
 
+int sgl_round_float_to_int(float num);
+int sgl_floor_float_to_int(float num);
+float sgl_lerp(float t, float a, float b);
+
 //
 // String
 int sgl_string_len(char const *str);
@@ -239,6 +243,24 @@ void sgl_memcpy(void *dest, const void *src, uintptr_t num) {
     for (uintptr_t i = 0; (i < num); ++i) {
         *dest8++ = *src8++;
     }
+}
+
+int sgl_round_float_to_int(float num) {
+    int res = (int)(num + 0.5f);
+
+    return(res);
+}
+
+int sgl_floor_float_to_int(float num) {
+    int res = (int)num;
+
+    return(res);
+}
+
+float sgl_lerp(float t, float a, float b) {
+    float res = (1 - t) * a + t * b;
+
+    return(res);
 }
 
 //
