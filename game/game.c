@@ -1,19 +1,19 @@
 #define STB_SPRINTF_IMPLEMENTATION
-#include "stb_sprintf.h"
+#include "../shared/stb_sprintf.h"
 
 #define PP_ASSERT(x) // TODO - Implement.
 #define PP_SPRINTF stbsp_snprintf
 #include "pp_generated.h"
 
 #define SGLM_IMPLEMENTATION
-#include "sgl_math.h"
+#include "../shared/sgl_math.h"
 
 #define SGL_IMPLEMENTATION
 #define SGL_NO_CRT_DLL
-#include "sgl.h"
+#include "../shared/sgl.h"
 
 #define SGLP_CALLBACK_FILE_LINKAGE SGL_EXPORT
-#include "sgl_platform.h"
+#include "../shared/sgl_platform.h"
 
 static sglp_API *global_api;
 
@@ -25,7 +25,7 @@ static sglp_API *global_api;
 #define STBI_REALLOC global_api->sglp_realloc
 #define STBI_FREE global_api->sglp_free
 PP_IGNORE
-#include "stb_image.h"
+#include "../shared/stb_image.h"
 
 #define assert(x) SGL_ASSERT(x)
 

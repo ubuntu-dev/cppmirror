@@ -33,7 +33,7 @@ void *memcpy(void *dest, void const *src, size_t count) {
 
     return(dest);
 }
-#endif
+#endif // #if COMPILER_MSVC
 
 Uint64 system_get_performance_counter(void) {
     Uint64 res = 0;
@@ -69,8 +69,7 @@ Void *system_realloc(Void *ptr, Uintptr size) {
         Void *original_raw = (Uintptr *)ptr - 1;
         Uintptr *new_raw = (Uintptr *)HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, original_raw, size + sizeof(Uintptr));
         *new_raw++ = size;
-    }
-    else {
+    } else {
         res = system_malloc(size);
     }
 
@@ -101,8 +100,7 @@ File system_read_entire_file_and_null_terminate(Char *fname) {
             if(ReadFile(fhandle, memory, fsize32, &bytes_read, 0)) {
                 if(bytes_read != fsize32) {
                     push_error(ErrorType_did_not_read_entire_file);
-                }
-                else {
+                } else {
                     res.size = fsize32;
                     res.e = (Char *)memory;
                     res.e[res.size] = 0;
@@ -131,8 +129,7 @@ Bool system_write_to_file(Char *fname, File file) {
         if(WriteFile(fhandle, file.e, fsize32, &bytes_written, 0)) {
             if(bytes_written != fsize32) {
                 push_error(ErrorType_did_not_write_entire_file);
-            }
-            else {
+            } else {
                 res = true;
             }
         }
@@ -187,8 +184,7 @@ Uintptr system_get_total_size_of_directory(Char *path) {
 
                     res += system_get_total_size_of_directory(new_fname);
                 }
-            }
-            else {
+            } else {
                 LARGE_INTEGER sz;
                 sz.LowPart = data.nFileSizeLow;
                 sz.HighPart = data.nFileSizeHigh;
@@ -197,8 +193,7 @@ Uintptr system_get_total_size_of_directory(Char *path) {
 #endif
                 res += (Uintptr)sz.QuadPart;
             }
-        }
-        while(FindNextFile(handle,&data));
+        } while(FindNextFile(handle,&data));
 
         FindClose(handle);
     }
@@ -225,11 +220,9 @@ Bool is_valid_cpp_file(Char *fname) {
     Int len = string_length(fname);
     if((fname[len - 1] == 'p') && (fname[len - 2] == 'p') && (fname[len - 3] == 'c') && (fname[len - 4] == '.')) {
         res = true;
-    }
-    else if((fname[len - 1] == 'c') && (fname[len - 2] == 'c') && (fname[len - 3] == '.')) {
+    } else if((fname[len - 1] == 'c') && (fname[len - 2] == 'c') && (fname[len - 3] == '.')) {
         res = true;
-    }
-    else if((fname[len - 1] == 'c') && (fname[len - 2] == '.')) {
+    } else if((fname[len - 1] == 'c') && (fname[len - 2] == '.')) {
         res = true;
     }
 
@@ -275,8 +268,7 @@ int main(int argc_, char **argv_) {
     for(Int i = 0; (i < args_len); ++i) {
         if(cmdline[i] == '"') {
             in_quotes = !in_quotes;
-        }
-        else if(cmdline[i] == ' ') {
+        } else if(cmdline[i] == ' ') {
             if(!in_quotes) {
                 ++original_cnt;
             }
@@ -291,8 +283,7 @@ int main(int argc_, char **argv_) {
         for(Int i = 0; (i < args_len); ++i) {
             if(arg_cpy[i] == '"') {
                 in_quotes = !in_quotes;
-            }
-            else if(arg_cpy[i] == ' ') {
+            } else if(arg_cpy[i] == ' ') {
                 if(!in_quotes) {
                     arg_cpy[i] = 0;
                 }
@@ -307,8 +298,7 @@ int main(int argc_, char **argv_) {
         Char **argv = system_malloc(sizeof(Char *) * mem_size);
         if(!argv) {
             system_write_to_console("Memory allocation fail");
-        }
-        else {
+        } else {
 
             Char **cur = argv;
             *cur++ = arg_cpy;
@@ -319,8 +309,7 @@ int main(int argc_, char **argv_) {
                         *cur = str;
                         ++cur;
                         ++argc;
-                    }
-                    else {
+                    } else {
                         WIN32_FIND_DATA find_data = {0};
                         HANDLE fhandle = FindFirstFile(str, &find_data);
 
@@ -337,8 +326,7 @@ int main(int argc_, char **argv_) {
                                 *cur = find_data.cFileName;
                                 ++cur;
                                 ++argc;
-                            }
-                            while(FindNextFile(fhandle, &find_data));
+                            } while(FindNextFile(fhandle, &find_data));
                         }
                     }
                 }

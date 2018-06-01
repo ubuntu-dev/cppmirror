@@ -12,7 +12,7 @@
 // 3rd party.
 #define STB_SPRINTF_IMPLEMENTATION
 #define STB_SPRINTF_NOFLOAT
-#include "stb_sprintf.h"
+#include "../shared/stb_sprintf.h"
 
 // Header files.
 #include "types.h"
