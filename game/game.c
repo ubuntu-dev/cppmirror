@@ -30,12 +30,12 @@ PP_IGNORE
 #define assert(x) SGL_ASSERT(x)
 
 struct V2 {
-    float x, y;
+    Float x, y;
 };
 V2 v2(Float x, Float y) {
     V2 res = { .x = x, .y = y };
 
-    return (res);
+    return(res);
 }
 
 enum Sprite_ID {
@@ -154,6 +154,7 @@ struct Entity {
 };
 
 struct Room {
+    Bool valid;
     V2 top_left;
     Entity *root;
     Room *up;
@@ -324,10 +325,12 @@ struct Camera {
 };
 
 #define INPUT_DELAY 100
+
+#define NUMBER_OF_ROOMS 32
 struct Game_State {
     sglp_Sprite sprite[pp_get_enum_size_const(Sprite_ID)];
 
-    Room room[32];
+    Room room[NUMBER_OF_ROOMS];
     Room *current_room;
 
     Entity *free_list; // TODO - Use me.
@@ -769,6 +772,7 @@ Void create_room(sglp_API *api, Room *room, V2 top_left, Char *format, Int len) 
     assert(sgl_string_len(format) == 100);
 
     room->top_left = top_left;
+    room->valid = true;
 
     Int width = 10;
     Int height = 10;
@@ -794,7 +798,33 @@ Void create_room(sglp_API *api, Room *room, V2 top_left, Char *format, Int len) 
     }
 }
 
-void init(sglp_API *api, Game_State *gs) {
+Void stitch_rooms(Game_State *gs) {
+    for(Int i = 0; (i < NUMBER_OF_ROOMS); ++i) {
+        if(gs->room[i].valid) {
+            Int current_x = sgl_floor_float_to_int(gs->room[i].top_left.x);
+            Int current_y = sgl_floor_float_to_int(gs->room[i].top_left.y);
+
+            for(Int j = 0; (j < NUMBER_OF_ROOMS); ++j) {
+                if(gs->room[j].valid) {
+                    Int next_x = sgl_floor_float_to_int(gs->room[j].top_left.x);
+                    Int next_y = sgl_floor_float_to_int(gs->room[j].top_left.y);
+
+                    if     (current_x + 1 == next_x && current_y == next_y) { gs->room[i].right = &gs->room[j]; }
+                    else if(current_x - 1 == next_x && current_y == next_y) { gs->room[i].left  = &gs->room[j]; }
+                    else if(current_y + 1 == next_y && current_x == next_x) { gs->room[i].down  = &gs->room[j]; }
+                    else if(current_y - 1 == next_y && current_x == next_x) { gs->room[i].up    = &gs->room[j]; }
+                }
+            }
+
+            if(!gs->room[i].right || !gs->room[i].left || !gs->room[i].down || !gs->room[i].up) {
+                // The room is floating in the middle of nowhere!
+                assert(0);
+            }
+        }
+    }
+}
+
+Void init(sglp_API *api, Game_State *gs) {
 
     load_image(api, gs->sprite, "player.png",    Sprite_ID_player,             12,  1);
     load_image(api, gs->sprite, "enemy_one.png", Sprite_ID_enemy_one,           8,  1);
@@ -803,6 +833,8 @@ void init(sglp_API *api, Game_State *gs) {
     load_image(api, gs->sprite, "block.png",     Sprite_ID_ground,              1,  1);
     load_image(api, gs->sprite, "block.png",     Sprite_ID_jumpthrough_ground,  1,  1);
     load_image(api, gs->sprite, "block.png",     Sprite_ID_block,               1,  1);
+
+    Int room_index = 0;
 
     Char *room_one =
         "          "
@@ -815,7 +847,7 @@ void init(sglp_API *api, Game_State *gs) {
         "          "
         "xxxxxxxxxx"
         "          ";
-    create_room(api, &gs->room[0], v2(0.0f, 0.0f), room_one, sgl_string_len(room_one));
+    create_room(api, &gs->room[room_index++], v2(0.0f, 0.0f), room_one, sgl_string_len(room_one));
 
     Char *room_two =
         "          "
@@ -824,16 +856,28 @@ void init(sglp_API *api, Game_State *gs) {
         "          "
         "          "
         "          "
-        "    xxxxxx"
+        "    x     "
         "    x     "
         "xxxxx     "
         "          ";
-    create_room(api, &gs->room[1], v2(1.0f, 0.0f), room_two, sgl_string_len(room_two));
+    create_room(api, &gs->room[room_index++], v2(1.0f, 0.0f), room_two, sgl_string_len(room_two));
 
-    // TODO - Stich together rooms properly.
+    Char *room_three =
+        "          "
+        "          "
+        "          "
+        "xxxxx     "
+        "x         "
+        "xxxx      "
+        "x         "
+        "xxxxx     "
+        "    xxxxxx"
+        "          ";
+    create_room(api, &gs->room[room_index++], v2(1.0f, 1.0f), room_three, sgl_string_len(room_three));
+
     gs->current_room = &gs->room[0];
-    gs->room[0].right = &gs->room[1];
-    gs->room[1].left = &gs->room[0];
+    stitch_rooms(gs);
+
 
     // Text
 #if 0

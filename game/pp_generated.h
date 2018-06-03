@@ -483,7 +483,7 @@ struct pp_sglp_RiffIter {
     uint8_t *at; uint8_t *stop; 
 };
 struct pp_V2 {
-    float x; float y; 
+    pp_Float x; pp_Float y; 
 };
 struct pp_Transform {
     pp_V2 position; pp_V2 scale; pp_Float rotation; 
@@ -513,7 +513,7 @@ struct pp_Entity {
      union {pp_Player player; pp_Enemy enemy; pp_Bullet bullet; pp_Ground ground; pp_JumpThrough_Ground jumpthrough_ground; pp_Block block; pp_TextObject text; };pp_Type type; pp_Entity *next; 
 };
 struct pp_Room {
-    pp_V2 top_left; pp_Entity *root; pp_Room *up; pp_Room *down; pp_Room *left; pp_Room *right; 
+    pp_Bool valid; pp_V2 top_left; pp_Entity *root; pp_Room *up; pp_Room *down; pp_Room *left; pp_Room *right; 
 };
 struct pp_Entity_Info {
     pp_Bool valid; pp_Sprite_ID sprite_id; pp_V2 *position; pp_V2 *scale; pp_Float *rotation; pp_Float *current_frame; 
@@ -1179,11 +1179,11 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
     else if(real_type == pp_Type_V2) {
         switch(index) {
             case 0: {
-                pp_MemberDefinition res = {pp_Type_float, "x", PP_OFFSETOF(pp_V2, x), 0, 0};
+                pp_MemberDefinition res = {pp_Type_Float, "x", PP_OFFSETOF(pp_V2, x), 0, 0};
                 return(res);
             } break; 
             case 1: {
-                pp_MemberDefinition res = {pp_Type_float, "y", PP_OFFSETOF(pp_V2, y), 0, 0};
+                pp_MemberDefinition res = {pp_Type_Float, "y", PP_OFFSETOF(pp_V2, y), 0, 0};
                 return(res);
             } break; 
         }
@@ -1347,26 +1347,30 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
     else if(real_type == pp_Type_Room) {
         switch(index) {
             case 0: {
-                pp_MemberDefinition res = {pp_Type_V2, "top_left", PP_OFFSETOF(pp_Room, top_left), 0, 0};
+                pp_MemberDefinition res = {pp_Type_Bool, "valid", PP_OFFSETOF(pp_Room, valid), 0, 0};
                 return(res);
             } break; 
             case 1: {
-                pp_MemberDefinition res = {pp_Type_Entity, "root", PP_OFFSETOF(pp_Room, root), 1, 0};
+                pp_MemberDefinition res = {pp_Type_V2, "top_left", PP_OFFSETOF(pp_Room, top_left), 0, 0};
                 return(res);
             } break; 
             case 2: {
-                pp_MemberDefinition res = {pp_Type_Room, "up", PP_OFFSETOF(pp_Room, up), 1, 0};
+                pp_MemberDefinition res = {pp_Type_Entity, "root", PP_OFFSETOF(pp_Room, root), 1, 0};
                 return(res);
             } break; 
             case 3: {
-                pp_MemberDefinition res = {pp_Type_Room, "down", PP_OFFSETOF(pp_Room, down), 1, 0};
+                pp_MemberDefinition res = {pp_Type_Room, "up", PP_OFFSETOF(pp_Room, up), 1, 0};
                 return(res);
             } break; 
             case 4: {
-                pp_MemberDefinition res = {pp_Type_Room, "left", PP_OFFSETOF(pp_Room, left), 1, 0};
+                pp_MemberDefinition res = {pp_Type_Room, "down", PP_OFFSETOF(pp_Room, down), 1, 0};
                 return(res);
             } break; 
             case 5: {
+                pp_MemberDefinition res = {pp_Type_Room, "left", PP_OFFSETOF(pp_Room, left), 1, 0};
+                return(res);
+            } break; 
+            case 6: {
                 pp_MemberDefinition res = {pp_Type_Room, "right", PP_OFFSETOF(pp_Room, right), 1, 0};
                 return(res);
             } break; 
@@ -1489,7 +1493,7 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_Block: { return(2); } break;
         case pp_Type_TextObject: { return(3); } break;
         case pp_Type_Entity: { return(9); } break;
-        case pp_Type_Room: { return(6); } break;
+        case pp_Type_Room: { return(7); } break;
         case pp_Type_Entity_Info: { return(6); } break;
         case pp_Type_Camera: { return(3); } break;
         case pp_Type_Game_State: { return(8); } break;
