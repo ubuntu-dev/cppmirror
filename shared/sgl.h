@@ -430,7 +430,7 @@ void __stdcall _DllMainCRTStartup(void) {
 
 #if defined(__cplusplus) && !defined(SGL_NO_EXTERN_C)
     #define SGL_EXTERN_C_END }
-    SGL_EXTERN_C_BEGIN
+    SGL_EXTERN_C_END
 #endif
 
 #define _SGL_H
