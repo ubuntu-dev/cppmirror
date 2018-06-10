@@ -408,16 +408,20 @@ File write_data(Parse_Result pr) {
             // Forward declare enums
             write_ob(&ob,
                      "\n"
-                     "/* Forward declared enums. */\n");
+                     "/* Forward declared enums. */\n"
+                     "#if !defined(__cplusplus)\n");
+
             for(Int i = 0; (i < pr.enums.cnt); ++i) {
                 Enum_Data *ed = pr.enums.e + i;
 
                 if(ed->type.len) {
-                    write_ob(&ob, "enum %.*s : %.*s;\n", ed->name.len, ed->name.e, ed->type.len, ed->type.e);
+                    write_ob(&ob, "    enum %.*s : %.*s;\n", ed->name.len, ed->name.e, ed->type.len, ed->type.e);
                 } else {
-                    write_ob(&ob, "typedef enum %.*s %.*s;\n", ed->name.len, ed->name.e, ed->name.len, ed->name.e);
+                    write_ob(&ob, "    typedef enum %.*s %.*s;\n", ed->name.len, ed->name.e, ed->name.len, ed->name.e);
                 }
             }
+
+            write_ob(&ob, "#endif // defined(__cplusplus)\n");
 
             // Forward declare structs.
             write_ob(&ob,
