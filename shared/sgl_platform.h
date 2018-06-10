@@ -9,11 +9,11 @@ Write #define SGLP_IMPLEMENTATION in ONE of the C/C++ files to create the implem
 
 There are some other flags which can be defined in order to change the behavior of this file.
 
-Some of the "functions" (macros) in this file can be redefined by the user. These include
-- SGLP_ASSERT(x)
+Some of the macros in this file can be redefined by the user. These include
+- SGLP_ASSERT(expression)
 
 // To do this just do the following in the file that defines SGLP_IMPLEMENTATION
-#define SGLP_ASSERT(x) my_assert(x)
+#define SGLP_ASSERT(expression) my_assert(expression)
 
 LICENSE at end of file.
 */
