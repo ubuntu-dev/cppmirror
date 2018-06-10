@@ -106,32 +106,32 @@ Int string_length(Char *str);
 Char *ErrorTypeToString(ErrorType e) {
     Char *res = 0;
 
-#define ERROR_TYPE_TO_STRING(err) err: { res = #err; } break
+#define ERROR_TYPE_TO_STRING(err) case err: { res = #err; } break
 
     switch(e) {
-        case ERROR_TYPE_TO_STRING(ErrorType_ran_out_of_memory);
-        case ERROR_TYPE_TO_STRING(ErrorType_assert_failed);
-        case ERROR_TYPE_TO_STRING(ErrorType_no_parameters);
-        case ERROR_TYPE_TO_STRING(ErrorType_cannot_find_file);
-        case ERROR_TYPE_TO_STRING(ErrorType_could_not_write_to_disk);
-        case ERROR_TYPE_TO_STRING(ErrorType_could_not_load_file);
-        case ERROR_TYPE_TO_STRING(ErrorType_no_files_pass_in);
-        case ERROR_TYPE_TO_STRING(ErrorType_could_not_find_mallocd_ptr);
-        case ERROR_TYPE_TO_STRING(ErrorType_memory_not_freed);
-        case ERROR_TYPE_TO_STRING(ErrorType_could_not_find_struct);
-        case ERROR_TYPE_TO_STRING(ErrorType_unknown_token_found);
-        case ERROR_TYPE_TO_STRING(ErrorType_failed_to_parse_enum);
-        case ERROR_TYPE_TO_STRING(ErrorType_failed_parsing_variable);
-        case ERROR_TYPE_TO_STRING(ErrorType_failed_to_find_size_of_array);
-        case ERROR_TYPE_TO_STRING(ErrorType_could_not_detect_struct_name);
-        case ERROR_TYPE_TO_STRING(ErrorType_did_not_write_entire_file);
-        case ERROR_TYPE_TO_STRING(ErrorType_did_not_read_entire_file);
-        case ERROR_TYPE_TO_STRING(ErrorType_could_not_create_directory);
-        case ERROR_TYPE_TO_STRING(ErrorType_incorrect_number_of_members_for_struct);
-        case ERROR_TYPE_TO_STRING(ErrorType_incorrect_struct_name);
-        case ERROR_TYPE_TO_STRING(ErrorType_incorrect_number_of_base_structs);
-        case ERROR_TYPE_TO_STRING(ErrorType_incorrect_members_in_struct);
-        case ERROR_TYPE_TO_STRING(ErrorType_incorrect_data_structure_type);
+            ERROR_TYPE_TO_STRING(ErrorType_ran_out_of_memory);
+            ERROR_TYPE_TO_STRING(ErrorType_assert_failed);
+            ERROR_TYPE_TO_STRING(ErrorType_no_parameters);
+            ERROR_TYPE_TO_STRING(ErrorType_cannot_find_file);
+            ERROR_TYPE_TO_STRING(ErrorType_could_not_write_to_disk);
+            ERROR_TYPE_TO_STRING(ErrorType_could_not_load_file);
+            ERROR_TYPE_TO_STRING(ErrorType_no_files_pass_in);
+            ERROR_TYPE_TO_STRING(ErrorType_could_not_find_mallocd_ptr);
+            ERROR_TYPE_TO_STRING(ErrorType_memory_not_freed);
+            ERROR_TYPE_TO_STRING(ErrorType_could_not_find_struct);
+            ERROR_TYPE_TO_STRING(ErrorType_unknown_token_found);
+            ERROR_TYPE_TO_STRING(ErrorType_failed_to_parse_enum);
+            ERROR_TYPE_TO_STRING(ErrorType_failed_parsing_variable);
+            ERROR_TYPE_TO_STRING(ErrorType_failed_to_find_size_of_array);
+            ERROR_TYPE_TO_STRING(ErrorType_could_not_detect_struct_name);
+            ERROR_TYPE_TO_STRING(ErrorType_did_not_write_entire_file);
+            ERROR_TYPE_TO_STRING(ErrorType_did_not_read_entire_file);
+            ERROR_TYPE_TO_STRING(ErrorType_could_not_create_directory);
+            ERROR_TYPE_TO_STRING(ErrorType_incorrect_number_of_members_for_struct);
+            ERROR_TYPE_TO_STRING(ErrorType_incorrect_struct_name);
+            ERROR_TYPE_TO_STRING(ErrorType_incorrect_number_of_base_structs);
+            ERROR_TYPE_TO_STRING(ErrorType_incorrect_members_in_struct);
+            ERROR_TYPE_TO_STRING(ErrorType_incorrect_data_structure_type);
 
         default: assert(0); break;
     }
