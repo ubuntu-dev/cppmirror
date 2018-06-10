@@ -1,8 +1,8 @@
 @echo off
 
 
-set VISUAL_STUDIO_VERSION=12
-if %VISUAL_STUDIO_VERSION%=="17" (
+set VISUAL_STUDIO_VERSION=17
+if %VISUAL_STUDIO_VERSION%==17 (
     call "C:\Program Files (x86)\Microsoft Visual Studio\2017\community\VC\Auxiliary\Build\vcvarsall.bat" x64 > NUL
 ) else (
     call "C:\Program Files (x86)\Microsoft Visual Studio %VISUAL_STUDIO_VERSION%.0\VC\vcvarsall.bat" x64 > NUL
@@ -17,7 +17,7 @@ set BUILD_GAME=true
 set RUN_TESTS=true
 
 rem Warnings to ignore.
-set COMMON_WARNINGS=-wd4189 -wd4706 -wd4996 -wd4100 -wd4127 -wd4267 -wd4505 -wd4820 -wd4365 -wd4514 -wd4062 -wd4061 -wd4668 -wd4389 -wd4018 -wd4711 -wd4987 -wd4710 -wd4625 -wd4626 -wd4350 -wd4826 -wd4640 -wd4571 -wd4986 -wd4388 -wd4129 -wd4201 -wd4577 -wd4244 -wd4623 -wd4204 -wd4101 -wd4255 -wd4191 -wd4477 -wd4242
+set COMMON_WARNINGS=-wd4189 -wd4706 -wd4996 -wd4100 -wd4127 -wd4267 -wd4505 -wd4820 -wd4365 -wd4514 -wd4062 -wd4061 -wd4668 -wd4389 -wd4018 -wd4711 -wd4987 -wd4710 -wd4625 -wd4626 -wd4350 -wd4826 -wd4640 -wd4571 -wd4986 -wd4388 -wd4129 -wd4201 -wd4577 -wd4244 -wd4623 -wd4204 -wd4101 -wd4255 -wd4191 -wd4477 -wd4242 -wd5045 -wd4464
 
 rem INTERNAL macro
 if "%RELEASE%"=="true" (
@@ -56,7 +56,7 @@ rem Build game
 if "%BUILD_GAME%"=="true" (
     rem Run mirror on game code.
     pushd "game"
-    "../build/mirror.exe" game.c %INTERNAL%
+    "../build/mirror.exe" game.cpp %INTERNAL%
     popd
 
     rem Compile game code.
@@ -65,10 +65,10 @@ if "%BUILD_GAME%"=="true" (
     del *_game.pdb > NUL > NUL
 
     rem This is the version where the platform code and game code are a seperate EXE and DLL.
-    cl -LD -FeGame %COMPILER_FLAGS% "../game/game.c" -FmGame.map %COMMON_LINKER_FLAGS% -opt:ref -PDB:%random%_game.pdb -subsystem:windows,5.2
+    cl -LD -FeGame %COMPILER_FLAGS% "../game/game.cpp" -FmGame.map %COMMON_LINKER_FLAGS% -opt:ref -PDB:%random%_game.pdb -subsystem:windows,5.2
     cl -FeWin32 %COMPILER_FLAGS% -DSGLP_LOAD_GAME_FROM_DLL=game -Tc"../game/win32_platform.c" -FmWin32.map %COMMON_LINKER_FLAGS% -subsystem:windows,5.2
     
     rem This is the version with the platform and the game code in one EXE.
-    rem cl -FeGame %COMPILER_FLAGS% "../game/game.c" -FmGame.map %COMMON_LINKER_FLAGS% -subsystem:windows,5.2
+    rem cl -FeGame %COMPILER_FLAGS% "../game/game.cpp" -FmGame.map %COMMON_LINKER_FLAGS% -subsystem:windows,5.2
     popd
 )

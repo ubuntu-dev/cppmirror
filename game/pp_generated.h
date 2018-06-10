@@ -86,11 +86,13 @@ PP_STATIC void *PP_MEMSET(void *dst, uint8_t v, uintptr_t size) {
 #if !defined(PP_NO_FORWARD_DECLARE)
 
 /* Forward declared enums. */
-typedef enum sglp_Key sglp_Key;
-typedef enum Sprite_ID Sprite_ID;
-typedef enum Direction Direction;
-typedef enum Player_Direction Player_Direction;
-typedef enum Sound_ID Sound_ID;
+#if !defined(__cplusplus)
+    typedef enum sglp_Key sglp_Key;
+    typedef enum Sprite_ID Sprite_ID;
+    typedef enum Direction Direction;
+    typedef enum Player_Direction Player_Direction;
+    typedef enum Sound_ID Sound_ID;
+#endif // defined(__cplusplus)
 
 /* Forward declared structs. */
 typedef struct stbsp__context stbsp__context;
@@ -270,13 +272,13 @@ typedef enum pp_Type {
     pp_Type_V2,
     pp_Type_Transform,
     pp_Type_Bullet,
+    pp_Type_Entity,
     pp_Type_Player,
     pp_Type_Enemy,
     pp_Type_Ground,
     pp_Type_JumpThrough_Ground,
     pp_Type_Block,
     pp_Type_TextObject,
-    pp_Type_Entity,
     pp_Type_pp_Type,
     pp_Type_Room,
     pp_Type_Entity_Info,
@@ -489,7 +491,7 @@ struct pp_Transform {
     pp_V2 position; pp_V2 scale; pp_Float rotation; 
 };
 struct pp_Bullet {
-    pp_Transform transform; pp_Direction dir; pp_Void *parent; 
+    pp_Transform transform; pp_Direction dir; pp_Entity *parent; 
 };
 struct pp_Player {
     pp_Transform transform; pp_V2 start_pos; pp_Player_Direction dir; pp_Float current_frame; pp_V2 current_speed; pp_Bool can_shoot; pp_Int shot_timer; 
@@ -1215,7 +1217,7 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 return(res);
             } break; 
             case 2: {
-                pp_MemberDefinition res = {pp_Type_Void, "parent", PP_OFFSETOF(pp_Bullet, parent), 1, 0};
+                pp_MemberDefinition res = {pp_Type_Entity, "parent", PP_OFFSETOF(pp_Bullet, parent), 1, 0};
                 return(res);
             } break; 
         }
@@ -1671,13 +1673,13 @@ PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_V2: { return("V2"); } break;
         case pp_Type_Transform: { return("Transform"); } break;
         case pp_Type_Bullet: { return("Bullet"); } break;
+        case pp_Type_Entity: { return("Entity"); } break;
         case pp_Type_Player: { return("Player"); } break;
         case pp_Type_Enemy: { return("Enemy"); } break;
         case pp_Type_Ground: { return("Ground"); } break;
         case pp_Type_JumpThrough_Ground: { return("JumpThrough_Ground"); } break;
         case pp_Type_Block: { return("Block"); } break;
         case pp_Type_TextObject: { return("TextObject"); } break;
-        case pp_Type_Entity: { return("Entity"); } break;
         case pp_Type_pp_Type: { return("pp_Type"); } break;
         case pp_Type_Room: { return("Room"); } break;
         case pp_Type_Entity_Info: { return("Entity_Info"); } break;
@@ -1825,13 +1827,13 @@ PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
         case pp_Type_V2: { return sizeof(pp_V2); } break;
         case pp_Type_Transform: { return sizeof(pp_Transform); } break;
         case pp_Type_Bullet: { return sizeof(pp_Bullet); } break;
+        case pp_Type_Entity: { return sizeof(pp_Entity); } break;
         case pp_Type_Player: { return sizeof(pp_Player); } break;
         case pp_Type_Enemy: { return sizeof(pp_Enemy); } break;
         case pp_Type_Ground: { return sizeof(pp_Ground); } break;
         case pp_Type_JumpThrough_Ground: { return sizeof(pp_JumpThrough_Ground); } break;
         case pp_Type_Block: { return sizeof(pp_Block); } break;
         case pp_Type_TextObject: { return sizeof(pp_TextObject); } break;
-        case pp_Type_Entity: { return sizeof(pp_Entity); } break;
         case pp_Type_Room: { return sizeof(pp_Room); } break;
         case pp_Type_Entity_Info: { return sizeof(pp_Entity_Info); } break;
         case pp_Type_Camera: { return sizeof(pp_Camera); } break;

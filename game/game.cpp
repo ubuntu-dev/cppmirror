@@ -33,7 +33,7 @@ struct V2 {
     Float x, y;
 };
 V2 v2(Float x, Float y) {
-    V2 res = { .x = x, .y = y };
+    V2 res = { x, y };
 
     return(res);
 }
@@ -76,7 +76,7 @@ enum Direction {
 struct Bullet {
     Transform transform;
     Direction dir;
-    Void *parent;
+    Entity *parent;
 };
 Bullet bullet(void) {
     Bullet res = {0};
@@ -105,7 +105,7 @@ struct Player {
 };
 
 Direction player_direction_to_direction(Player_Direction pd) {
-    Direction d = 0;
+    Direction d = Direction_unknown;
     if      (pd == Player_Direction_left)  { d = Direction_left;  }
     else if (pd == Player_Direction_right) { d = Direction_right; }
     else if (pd == Player_Direction_up)    { d = Direction_up;    }
@@ -265,7 +265,7 @@ Entity *get_end_entity(Entity *root) {
 }
 
 Void add_entity_to_room(sglp_API *api, Room *room, Void *var, pp_Type type) {
-    Entity *next = api->sglp_push_permanent_struct(api, Entity);
+    Entity *next = (Entity *)api->sglp_push_permanent_struct(api, Entity);
     uintptr_t size = pp_get_size_from_type(type);
 
     if(!room->root) {
@@ -540,7 +540,7 @@ Void draw_entity_text(sglp_API *api, Game_State *gs, Entity *entity, V2 mouse_po
 
         Int buffer_size = 256 * 256;
         sglp_TempMemory tm = api->sglp_push_temp_memory(api, buffer_size);
-        Char *buffer = api->sglp_push_off_temp_memory(&tm, buffer_size);
+        Char *buffer = (Char *)api->sglp_push_off_temp_memory(&tm, buffer_size);
         pp_serialize_struct_type(entity, entity->type, buffer, buffer_size);
 
         draw_word(buffer, api, gs, mouse_position, word_size);
@@ -566,7 +566,7 @@ Void draw_block(sglp_API *api, Game_State *gs, Transform transform) {
 Void draw_debug_information(sglp_API *api, Game_State *gs) {
 #if INTERNAL
 
-    Player *player = find_first_entity(gs->current_room->root, pp_Type_Player);
+    Player *player = (Player *)find_first_entity(gs->current_room->root, pp_Type_Player);
 
     // TODO - This is actually kinda awful (and doesn't work).
     if (gs->show_text_box) {
@@ -589,7 +589,7 @@ Void draw_debug_information(sglp_API *api, Game_State *gs) {
     if(1) {
         Int buffer_size = 256 * 256;
         sglp_TempMemory temp_memory = api->sglp_push_temp_memory(api, buffer_size);
-        Char *buffer = api->sglp_push_off_temp_memory(&temp_memory, buffer_size);
+        Char *buffer = (Char *)api->sglp_push_off_temp_memory(&temp_memory, buffer_size);
         pp_serialize_struct(&mouse_position, V2, buffer, buffer_size);
         draw_word(buffer, api, gs, v2(0.5f, 0.5f), v2(0.025f, 0.025f));
         api->sglp_pop_temp_memory(api, &temp_memory);
@@ -750,10 +750,10 @@ void load_image(sglp_API *api, sglp_Sprite *sprite, char const *fname, Sprite_ID
 
 Char *push_and_copy_string(sglp_API *api, Char *string) {
     Int length = sgl_string_len(string);
-    Void *new = api->sglp_push_permanent_memory(api, length);
-    sgl_memcpy(new, string, length);
+    Char *new_string = (Char *)api->sglp_push_permanent_memory(api, length);
+    sgl_memcpy(new_string, string, length);
 
-    return(new);
+    return(new_string);
 }
 
 TextObject create_text(sglp_API *api, Char *string, V2 position, V2 word_size) {
@@ -887,7 +887,7 @@ Void init(sglp_API *api, Game_State *gs) {
 
     // Camera
     {
-        Player *player = find_first_entity(gs->current_room->root, pp_Type_Player);
+        Player *player = (Player *)find_first_entity(gs->current_room->root, pp_Type_Player);
         assert(player);
 
         gs->camera.speed = v2(0.05f, 0.05f);
@@ -920,7 +920,7 @@ Void init(sglp_API *api, Game_State *gs) {
     gs->gravity_direction = Direction_down;
 
 #if INTERNAL
-    gs->text_box_input = api->sglp_push_permanent_memory(api, 256 * 256);
+    gs->text_box_input = (Char *)api->sglp_push_permanent_memory(api, 256 * 256);
 #endif
 }
 
@@ -1324,7 +1324,7 @@ Void update_player(Player *player, sglp_API *api, Game_State *gs) {
 }
 
 Void update_enemy(Enemy *enemy, Game_State *gs) {
-    Player *player = find_first_entity(gs->current_room->root, pp_Type_Player);
+    Player *player = (Player *)find_first_entity(gs->current_room->root, pp_Type_Player);
     if (player) {
         // Set the player to the start if they touch an enemy.
         if (overlap(player->transform, enemy->transform)) {
@@ -1352,7 +1352,7 @@ Void update_enemy(Enemy *enemy, Game_State *gs) {
 
 void update_bullet(Bullet *bullet, Game_State *gs) {
     // Bullet movement
-    if (bullet->dir != Direction_unknown) {
+    if(bullet->dir != Direction_unknown) {
         Float bullet_speed = 0.002f;
 
         if(bullet->dir == Direction_left)       { bullet->transform.position.x -= bullet_speed; }
@@ -1366,10 +1366,10 @@ void update_bullet(Bullet *bullet, Game_State *gs) {
         }
     }
 
-    if (bullet->dir == Direction_unknown) {
+    if(bullet->dir == Direction_unknown) {
         bullet->transform.position = v2(400, 400);
         Entity *parent = bullet->parent;
-        if (parent) {
+        if(parent) {
             switch (parent->type) {
                 case pp_Type_Player: { parent->player.can_shoot = true; } break;
 
@@ -1399,7 +1399,7 @@ Void handle_input_commands(Char *cmd, sglp_API *api, Game_State *gs) {
 
 Void update_camera(Game_State *gs) {
     Camera *camera = &gs->camera;
-    Player *player = find_first_entity(gs->current_room->root, pp_Type_Player);
+    Player *player = (Player *)find_first_entity(gs->current_room->root, pp_Type_Player);
 
     // TODO - This doesn't work for negative player positions.
     Float target_x = (float)((int)player->transform.position.x);
@@ -1472,7 +1472,7 @@ Void update(sglp_API *api, Game_State *gs) {
             gs->input_delay -= api->dt;
         }
 
-        for(sglp_Key key = sglp_key_a; key <= sglp_key_z; ++key) {
+        for(Int/*sglp_Key*/ key = sglp_key_a; key <= sglp_key_z; ++key) {
             Bool val = api->key[key];
             if(val) {
                 Int end = sgl_string_len(gs->text_box_input) - 1;
