@@ -6,6 +6,7 @@
 #include "pp_generated.h"
 
 #define SGLM_IMPLEMENTATION
+#define SGLM_USING_NAMESPACE_SGLM_V2
 #include "../shared/sgl_math.h"
 
 #define SGL_IMPLEMENTATION
@@ -29,15 +30,6 @@ PP_IGNORE
 
 #define assert(x) SGL_ASSERT(x)
 
-struct V2 {
-    Float x, y;
-};
-V2 v2(Float x, Float y) {
-    V2 res = { x, y };
-
-    return(res);
-}
-
 enum Sprite_ID {
     Sprite_ID_unknown,
 
@@ -51,11 +43,11 @@ enum Sprite_ID {
 };
 
 struct Transform {
-    V2 position;
-    V2 scale;
+    sglm_V2 position;
+    sglm_V2 scale;
     Float rotation;
 };
-Transform create_transform(V2 position, V2 scale, Float rotation) {
+Transform create_transform(sglm_V2 position, sglm_V2 scale, Float rotation) {
     Transform res;
     res.position = position;
     res.scale = scale;
@@ -63,8 +55,6 @@ Transform create_transform(V2 position, V2 scale, Float rotation) {
 
     return(res);
 }
-
-
 enum Direction {
     Direction_unknown,
     Direction_left,
@@ -95,10 +85,10 @@ enum Player_Direction {
 };
 struct Player {
     Transform transform;
-    V2 start_pos;
+    sglm_V2 start_pos;
     Player_Direction dir;
     Float current_frame;
-    V2 current_speed;
+    sglm_V2 current_speed;
 
     Bool can_shoot;
     Int shot_timer;
@@ -128,13 +118,13 @@ struct JumpThrough_Ground {
 
 struct Block {
     Transform transform;
-    V2 current_speed;
+    sglm_V2 current_speed;
 };
 
 struct TextObject {
     char *str;
-    V2 position;
-    V2 word_size;
+    sglm_V2 position;
+    sglm_V2 word_size;
 };
 
 struct Entity {
@@ -155,7 +145,7 @@ struct Entity {
 
 struct Room {
     Bool valid;
-    V2 top_left;
+    sglm_V2 top_left;
     Entity *root;
     Room *up;
     Room *down;
@@ -167,8 +157,8 @@ struct Entity_Info {
     Bool valid;
     Sprite_ID sprite_id;
 
-    V2 *position;
-    V2 *scale;
+    sglm_V2 *position;
+    sglm_V2 *scale;
     Float *rotation;
 
     Float *current_frame;
@@ -318,8 +308,8 @@ Void *find_next_entity(Void *root, pp_Type type) {
 }
 
 struct Camera {
-    V2 position;
-    V2 speed;
+    sglm_V2 position;
+    sglm_V2 speed;
     // Void *entity_to_follow;
     Bool follow_exactly;
 };
@@ -382,8 +372,8 @@ Float accelerate(Float cur, Float max, Float acc, Bool forward) {
     return (res);
 }
 
-V2 get_letter_position(char Letter);
-void draw_word(char const *str, sglp_API *api, Game_State *gs, V2 position, V2 scale) {
+sglm_V2 get_letter_position(char Letter);
+void draw_word(char const *str, sglp_API *api, Game_State *gs, sglm_V2 position, sglm_V2 scale) {
     scale.x *= 0.5f;
     Int string_length = sgl_string_len(str);
     Float running_x = position.x;
@@ -395,7 +385,7 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, V2 position, V2 s
             running_y += scale.y;
             running_x = position.x;
         } else {
-            V2 pos_in_table = get_letter_position(letter);
+            sglm_V2 pos_in_table = get_letter_position(letter);
             if (pos_in_table.x != -1 && pos_in_table.y != -1) {
                 sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale(running_x, running_y, scale.x, scale.y);
                 float tform[16] = {0};
@@ -409,8 +399,8 @@ void draw_word(char const *str, sglp_API *api, Game_State *gs, V2 position, V2 s
     }
 }
 
-V2 get_centre_pos(Transform t) {
-    V2 res;
+sglm_V2 get_centre_pos(Transform t) {
+    sglm_V2 res;
     res.x = t.position.x - (t.scale.x * 0.5f);
     res.y = t.position.y - (t.scale.y * 0.5f);
 
@@ -457,8 +447,8 @@ Transform get_feet(Transform t, Direction dir) {
 
     res.rotation = t.rotation;
 
-    if (is_vertical(dir)) { res.scale.y = t.scale.y * foot_size; }
-    else                 { res.scale.x = t.scale.x * foot_size; }
+    if(is_vertical(dir)) { res.scale.y = t.scale.y * foot_size; res.scale.x *= 0.9f; }
+    else                 { res.scale.x = t.scale.x * foot_size; res.scale.y *= 0.9f; }
 
     switch (dir) {
         case Direction_down:  { res.position.y = t.position.y + ((t.scale.y * 0.5f) * (1.0f - foot_size)); } break;
@@ -480,8 +470,8 @@ Transform get_head(Transform t, Direction dir) {
 }
 
 Bool overlap(Transform a, Transform b) {
-    V2 centre_a = get_centre_pos(a);
-    V2 centre_b = get_centre_pos(b);
+    sglm_V2 centre_a = get_centre_pos(a);
+    sglm_V2 centre_b = get_centre_pos(b);
 
     if ((centre_a.x >= centre_b.x && centre_a.x <= centre_b.x + b.scale.x) || (centre_b.x >= centre_a.x && centre_b.x <= centre_a.x + a.scale.x)) {
         if ((centre_a.y >= centre_b.y && centre_a.y <= centre_b.y + b.scale.y) || (centre_b.y >= centre_a.y && centre_b.y <= centre_a.y + a.scale.y)) {
@@ -492,7 +482,7 @@ Bool overlap(Transform a, Transform b) {
     return false;
 }
 
-Bool point_overlap(V2 p, Transform t) {
+Bool point_overlap(sglm_V2 p, Transform t) {
     Float x = t.position.x - (t.scale.x * 0.5f);
     Float y = t.position.y - (t.scale.y * 0.5f);
     if ((p.x > x && p.x < x + t.scale.x)) {
@@ -505,7 +495,7 @@ Bool point_overlap(V2 p, Transform t) {
 }
 
 // TODO - Pass just the speed, not the player in here.
-Bool is_falling(V2 current_speed, Direction gravity_direction) {
+Bool is_falling(sglm_V2 current_speed, Direction gravity_direction) {
     Bool res = false;
     Float delta = 0.0f;
     if((gravity_direction == Direction_down && current_speed.y > delta) ||
@@ -518,7 +508,7 @@ Bool is_falling(V2 current_speed, Direction gravity_direction) {
     return (res);
 }
 
-Bool is_jumping(V2 current_speed, Direction gravity_direction) {
+Bool is_jumping(sglm_V2 current_speed, Direction gravity_direction) {
     Bool res = is_falling(current_speed, get_opposite(gravity_direction));
 
     return (res);
@@ -532,11 +522,11 @@ Bool is_offscreen(Transform t) {
     }
 }
 
-Void draw_entity_text(sglp_API *api, Game_State *gs, Entity *entity, V2 mouse_position, V2 top_left, Transform transform) {
-    V2 mouse_position_in_world = v2(mouse_position.x + top_left.x, mouse_position.y + top_left.y);
+Void draw_entity_text(sglp_API *api, Game_State *gs, Entity *entity, sglm_V2 mouse_position, sglm_V2 top_left, Transform transform) {
+    sglm_V2 mouse_position_in_world = sglm_v2(mouse_position.x + top_left.x, mouse_position.y + top_left.y);
 
     if(point_overlap(mouse_position_in_world, transform)) {
-        V2 word_size = v2(0.025f, 0.025f);
+        sglm_V2 word_size = sglm_v2(0.025f, 0.025f);
 
         Int buffer_size = 256 * 256;
         sglp_TempMemory tm = api->sglp_push_temp_memory(api, buffer_size);
@@ -570,7 +560,7 @@ Void draw_debug_information(sglp_API *api, Game_State *gs) {
 
     // TODO - This is actually kinda awful (and doesn't work).
     if (gs->show_text_box) {
-        V2 size = v2(1.0f, 0.25f);
+        sglm_V2 size = sglm_v2(1.0f, 0.25f);
         sglm_Mat4x4 mat = sglm_mat4x4_set_trans_scale_rot(0.0f + (size.x * 0.5f), 0.0f + (size.y * 0.5f),
                                                           size.x, size.y,
                                                           0.0f);
@@ -580,24 +570,24 @@ Void draw_debug_information(sglp_API *api, Game_State *gs) {
         api->sglp_draw_black_box(api, tform);
 
 
-        V2 word_size = v2(0.025f, 0.025f);
-        draw_word(gs->text_box_input, api, gs, v2(0.1f, 0.1f), word_size);
+        sglm_V2 word_size = sglm_v2(0.025f, 0.025f);
+        draw_word(gs->text_box_input, api, gs, sglm_v2(0.1f, 0.1f), word_size);
     }
 
-    V2 mouse_position = v2(api->mouse_x, api->mouse_y);
+    sglm_V2 mouse_position = sglm_v2(api->mouse_x, api->mouse_y);
 
     if(1) {
         Int buffer_size = 256 * 256;
         sglp_TempMemory temp_memory = api->sglp_push_temp_memory(api, buffer_size);
         Char *buffer = (Char *)api->sglp_push_off_temp_memory(&temp_memory, buffer_size);
-        pp_serialize_struct(&mouse_position, V2, buffer, buffer_size);
-        draw_word(buffer, api, gs, v2(0.5f, 0.5f), v2(0.025f, 0.025f));
+        pp_serialize_struct(&mouse_position, sglm_V2, buffer, buffer_size);
+        draw_word(buffer, api, gs, sglm_v2(0.5f, 0.5f), sglm_v2(0.025f, 0.025f));
         api->sglp_pop_temp_memory(api, &temp_memory);
     }
 
     Entity *next = gs->current_room->root;
     while(next) {
-        V2 position_to_draw = {0};
+        sglm_V2 position_to_draw = {0};
         Transform transform = {0};
         switch(next->type) {
             case pp_Type_Player: { transform = next->player.transform; } break;
@@ -617,7 +607,7 @@ Void draw_debug_information(sglp_API *api, Game_State *gs) {
 
     if(0) {
         Char *s = is_falling(player->current_speed, gs->gravity_direction) ? "Falling" : "Jumping";
-        draw_word(s, api, gs, v2(0.5f, 0.5f), v2(0.025f, 0.025f));
+        draw_word(s, api, gs, sglm_v2(0.5f, 0.5f), sglm_v2(0.025f, 0.025f));
     }
 
 #endif
@@ -631,7 +621,7 @@ void render_room(sglp_API *api, Game_State *gs, Room *room) {
                 TextObject *text = &next->text;
                 Float x = text->position.x - gs->camera.position.x;
                 Float y = text->position.y - gs->camera.position.y;
-                draw_word(text->str, api, gs, v2(x, y), text->word_size);
+                draw_word(text->str, api, gs, sglm_v2(x, y), text->word_size);
             } else {
                 Entity_Info entity_info = get_entity_info(next);
                 assert(entity_info.valid);
@@ -702,7 +692,7 @@ Player create_player(float x, float y) {
 Bullet create_bullet(void) {
     Bullet res = {0};
 
-    res.transform.position = v2(400, 400);
+    res.transform.position = sglm_v2(400, 400);
 
     return (res);
 }
@@ -711,13 +701,13 @@ Bullet create_bullet(void) {
 Ground create_ground(Float x, Float y) {
     Ground res = {0};
 
-    //res.transform.position = v2(x, y);
-    //res.transform.scale = v2(0.1f, 0.1f);
+    //res.transform.position = sglm_v2(x, y);
+    //res.transform.scale = sglm_v2(0.1f, 0.1f);
 
     Float scalex = 0.1f;
     Float scaley = 0.1f;
-    res.transform.position = v2(x + (scalex * 0.5f), y + (scaley * 0.5f));
-    res.transform.scale = v2(scalex, scaley);
+    res.transform.position = sglm_v2(x + (scalex * 0.5f), y + (scaley * 0.5f));
+    res.transform.scale = sglm_v2(scalex, scaley);
 
     return (res);
 }
@@ -725,8 +715,8 @@ Ground create_ground(Float x, Float y) {
 JumpThrough_Ground create_jump_through_ground(Float x, Float y, Float scalex, Float scaley) {
     JumpThrough_Ground res = {0};
 
-    res.transform.position = v2(x - (scalex * 0.5f), y - (scaley * 0.5f));
-    res.transform.scale = v2(scalex, scaley);
+    res.transform.position = sglm_v2(x - (scalex * 0.5f), y - (scaley * 0.5f));
+    res.transform.scale = sglm_v2(scalex, scaley);
 
     return(res);
 }
@@ -734,8 +724,8 @@ JumpThrough_Ground create_jump_through_ground(Float x, Float y, Float scalex, Fl
 Block create_block(Float x, Float y) {
     Block res = {0};
 
-    res.transform.position = v2(x, y);
-    res.transform.scale = v2(0.1f, 0.1f);
+    res.transform.position = sglm_v2(x, y);
+    res.transform.scale = sglm_v2(0.1f, 0.1f);
 
     return(res);
 }
@@ -756,7 +746,7 @@ Char *push_and_copy_string(sglp_API *api, Char *string) {
     return(new_string);
 }
 
-TextObject create_text(sglp_API *api, Char *string, V2 position, V2 word_size) {
+TextObject create_text(sglp_API *api, Char *string, sglm_V2 position, sglm_V2 word_size) {
     TextObject res = {0};
 
     // TODO - It'd be cool if I manually inserted newlines in here if the word was going offscreen (crossed over
@@ -768,7 +758,7 @@ TextObject create_text(sglp_API *api, Char *string, V2 position, V2 word_size) {
     return(res);
 }
 
-Void create_room(sglp_API *api, Room *room, V2 top_left, Char *format, Int len) {
+Void create_room(sglp_API *api, Room *room, sglm_V2 top_left, Char *format, Int len) {
     assert(sgl_string_len(format) == 100);
 
     room->top_left = top_left;
@@ -847,7 +837,7 @@ Void init(sglp_API *api, Game_State *gs) {
         "          "
         "xxxxxxxxxx"
         "          ";
-    create_room(api, &gs->room[room_index++], v2(0.0f, 0.0f), room_one, sgl_string_len(room_one));
+    create_room(api, &gs->room[room_index++], sglm_v2(0.0f, 0.0f), room_one, sgl_string_len(room_one));
 
     Char *room_two =
         "          "
@@ -860,7 +850,7 @@ Void init(sglp_API *api, Game_State *gs) {
         "    x     "
         "xxxxx     "
         "          ";
-    create_room(api, &gs->room[room_index++], v2(1.0f, 0.0f), room_two, sgl_string_len(room_two));
+    create_room(api, &gs->room[room_index++], sglm_v2(1.0f, 0.0f), room_two, sgl_string_len(room_two));
 
     Char *room_three =
         "          "
@@ -873,7 +863,7 @@ Void init(sglp_API *api, Game_State *gs) {
         "xxxxx     "
         "    xxxxxx"
         "          ";
-    create_room(api, &gs->room[room_index++], v2(1.0f, 1.0f), room_three, sgl_string_len(room_three));
+    create_room(api, &gs->room[room_index++], sglm_v2(1.0f, 1.0f), room_three, sgl_string_len(room_three));
 
     gs->current_room = &gs->room[0];
     stitch_rooms(gs);
@@ -881,7 +871,7 @@ Void init(sglp_API *api, Game_State *gs) {
 
     // Text
 #if 0
-    TextObject text = create_text(api, "Use the left and right arrows\nto move left and right.", v2(0.1f, 0.1f), v2(0.05f, 0.05f));
+    TextObject text = create_text(api, "Use the left and right arrows\nto move left and right.", sglm_v2(0.1f, 0.1f), sglm_v2(0.05f, 0.05f));
     push_entity(api, gs->current_room, &text, pp_Type_TextObject);
 #endif
 
@@ -890,7 +880,7 @@ Void init(sglp_API *api, Game_State *gs) {
         Player *player = (Player *)find_first_entity(gs->current_room->root, pp_Type_Player);
         assert(player);
 
-        gs->camera.speed = v2(0.05f, 0.05f);
+        gs->camera.speed = sglm_v2(0.05f, 0.05f);
         // gs->camera.entity_to_follow = player;
         gs->camera.follow_exactly = false;
         gs->camera.position.x = (int)player->transform.position.x;
@@ -943,7 +933,7 @@ Bool is_non_jumpthrough_block(Entity *entity) {
     return (res);
 }
 
-Void accelerate_in_direction(V2 *current_speed, V2 max_speed, Float acceleration, Bool forward, Direction dir) {
+Void accelerate_in_direction(sglm_V2 *current_speed, sglm_V2 max_speed, Float acceleration, Bool forward, Direction dir) {
     switch(dir) {
         case Direction_down:  { current_speed->y += accelerate(current_speed->y, max_speed.y, acceleration, forward);  } break;
         case Direction_up:    { current_speed->y += accelerate(current_speed->y, max_speed.y, acceleration, !forward); } break;
@@ -954,9 +944,8 @@ Void accelerate_in_direction(V2 *current_speed, V2 max_speed, Float acceleration
     }
 }
 
-
 // TODO - This modifies the transform. Might be better to return a new struct with the new transform/entity standing on.
-Entity *handling_landing_on_block_internal(Entity *next, Transform *transform, V2 current_speed, Direction gravity_direction) {
+Entity *handling_landing_on_block_internal(Entity *next, Transform *transform, sglm_V2 current_speed, Direction gravity_direction) {
     Entity *standing_on = 0;
 
     Transform copy_transform = *transform;
@@ -991,7 +980,7 @@ Entity *handling_landing_on_block_internal(Entity *next, Transform *transform, V
     return(standing_on);
 }
 
-Entity *handle_landing_on_block(Room *room, Transform *transform, V2 current_speed, Direction gravity_direction) {
+Entity *handle_landing_on_block(Room *room, Transform *transform, sglm_V2 current_speed, Direction gravity_direction) {
     Entity *standing_on = 0;
     if(is_falling(current_speed, gravity_direction)) {
 
@@ -1030,7 +1019,7 @@ Bool handle_booping_head_on_block_internal(Entity *next, Transform transform) {
 }
 
 
-Bool handle_booping_head_on_block(Room *room, Transform transform, V2 current_speed, Direction gravity_direction) {
+Bool handle_booping_head_on_block(Room *room, Transform transform, sglm_V2 current_speed, Direction gravity_direction) {
     Bool hit = false;
     if(is_jumping(current_speed, gravity_direction)) {
         if(is_vertical(gravity_direction)) { transform.position.y += current_speed.y; }
@@ -1071,7 +1060,7 @@ Bool handle_hitting_side_of_block_internal(Entity *next, Transform transform) {
     return(hit);
 }
 
-Bool handle_hitting_side_of_block(Room *room, Transform transform, V2 current_speed, Direction gravity_direction) {
+Bool handle_hitting_side_of_block(Room *room, Transform transform, sglm_V2 current_speed, Direction gravity_direction) {
     // Handle hitting the sides of blocks.
 
     if(is_vertical(gravity_direction)) { transform.position.x += current_speed.x; }
@@ -1092,8 +1081,8 @@ Bool handle_hitting_side_of_block(Room *room, Transform transform, V2 current_sp
 }
 
 Void update_block(Block *block, Game_State *gs, sglp_API *api) {
-    V2 current_speed = block->current_speed;
-    V2 max_speed = v2(0.01f, 0.01f);
+    sglm_V2 current_speed = block->current_speed;
+    sglm_V2 max_speed = sglm_v2(0.01f, 0.01f);
     Float gravity = 0.004f;
     Bool is_gravity_vertical = is_vertical(gs->gravity_direction);
 
@@ -1124,10 +1113,10 @@ Void update_block(Block *block, Game_State *gs, sglp_API *api) {
 // TODO - I do a lot of 'overlap' collisions in here, which could fail if something is travelling really fast. I should
 //        protect against this?
 Void handle_player_movement(Player *player, sglp_API *api, Room *room, Direction gravity_direction) {
-    V2 current_speed = player->current_speed;
-    V2 max_speed = v2(0.003f, 0.003f);
-    V2 acceleration = v2(0.002f, 0.002f);
-    V2 friction = v2(0.005f, 0.005f);
+    sglm_V2 current_speed = player->current_speed;
+    sglm_V2 max_speed = sglm_v2(0.003f, 0.003f);
+    sglm_V2 acceleration = sglm_v2(0.002f, 0.002f);
+    sglm_V2 friction = sglm_v2(0.005f, 0.005f);
     Float gravity = 0.002f;
     Float jump_power = 0.0015f;
 
@@ -1367,7 +1356,7 @@ void update_bullet(Bullet *bullet, Game_State *gs) {
     }
 
     if(bullet->dir == Direction_unknown) {
-        bullet->transform.position = v2(400, 400);
+        bullet->transform.position = sglm_v2(400, 400);
         Entity *parent = bullet->parent;
         if(parent) {
             switch (parent->type) {
@@ -1500,101 +1489,101 @@ SGLP_CALLBACK_FILE_LINKAGE void sglp_platform_update_and_render_callback(sglp_AP
     }
 }
 
-V2 get_letter_position(char letter) {
-    V2 res = v2(-1.0f, -1.0f);
+sglm_V2 get_letter_position(char letter) {
+    sglm_V2 res = sglm_v2(-1.0f, -1.0f);
     switch(letter) {
-        case ' ': { res = v2(0.0f, 0.0f);  } break;
-        case '!': { res = v2(1.0f, 0.0f);  } break;
-        case '"': { res = v2(2.0f, 0.0f);  } break;
-        case '#': { res = v2(3.0f, 0.0f);  } break;
-        case '$': { res = v2(4.0f, 0.0f);  } break;
-        case '%': { res = v2(5.0f, 0.0f);  } break;
-        case '&': { res = v2(6.0f, 0.0f);  } break;
-        case '(': { res = v2(8.0f, 0.0f);  } break;
-        case ')': { res = v2(9.0f, 0.0f);  } break;
-        case '*': { res = v2(10.0f, 0.0f); } break;
-        case '+': { res = v2(11.0f, 0.0f); } break;
-        case '_': { res = v2(13.0f, 0.0f); } break;
-        case '/': { res = v2(15.0f, 0.0f); } break;
-        case '0': { res = v2(0.0f, 1.0f);  } break;
-        case '1': { res = v2(1.0f, 1.0f);  } break;
-        case '2': { res = v2(2.0f, 1.0f);  } break;
-        case '3': { res = v2(3.0f, 1.0f);  } break;
-        case '4': { res = v2(4.0f, 1.0f);  } break;
-        case '5': { res = v2(5.0f, 1.0f);  } break;
-        case '6': { res = v2(6.0f, 1.0f);  } break;
-        case '7': { res = v2(7.0f, 1.0f);  } break;
-        case '8': { res = v2(8.0f, 1.0f);  } break;
-        case '9': { res = v2(9.0f, 1.0f);  } break;
-        case ':': { res = v2(10.0f, 1.0f); } break;
-        case '.': { res = v2(10.0f, 1.0f); } break; // TODO(Jonny): Hacky
-        case ',': { res = v2(10.0f, 1.0f); } break; // TODO(Jonny): Hacky
-        case ';': { res = v2(11.0f, 1.0f); } break;
-        case '<': { res = v2(12.0f, 1.0f); } break;
-        case '=': { res = v2(13.0f, 1.0f); } break;
-        case '>': { res = v2(14.0f, 1.0f); } break;
-        case '?': { res = v2(15.0f, 1.0f); } break;
-        case '@': { res = v2(0.0f, 2.0f);  } break;
-        case 'A': { res = v2(1.0f, 2.0f);  } break;
-        case 'B': { res = v2(2.0f, 2.0f);  } break;
-        case 'C': { res = v2(3.0f, 2.0f);  } break;
-        case 'D': { res = v2(4.0f, 2.0f);  } break;
-        case 'E': { res = v2(5.0f, 2.0f);  } break;
-        case 'F': { res = v2(6.0f, 2.0f);  } break;
-        case 'G': { res = v2(7.0f, 2.0f);  } break;
-        case 'H': { res = v2(8.0f, 2.0f);  } break;
-        case 'I': { res = v2(9.0f, 2.0f);  } break;
-        case 'J': { res = v2(10.0f, 2.0f); } break;
-        case 'K': { res = v2(11.0f, 2.0f); } break;
-        case 'L': { res = v2(12.0f, 2.0f); } break;
-        case 'M': { res = v2(13.0f, 2.0f); } break;
-        case 'N': { res = v2(14.0f, 2.0f); } break;
-        case 'O': { res = v2(15.0f, 2.0f); } break;
-        case 'P': { res = v2(0.0f, 3.0f);  } break;
-        case 'Q': { res = v2(1.0f, 3.0f);  } break;
-        case 'R': { res = v2(2.0f, 3.0f);  } break;
-        case 'S': { res = v2(3.0f, 3.0f);  } break;
-        case 'T': { res = v2(4.0f, 3.0f);  } break;
-        case 'U': { res = v2(5.0f, 3.0f);  } break;
-        case 'V': { res = v2(6.0f, 3.0f);  } break;
-        case 'W': { res = v2(7.0f, 3.0f);  } break;
-        case 'X': { res = v2(8.0f, 3.0f);  } break;
-        case 'Y': { res = v2(9.0f, 3.0f);  } break;
-        case 'Z': { res = v2(10.0f, 3.0f); } break;
-        case '[': { res = v2(11.0f, 3.0f); } break;
-        case ']': { res = v2(13.0f, 3.0f); } break;
-        case '^': { res = v2(14.0f, 3.0f); } break;
-        case '-': { res = v2(15.0f, 3.0f); } break;
-        case 'a': { res = v2(1.0f, 4.0f);  } break;
-        case 'b': { res = v2(2.0f, 4.0f);  } break;
-        case 'c': { res = v2(3.0f, 4.0f);  } break;
-        case 'd': { res = v2(4.0f, 4.0f);  } break;
-        case 'e': { res = v2(5.0f, 4.0f);  } break;
-        case 'f': { res = v2(6.0f, 4.0f);  } break;
-        case 'g': { res = v2(7.0f, 4.0f);  } break;
-        case 'h': { res = v2(8.0f, 4.0f);  } break;
-        case 'i': { res = v2(9.0f, 4.0f);  } break;
-        case 'j': { res = v2(10.0f, 4.0f); } break;
-        case 'k': { res = v2(11.0f, 4.0f); } break;
-        case 'l': { res = v2(12.0f, 4.0f); } break;
-        case 'm': { res = v2(13.0f, 4.0f); } break;
-        case 'n': { res = v2(14.0f, 4.0f); } break;
-        case 'o': { res = v2(15.0f, 4.0f); } break;
-        case 'p': { res = v2(0.0f, 5.0f);  } break;
-        case 'q': { res = v2(1.0f, 5.0f);  } break;
-        case 'r': { res = v2(2.0f, 5.0f);  } break;
-        case 's': { res = v2(3.0f, 5.0f);  } break;
-        case 't': { res = v2(4.0f, 5.0f);  } break;
-        case 'u': { res = v2(5.0f, 5.0f);  } break;
-        case 'v': { res = v2(6.0f, 5.0f);  } break;
-        case 'w': { res = v2(7.0f, 5.0f);  } break;
-        case 'x': { res = v2(8.0f, 5.0f);  } break;
-        case 'y': { res = v2(9.0f, 5.0f);  } break;
-        case 'z': { res = v2(10.0f, 5.0f); } break;
-        case '{': { res = v2(11.0f, 5.0f); } break;
-        case '|': { res = v2(12.0f, 5.0f); } break;
-        case '}': { res = v2(13.0f, 5.0f); } break;
-        case '~': { res = v2(14.0f, 5.0f); } break;
+        case ' ': { res = sglm_v2(0.0f, 0.0f);  } break;
+        case '!': { res = sglm_v2(1.0f, 0.0f);  } break;
+        case '"': { res = sglm_v2(2.0f, 0.0f);  } break;
+        case '#': { res = sglm_v2(3.0f, 0.0f);  } break;
+        case '$': { res = sglm_v2(4.0f, 0.0f);  } break;
+        case '%': { res = sglm_v2(5.0f, 0.0f);  } break;
+        case '&': { res = sglm_v2(6.0f, 0.0f);  } break;
+        case '(': { res = sglm_v2(8.0f, 0.0f);  } break;
+        case ')': { res = sglm_v2(9.0f, 0.0f);  } break;
+        case '*': { res = sglm_v2(10.0f, 0.0f); } break;
+        case '+': { res = sglm_v2(11.0f, 0.0f); } break;
+        case '_': { res = sglm_v2(13.0f, 0.0f); } break;
+        case '/': { res = sglm_v2(15.0f, 0.0f); } break;
+        case '0': { res = sglm_v2(0.0f, 1.0f);  } break;
+        case '1': { res = sglm_v2(1.0f, 1.0f);  } break;
+        case '2': { res = sglm_v2(2.0f, 1.0f);  } break;
+        case '3': { res = sglm_v2(3.0f, 1.0f);  } break;
+        case '4': { res = sglm_v2(4.0f, 1.0f);  } break;
+        case '5': { res = sglm_v2(5.0f, 1.0f);  } break;
+        case '6': { res = sglm_v2(6.0f, 1.0f);  } break;
+        case '7': { res = sglm_v2(7.0f, 1.0f);  } break;
+        case '8': { res = sglm_v2(8.0f, 1.0f);  } break;
+        case '9': { res = sglm_v2(9.0f, 1.0f);  } break;
+        case ':': { res = sglm_v2(10.0f, 1.0f); } break;
+        case '.': { res = sglm_v2(10.0f, 1.0f); } break; // TODO(Jonny): Hacky
+        case ',': { res = sglm_v2(10.0f, 1.0f); } break; // TODO(Jonny): Hacky
+        case ';': { res = sglm_v2(11.0f, 1.0f); } break;
+        case '<': { res = sglm_v2(12.0f, 1.0f); } break;
+        case '=': { res = sglm_v2(13.0f, 1.0f); } break;
+        case '>': { res = sglm_v2(14.0f, 1.0f); } break;
+        case '?': { res = sglm_v2(15.0f, 1.0f); } break;
+        case '@': { res = sglm_v2(0.0f, 2.0f);  } break;
+        case 'A': { res = sglm_v2(1.0f, 2.0f);  } break;
+        case 'B': { res = sglm_v2(2.0f, 2.0f);  } break;
+        case 'C': { res = sglm_v2(3.0f, 2.0f);  } break;
+        case 'D': { res = sglm_v2(4.0f, 2.0f);  } break;
+        case 'E': { res = sglm_v2(5.0f, 2.0f);  } break;
+        case 'F': { res = sglm_v2(6.0f, 2.0f);  } break;
+        case 'G': { res = sglm_v2(7.0f, 2.0f);  } break;
+        case 'H': { res = sglm_v2(8.0f, 2.0f);  } break;
+        case 'I': { res = sglm_v2(9.0f, 2.0f);  } break;
+        case 'J': { res = sglm_v2(10.0f, 2.0f); } break;
+        case 'K': { res = sglm_v2(11.0f, 2.0f); } break;
+        case 'L': { res = sglm_v2(12.0f, 2.0f); } break;
+        case 'M': { res = sglm_v2(13.0f, 2.0f); } break;
+        case 'N': { res = sglm_v2(14.0f, 2.0f); } break;
+        case 'O': { res = sglm_v2(15.0f, 2.0f); } break;
+        case 'P': { res = sglm_v2(0.0f, 3.0f);  } break;
+        case 'Q': { res = sglm_v2(1.0f, 3.0f);  } break;
+        case 'R': { res = sglm_v2(2.0f, 3.0f);  } break;
+        case 'S': { res = sglm_v2(3.0f, 3.0f);  } break;
+        case 'T': { res = sglm_v2(4.0f, 3.0f);  } break;
+        case 'U': { res = sglm_v2(5.0f, 3.0f);  } break;
+        case 'V': { res = sglm_v2(6.0f, 3.0f);  } break;
+        case 'W': { res = sglm_v2(7.0f, 3.0f);  } break;
+        case 'X': { res = sglm_v2(8.0f, 3.0f);  } break;
+        case 'Y': { res = sglm_v2(9.0f, 3.0f);  } break;
+        case 'Z': { res = sglm_v2(10.0f, 3.0f); } break;
+        case '[': { res = sglm_v2(11.0f, 3.0f); } break;
+        case ']': { res = sglm_v2(13.0f, 3.0f); } break;
+        case '^': { res = sglm_v2(14.0f, 3.0f); } break;
+        case '-': { res = sglm_v2(15.0f, 3.0f); } break;
+        case 'a': { res = sglm_v2(1.0f, 4.0f);  } break;
+        case 'b': { res = sglm_v2(2.0f, 4.0f);  } break;
+        case 'c': { res = sglm_v2(3.0f, 4.0f);  } break;
+        case 'd': { res = sglm_v2(4.0f, 4.0f);  } break;
+        case 'e': { res = sglm_v2(5.0f, 4.0f);  } break;
+        case 'f': { res = sglm_v2(6.0f, 4.0f);  } break;
+        case 'g': { res = sglm_v2(7.0f, 4.0f);  } break;
+        case 'h': { res = sglm_v2(8.0f, 4.0f);  } break;
+        case 'i': { res = sglm_v2(9.0f, 4.0f);  } break;
+        case 'j': { res = sglm_v2(10.0f, 4.0f); } break;
+        case 'k': { res = sglm_v2(11.0f, 4.0f); } break;
+        case 'l': { res = sglm_v2(12.0f, 4.0f); } break;
+        case 'm': { res = sglm_v2(13.0f, 4.0f); } break;
+        case 'n': { res = sglm_v2(14.0f, 4.0f); } break;
+        case 'o': { res = sglm_v2(15.0f, 4.0f); } break;
+        case 'p': { res = sglm_v2(0.0f, 5.0f);  } break;
+        case 'q': { res = sglm_v2(1.0f, 5.0f);  } break;
+        case 'r': { res = sglm_v2(2.0f, 5.0f);  } break;
+        case 's': { res = sglm_v2(3.0f, 5.0f);  } break;
+        case 't': { res = sglm_v2(4.0f, 5.0f);  } break;
+        case 'u': { res = sglm_v2(5.0f, 5.0f);  } break;
+        case 'v': { res = sglm_v2(6.0f, 5.0f);  } break;
+        case 'w': { res = sglm_v2(7.0f, 5.0f);  } break;
+        case 'x': { res = sglm_v2(8.0f, 5.0f);  } break;
+        case 'y': { res = sglm_v2(9.0f, 5.0f);  } break;
+        case 'z': { res = sglm_v2(10.0f, 5.0f); } break;
+        case '{': { res = sglm_v2(11.0f, 5.0f); } break;
+        case '|': { res = sglm_v2(12.0f, 5.0f); } break;
+        case '}': { res = sglm_v2(13.0f, 5.0f); } break;
+        case '~': { res = sglm_v2(14.0f, 5.0f); } break;
 
         default: { assert(false); } break;
     }

@@ -119,7 +119,7 @@ sglm_Bool sglm_v2_compare(sglm_V2 a, sglm_V2 b);
 sglm_V2 sglm_v2_add(sglm_V2 a, sglm_V2 b);
 sglm_V2 sglm_v2_sub(sglm_V2 a, sglm_V2 b);
 sglm_V2 sglm_v2_mul(sglm_V2 vec, float s);
-sglm_V2 sglm_v2_dev(sglm_V2 vec, float s);
+sglm_V2 sglm_v2_div(sglm_V2 vec, float s);
 float sglm_v2_dist_squared(sglm_V2 a, sglm_V2 b);
 sglm_V2 sglm_v2_hadamard(sglm_V2 a, sglm_V2 b);
 float sglm_v2_inner(sglm_V2 a, sglm_V2 b);
@@ -251,12 +251,7 @@ sglm_V2 sglm_v2(float x, float y) {
 }
 
 sglm_Bool sglm_v2_compare(sglm_V2 a, sglm_V2 b) {
-    sglm_Bool res;
-    if((a.x == b.x) && (a.y == b.y)) {
-        res = 1; // true
-    } else {
-        res = 0; // false
-    }
+    sglm_Bool res = ((a.x == b.x) && (a.y == b.y));
 
     return(res);
 }
@@ -284,7 +279,7 @@ sglm_V2 sglm_v2_mul(sglm_V2 vec, float s) {
     return(vec);
 }
 
-sglm_V2 sglm_v2_dev(sglm_V2 vec, float s) {
+sglm_V2 sglm_v2_div(sglm_V2 vec, float s) {
     vec.x /= s;
     vec.y /= s;
 
@@ -481,8 +476,6 @@ float *sglm_mat4x4_as_float_arr(float *buf, sglm_Mat4x4 *mat) {
 
 sglm_Mat4x4 sglm_mat4x4_mul(sglm_Mat4x4 *a, sglm_Mat4x4 *b) {
     sglm_Mat4x4 res;
-
-    int *ptr;
 
     res.e[0] = _mm_mul_ps(b->e[0], SGLM_COPY_ONE_LANE_TO_ALL(0, a->e[0]));
     res.e[1] = _mm_mul_ps(b->e[0], SGLM_COPY_ONE_LANE_TO_ALL(0, a->e[1]));

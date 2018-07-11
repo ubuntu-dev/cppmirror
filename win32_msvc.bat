@@ -56,7 +56,7 @@ rem Build game
 if "%BUILD_GAME%"=="true" (
     rem Run mirror on game code.
     pushd "game"
-    "../build/mirror.exe" game.cpp %INTERNAL%
+    "../build/mirror.exe" game.c %INTERNAL%
     popd
 
     rem Compile game code.
@@ -65,10 +65,10 @@ if "%BUILD_GAME%"=="true" (
     del *_game.pdb > NUL > NUL
 
     rem This is the version where the platform code and game code are a seperate EXE and DLL.
-    cl -LD -FeGame %COMPILER_FLAGS% "../game/game.cpp" -FmGame.map %COMMON_LINKER_FLAGS% -opt:ref -PDB:%random%_game.pdb -subsystem:windows,5.2
+    cl -LD -FeGame %COMPILER_FLAGS% "../game/game.c" -FmGame.map %COMMON_LINKER_FLAGS% -opt:ref -PDB:%random%_game.pdb -subsystem:windows,5.2
     cl -FeWin32 %COMPILER_FLAGS% -DSGLP_LOAD_GAME_FROM_DLL=game -Tc"../game/win32_platform.c" -FmWin32.map %COMMON_LINKER_FLAGS% -subsystem:windows,5.2
     
     rem This is the version with the platform and the game code in one EXE.
-    rem cl -FeGame %COMPILER_FLAGS% "../game/game.cpp" -FmGame.map %COMMON_LINKER_FLAGS% -subsystem:windows,5.2
+    rem cl -FeGame %COMPILER_FLAGS% "../game/game.c" -FmGame.map %COMMON_LINKER_FLAGS% -subsystem:windows,5.2
     popd
 )

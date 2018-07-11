@@ -112,7 +112,6 @@ typedef struct sglp_WAVEHeader sglp_WAVEHeader;
 typedef struct sglp_WavChunk sglp_WavChunk;
 typedef struct sglp_WavFormat sglp_WavFormat;
 typedef struct sglp_RiffIter sglp_RiffIter;
-typedef struct V2 V2;
 typedef struct Transform Transform;
 typedef struct Bullet Bullet;
 typedef struct Player Player;
@@ -269,7 +268,6 @@ typedef enum pp_Type {
     pp_Type_sglp_WavChunk,
     pp_Type_sglp_WavFormat,
     pp_Type_sglp_RiffIter,
-    pp_Type_V2,
     pp_Type_Transform,
     pp_Type_Bullet,
     pp_Type_Entity,
@@ -311,7 +309,6 @@ typedef struct pp_sglp_WAVEHeader pp_sglp_WAVEHeader;    typedef struct pp_sglp_
 typedef struct pp_sglp_WavChunk pp_sglp_WavChunk;    typedef struct pp_sglp_WavChunk pp_pp_sglp_WavChunk;
 typedef struct pp_sglp_WavFormat pp_sglp_WavFormat;    typedef struct pp_sglp_WavFormat pp_pp_sglp_WavFormat;
 typedef struct pp_sglp_RiffIter pp_sglp_RiffIter;    typedef struct pp_sglp_RiffIter pp_pp_sglp_RiffIter;
-typedef struct pp_V2 pp_V2;    typedef struct pp_V2 pp_pp_V2;
 typedef struct pp_Transform pp_Transform;    typedef struct pp_Transform pp_pp_Transform;
 typedef struct pp_Bullet pp_Bullet;    typedef struct pp_Bullet pp_pp_Bullet;
 typedef struct pp_Player pp_Player;    typedef struct pp_Player pp_pp_Player;
@@ -484,17 +481,14 @@ struct pp_sglp_WavFormat {
 struct pp_sglp_RiffIter {
     uint8_t *at; uint8_t *stop; 
 };
-struct pp_V2 {
-    pp_Float x; pp_Float y; 
-};
 struct pp_Transform {
-    pp_V2 position; pp_V2 scale; pp_Float rotation; 
+    pp_sglm_V2 position; pp_sglm_V2 scale; pp_Float rotation; 
 };
 struct pp_Bullet {
     pp_Transform transform; pp_Direction dir; pp_Entity *parent; 
 };
 struct pp_Player {
-    pp_Transform transform; pp_V2 start_pos; pp_Player_Direction dir; pp_Float current_frame; pp_V2 current_speed; pp_Bool can_shoot; pp_Int shot_timer; 
+    pp_Transform transform; pp_sglm_V2 start_pos; pp_Player_Direction dir; pp_Float current_frame; pp_sglm_V2 current_speed; pp_Bool can_shoot; pp_Int shot_timer; 
 };
 struct pp_Enemy {
     pp_Transform transform; 
@@ -506,22 +500,22 @@ struct pp_JumpThrough_Ground {
     pp_Transform transform; 
 };
 struct pp_Block {
-    pp_Transform transform; pp_V2 current_speed; 
+    pp_Transform transform; pp_sglm_V2 current_speed; 
 };
 struct pp_TextObject {
-    char *str; pp_V2 position; pp_V2 word_size; 
+    char *str; pp_sglm_V2 position; pp_sglm_V2 word_size; 
 };
 struct pp_Entity {
      union {pp_Player player; pp_Enemy enemy; pp_Bullet bullet; pp_Ground ground; pp_JumpThrough_Ground jumpthrough_ground; pp_Block block; pp_TextObject text; };pp_Type type; pp_Entity *next; 
 };
 struct pp_Room {
-    pp_Bool valid; pp_V2 top_left; pp_Entity *root; pp_Room *up; pp_Room *down; pp_Room *left; pp_Room *right; 
+    pp_Bool valid; pp_sglm_V2 top_left; pp_Entity *root; pp_Room *up; pp_Room *down; pp_Room *left; pp_Room *right; 
 };
 struct pp_Entity_Info {
-    pp_Bool valid; pp_Sprite_ID sprite_id; pp_V2 *position; pp_V2 *scale; pp_Float *rotation; pp_Float *current_frame; 
+    pp_Bool valid; pp_Sprite_ID sprite_id; pp_sglm_V2 *position; pp_sglm_V2 *scale; pp_Float *rotation; pp_Float *current_frame; 
 };
 struct pp_Camera {
-    pp_V2 position; pp_V2 speed; pp_Bool follow_exactly; 
+    pp_sglm_V2 position; pp_sglm_V2 speed; pp_Bool follow_exactly; 
 };
 struct pp_Game_State {
     pp_Room room[32]; pp_Room *current_room; pp_Entity *free_list; pp_Camera camera; pp_Direction gravity_direction; pp_Bool show_text_box; pp_Char *text_box_input; pp_Int input_delay; 
@@ -1178,26 +1172,14 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
             } break; 
         }
     }
-    else if(real_type == pp_Type_V2) {
-        switch(index) {
-            case 0: {
-                pp_MemberDefinition res = {pp_Type_Float, "x", PP_OFFSETOF(pp_V2, x), 0, 0};
-                return(res);
-            } break; 
-            case 1: {
-                pp_MemberDefinition res = {pp_Type_Float, "y", PP_OFFSETOF(pp_V2, y), 0, 0};
-                return(res);
-            } break; 
-        }
-    }
     else if(real_type == pp_Type_Transform) {
         switch(index) {
             case 0: {
-                pp_MemberDefinition res = {pp_Type_V2, "position", PP_OFFSETOF(pp_Transform, position), 0, 0};
+                pp_MemberDefinition res = {pp_Type_sglm_V2, "position", PP_OFFSETOF(pp_Transform, position), 0, 0};
                 return(res);
             } break; 
             case 1: {
-                pp_MemberDefinition res = {pp_Type_V2, "scale", PP_OFFSETOF(pp_Transform, scale), 0, 0};
+                pp_MemberDefinition res = {pp_Type_sglm_V2, "scale", PP_OFFSETOF(pp_Transform, scale), 0, 0};
                 return(res);
             } break; 
             case 2: {
@@ -1229,7 +1211,7 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 return(res);
             } break; 
             case 1: {
-                pp_MemberDefinition res = {pp_Type_V2, "start_pos", PP_OFFSETOF(pp_Player, start_pos), 0, 0};
+                pp_MemberDefinition res = {pp_Type_sglm_V2, "start_pos", PP_OFFSETOF(pp_Player, start_pos), 0, 0};
                 return(res);
             } break; 
             case 2: {
@@ -1241,7 +1223,7 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 return(res);
             } break; 
             case 4: {
-                pp_MemberDefinition res = {pp_Type_V2, "current_speed", PP_OFFSETOF(pp_Player, current_speed), 0, 0};
+                pp_MemberDefinition res = {pp_Type_sglm_V2, "current_speed", PP_OFFSETOF(pp_Player, current_speed), 0, 0};
                 return(res);
             } break; 
             case 5: {
@@ -1285,7 +1267,7 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 return(res);
             } break; 
             case 1: {
-                pp_MemberDefinition res = {pp_Type_V2, "current_speed", PP_OFFSETOF(pp_Block, current_speed), 0, 0};
+                pp_MemberDefinition res = {pp_Type_sglm_V2, "current_speed", PP_OFFSETOF(pp_Block, current_speed), 0, 0};
                 return(res);
             } break; 
         }
@@ -1297,11 +1279,11 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 return(res);
             } break; 
             case 1: {
-                pp_MemberDefinition res = {pp_Type_V2, "position", PP_OFFSETOF(pp_TextObject, position), 0, 0};
+                pp_MemberDefinition res = {pp_Type_sglm_V2, "position", PP_OFFSETOF(pp_TextObject, position), 0, 0};
                 return(res);
             } break; 
             case 2: {
-                pp_MemberDefinition res = {pp_Type_V2, "word_size", PP_OFFSETOF(pp_TextObject, word_size), 0, 0};
+                pp_MemberDefinition res = {pp_Type_sglm_V2, "word_size", PP_OFFSETOF(pp_TextObject, word_size), 0, 0};
                 return(res);
             } break; 
         }
@@ -1353,7 +1335,7 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 return(res);
             } break; 
             case 1: {
-                pp_MemberDefinition res = {pp_Type_V2, "top_left", PP_OFFSETOF(pp_Room, top_left), 0, 0};
+                pp_MemberDefinition res = {pp_Type_sglm_V2, "top_left", PP_OFFSETOF(pp_Room, top_left), 0, 0};
                 return(res);
             } break; 
             case 2: {
@@ -1389,11 +1371,11 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
                 return(res);
             } break; 
             case 2: {
-                pp_MemberDefinition res = {pp_Type_V2, "position", PP_OFFSETOF(pp_Entity_Info, position), 1, 0};
+                pp_MemberDefinition res = {pp_Type_sglm_V2, "position", PP_OFFSETOF(pp_Entity_Info, position), 1, 0};
                 return(res);
             } break; 
             case 3: {
-                pp_MemberDefinition res = {pp_Type_V2, "scale", PP_OFFSETOF(pp_Entity_Info, scale), 1, 0};
+                pp_MemberDefinition res = {pp_Type_sglm_V2, "scale", PP_OFFSETOF(pp_Entity_Info, scale), 1, 0};
                 return(res);
             } break; 
             case 4: {
@@ -1409,11 +1391,11 @@ PP_STATIC pp_MemberDefinition pp_get_members_from_type(pp_Type type, uintptr_t i
     else if(real_type == pp_Type_Camera) {
         switch(index) {
             case 0: {
-                pp_MemberDefinition res = {pp_Type_V2, "position", PP_OFFSETOF(pp_Camera, position), 0, 0};
+                pp_MemberDefinition res = {pp_Type_sglm_V2, "position", PP_OFFSETOF(pp_Camera, position), 0, 0};
                 return(res);
             } break; 
             case 1: {
-                pp_MemberDefinition res = {pp_Type_V2, "speed", PP_OFFSETOF(pp_Camera, speed), 0, 0};
+                pp_MemberDefinition res = {pp_Type_sglm_V2, "speed", PP_OFFSETOF(pp_Camera, speed), 0, 0};
                 return(res);
             } break; 
             case 2: {
@@ -1485,7 +1467,6 @@ PP_STATIC uintptr_t pp_get_number_of_members(pp_Type type) {
         case pp_Type_sglp_WavChunk: { return(2); } break;
         case pp_Type_sglp_WavFormat: { return(10); } break;
         case pp_Type_sglp_RiffIter: { return(2); } break;
-        case pp_Type_V2: { return(2); } break;
         case pp_Type_Transform: { return(3); } break;
         case pp_Type_Bullet: { return(3); } break;
         case pp_Type_Player: { return(7); } break;
@@ -1525,7 +1506,7 @@ PP_STATIC pp_StructureType pp_get_structure_type(pp_Type type) {
             return(pp_StructureType_enum);
         } break;
 
-        case pp_Type___m128: case pp_Type___m128i: case pp_Type_stbsp__context: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_TempMemory: case pp_Type_sglp_File: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_Settings: case pp_Type_sglp_API: case pp_Type_sglp_LoadedSound: case pp_Type_sglp_SoundOutputBuffer: case pp_Type_sglp_AudioState: case pp_Type_sglp_WAVEHeader: case pp_Type_sglp_WavChunk: case pp_Type_sglp_WavFormat: case pp_Type_sglp_RiffIter: case pp_Type_V2: case pp_Type_Transform: case pp_Type_Bullet: case pp_Type_Player: case pp_Type_Enemy: case pp_Type_Ground: case pp_Type_JumpThrough_Ground: case pp_Type_Block: case pp_Type_TextObject: case pp_Type_Entity: case pp_Type_Room: case pp_Type_Entity_Info: case pp_Type_Camera: case pp_Type_Game_State: {
+        case pp_Type___m128: case pp_Type___m128i: case pp_Type_stbsp__context: case pp_Type_sglm_V2: case pp_Type_sglm_Mat4x4: case pp_Type_sglp_Sprite: case pp_Type_sglp_PlayingSound: case pp_Type_sglp_TempMemory: case pp_Type_sglp_File: case pp_Type_sglp_OpenGlFunctions: case pp_Type_sglp_Settings: case pp_Type_sglp_API: case pp_Type_sglp_LoadedSound: case pp_Type_sglp_SoundOutputBuffer: case pp_Type_sglp_AudioState: case pp_Type_sglp_WAVEHeader: case pp_Type_sglp_WavChunk: case pp_Type_sglp_WavFormat: case pp_Type_sglp_RiffIter: case pp_Type_Transform: case pp_Type_Bullet: case pp_Type_Player: case pp_Type_Enemy: case pp_Type_Ground: case pp_Type_JumpThrough_Ground: case pp_Type_Block: case pp_Type_TextObject: case pp_Type_Entity: case pp_Type_Room: case pp_Type_Entity_Info: case pp_Type_Camera: case pp_Type_Game_State: {
             return(pp_StructureType_struct);
         } break;
     }
@@ -1670,7 +1651,6 @@ PP_STATIC char const * pp_type_to_string(pp_Type type) {
         case pp_Type_sglp_WavChunk: { return("sglp_WavChunk"); } break;
         case pp_Type_sglp_WavFormat: { return("sglp_WavFormat"); } break;
         case pp_Type_sglp_RiffIter: { return("sglp_RiffIter"); } break;
-        case pp_Type_V2: { return("V2"); } break;
         case pp_Type_Transform: { return("Transform"); } break;
         case pp_Type_Bullet: { return("Bullet"); } break;
         case pp_Type_Entity: { return("Entity"); } break;
@@ -1824,7 +1804,6 @@ PP_STATIC uintptr_t pp_get_size_from_type(pp_Type type) {
         case pp_Type_sglp_WavChunk: { return sizeof(pp_sglp_WavChunk); } break;
         case pp_Type_sglp_WavFormat: { return sizeof(pp_sglp_WavFormat); } break;
         case pp_Type_sglp_RiffIter: { return sizeof(pp_sglp_RiffIter); } break;
-        case pp_Type_V2: { return sizeof(pp_V2); } break;
         case pp_Type_Transform: { return sizeof(pp_Transform); } break;
         case pp_Type_Bullet: { return sizeof(pp_Bullet); } break;
         case pp_Type_Entity: { return sizeof(pp_Entity); } break;
