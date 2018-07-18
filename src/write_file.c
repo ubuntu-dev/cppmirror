@@ -272,6 +272,7 @@ File write_data(Parse_Result pr) {
                  "#endif\n"
                  "\n"
                  "#define PP_IGNORE\n"
+                 "#define PP_TEST\n"
                  "\n"
                  "#include <stdint.h>\n"
                  "#include <string.h>\n"
@@ -450,6 +451,8 @@ File write_data(Parse_Result pr) {
             }
 
             // Forward declared functions.
+            // TODO - Doesn't work yet.
+#if 0
             write_ob(&ob,
                      "\n"
                      "/* Forward declared functions. */\n");
@@ -480,15 +483,46 @@ File write_data(Parse_Result pr) {
                         write_ob(&ob, ", ");
                     }
 
+                    Char modifier_string[128] = {0};
+                    if(param->modifier) {
+                        // Modifiers
+                        Char modifier_string[1024] = {0};
+                        if(param->modifier) {
+                            Uintptr mod_string_index = 0;
+
+                            if(param->modifier & Modifier_unsigned) {
+                                mod_string_index += string_copy(modifier_string + mod_string_index, " unsigned");
+                            }
+
+                            if(param->modifier & Modifier_const) {
+                                mod_string_index += string_copy(modifier_string + mod_string_index, " const");
+                            }
+
+                            if(param->modifier & Modifier_volatile) {
+                                mod_string_index += string_copy(modifier_string + mod_string_index, " volatile");
+                            }
+
+                            if(param->modifier & Modifier_mutable) {
+                                mod_string_index += string_copy(modifier_string + mod_string_index, " mutable");
+
+                            }
+                            if(param->modifier & Modifier_signed) {
+                                mod_string_index += string_copy(modifier_string + mod_string_index, " signed");
+                            }
+                        }
+                    }
+
                     write_ob(&ob,
-                             "%.*s %s %.*s",
+                             "%.*s %s %s %.*s",
                              param->type.len, param->type.e,
+                             modifier_string,
                              param_ptr_buf,
                              param->name.len, param->name.e);
                 }
 
                 write_ob(&ob, ");\n");
             }
+#endif
 
             write_ob(&ob, "#endif // PP_NO_FORWARD_DECLARE\n");
         }

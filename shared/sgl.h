@@ -151,9 +151,6 @@ typedef int sgl_Bool;
     typedef sgl_Char Char;
 
     #if !defined(SGL_NO_BOOL)
-        #if defined(Bool)
-            #undef Bool
-        #endif
         typedef sgl_Bool Bool;
     #endif
     #define true SGL_TRUE

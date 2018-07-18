@@ -655,14 +655,46 @@ Parse_Variable_Result parse_variable(Tokenizer *tokenizer, Token_Type end_token_
 
     // Return type.
     Token type = get_token(tokenizer);
+    if(is_token_struct(type)) {
+        type = get_token(tokenizer);
+    }
+
+    {
+        Modifier test_mod = is_modifier(type);
+        while(test_mod) {
+            res.var.modifier |= test_mod;
+            type = get_token(tokenizer);
+            test_mod = is_modifier(type);
+        }
+    }
+
     if(type.type == Token_Type_identifier) {
         res.var.type = token_to_string(type);
 
         // Is pointer?
         Token token = get_token(tokenizer);
+
+        {
+            Modifier test_mod = is_modifier(type);
+            while(test_mod) {
+                res.var.modifier |= test_mod;
+                type = get_token(tokenizer);
+                test_mod = is_modifier(type);
+            }
+        }
+
         while(token.type == Token_Type_asterisk) {
             ++res.var.ptr;
             token = get_token(tokenizer);
+        }
+
+        {
+            Modifier test_mod = is_modifier(type);
+            while(test_mod) {
+                res.var.modifier |= test_mod;
+                type = get_token(tokenizer);
+                test_mod = is_modifier(type);
+            }
         }
 
         // Name.
@@ -674,7 +706,7 @@ Parse_Variable_Result parse_variable(Tokenizer *tokenizer, Token_Type end_token_
             if((token.type != end_token_type_1) && (token.type != end_token_type_2)) {
                 eat_token(tokenizer);
                 if(token.type != Token_Type_open_bracket) {
-                    push_error(ErrorType_failed_parsing_variable);
+                    // push_error(ErrorType_failed_parsing_variable);
                 } else {
                     token = get_token(tokenizer);
                     ResultInt num = token_to_int(token);
@@ -1291,87 +1323,105 @@ AttemptFunctionResult attempt_to_parse_function(Token token, Tokenizer *tokenize
     Tokenizer debug_copy_tokenizer = *tokenizer;
 #endif
 
-    AttemptFunctionResult res = {0};
+    Char *keywords[] = { "if", "do", "while", "switch", "elif", "define", "pragma" };
 
-    Token linkage = {0}, result = {0}, name = {0};
-    Int return_pointer_cnt = 0; // TODO(Jonny): Support returning references.
-    Bool return_ref = false;
-
-    // Find out the linkage, if any.
-    if(is_linkage_token(token)) {
-        linkage = token;
-        result = get_token(tokenizer);
-    } else {
-        result = token;
+    Bool found = false;
+    for(Int i = 0; (i < array_count(keywords)); ++i) {
+        if(token_cstring_compare(token, keywords[i])) {
+            found = true;
+            break; // for
+        }
     }
 
-    if(result.type == Token_Type_identifier) {
-        // Get whether the result is a reference or pointer.
-        Token peak = peak_token(tokenizer);
-        while(is_ptr_or_ref(peak)) {
-            eat_token(tokenizer);
-            if(peak.type == Token_Type_ampersand) {
-                return_ref = true;
-            } else {
-                ++return_pointer_cnt;
-            }
+    AttemptFunctionResult res = {0};
+    if(!found) {
+        Token linkage = {0}, result = {0}, name = {0};
+        Int return_pointer_cnt = 0; // TODO(Jonny): Support returning references.
+        Bool return_ref = false;
 
-            peak = peak_token(tokenizer);
+        // Find out the linkage, if any.
+        if(is_linkage_token(token)) {
+            linkage = token;
+            result = get_token(tokenizer);
+        } else {
+            result = token;
         }
 
-
-
-        if(!is_control_keyword(peak)) { // Skip if, do, and while loops.
-            // Get function name.
-            if((peak.type == Token_Type_identifier) && (!token_equals(peak, "operator"))) {
-                name = peak;
+        if(result.type == Token_Type_identifier) {
+            // Get whether the result is a reference or pointer.
+            Token peak = peak_token(tokenizer);
+            while(is_ptr_or_ref(peak)) {
                 eat_token(tokenizer);
+                if(peak.type == Token_Type_ampersand) {
+                    return_ref = true;
+                } else {
+                    ++return_pointer_cnt;
+                }
 
-                Token ob = get_token(tokenizer);
-                if(ob.type == Token_Type_open_paren) {
-                    Int max_param_count = 8;
-                    Variable *params = system_malloc_arr(sizeof(*params), max_param_count);
-                    Int param_cnt = 0;
+                peak = peak_token(tokenizer);
+            }
 
-                    Token t = peak_token(tokenizer);
+            if(token_cstring_compare(peak, "__cdecl")) {
+                eat_token(tokenizer);
+                peak = peak_token(tokenizer);
+            }
 
-                    // Special code to handle void as only param.
-                    if(token_equals(t, "void")) {
-                        if(require_token(tokenizer, Token_Type_close_paren)) {
-                            get_token(tokenizer);
-                            t = get_token(tokenizer);
-                        }
-                    }
+            if(!is_control_keyword(peak)) { // Skip if, do, and while loops.
+                // Get function name.
+                if((peak.type == Token_Type_identifier) && (!token_equals(peak, "operator"))) {
+                    name = peak;
+                    eat_token(tokenizer);
 
-                    Bool successfully_parsed_members = true;
-                    while((t.type != Token_Type_open_brace) && (t.type != Token_Type_close_paren)) {
-                        if(t.type == Token_Type_var_args) {
-                            // TODO(Jonny): Handle.
-                        } else {
-                            Parse_Variable_Result v = parse_variable(tokenizer, Token_Type_comma, Token_Type_close_paren);
-                            if(v.success) {
-                                assert(param_cnt + 1 < max_param_count);
-                                params[param_cnt++] = v.var;
-                            } else {
-                                successfully_parsed_members = false;
+                    Token ob = get_token(tokenizer);
+                    if(ob.type == Token_Type_open_paren) {
+                        Int max_param_count = 16;
+                        Variable *params = system_malloc_arr(sizeof(*params), max_param_count);
+                        Int param_cnt = 0;
+
+                        Token t = peak_token(tokenizer);
+
+                        // Special code to handle void as only param.
+                        if(token_equals(t, "void")) {
+                            Tokenizer cpy = *tokenizer;
+
+                            eat_token(&cpy);
+                            Token test_for_close_paren = get_token(&cpy);
+                            if(test_for_close_paren.type == Token_Type_close_paren) {
+                                t = test_for_close_paren;
+                                *tokenizer = cpy;
                             }
-
-                            t = get_token(tokenizer);
                         }
-                    }
 
-                    if(successfully_parsed_members) {
-                        res.success = true;
+                        Bool successfully_parsed_members = true;
+                        while((t.type != Token_Type_open_brace) && (t.type != Token_Type_close_paren)) {
+                            if(t.type == Token_Type_var_args) {
+                                // TODO(Jonny): Handle.
+                            } else {
+                                Parse_Variable_Result v = parse_variable(tokenizer, Token_Type_comma, Token_Type_close_paren);
+                                if(v.success) {
+                                    assert(param_cnt + 1 < max_param_count);
+                                    params[param_cnt++] = v.var;
+                                } else {
+                                    successfully_parsed_members = false;
+                                }
 
-                        res.fd.linkage = token_to_string(linkage);
-                        res.fd.return_type = token_to_string(result);
-                        res.fd.name = token_to_string(name);
-                        res.fd.params = params;
-                        res.fd.param_cnt = param_cnt;
-                        res.fd.return_type_ptr = return_pointer_cnt;
-                    } else {
-                        //delete[] params;
-                        system_free(params);
+                                t = get_token(tokenizer);
+                            }
+                        }
+
+                        if(successfully_parsed_members) {
+                            res.success = true;
+
+                            res.fd.linkage = token_to_string(linkage);
+                            res.fd.return_type = token_to_string(result);
+                            res.fd.name = token_to_string(name);
+                            res.fd.params = params;
+                            res.fd.param_cnt = param_cnt;
+                            res.fd.return_type_ptr = return_pointer_cnt;
+                        } else {
+                            //delete[] params;
+                            system_free(params);
+                        }
                     }
                 }
             }
@@ -1512,7 +1562,7 @@ Void parse_stream(Char *stream, Parse_Result *res) {
                         td->fresh = token_to_string(name_before_paren);
                     }
                 } else {
-#if 0
+#if 1
                     AttemptFunctionResult r = attempt_to_parse_function(token, &tokenizer);
                     if(r.success) {
                         if(res->funcs.cnt + 1 >= res->func_max) {
@@ -1525,6 +1575,9 @@ Void parse_stream(Char *stream, Parse_Result *res) {
 
                         // TODO(Jonny): Realloc if nessessary.
                         res->funcs.e[res->funcs.cnt++] = r.fd;
+                    } else {
+                        tokenizer.at = token.e;
+                        eat_token(&tokenizer);
                     }
 #endif
                 }
@@ -1642,9 +1695,27 @@ ParseMacroResult parse_macro(Tokenizer *tokenizer, TempMemory *param_memory) {
 
         String macro_res = {0};
         macro_res.e = tokenizer->at;
-        while(!is_end_of_line(*tokenizer->at)) {
+        Bool hash_backslash = false;
+        while(true) {
             ++tokenizer->at;
             ++macro_res.len;
+
+            if(*tokenizer->at == '\\') {
+                hash_backslash = true;
+            }
+
+            if(is_end_of_line(*tokenizer->at)) {
+                if(!hash_backslash) {
+                    break; // while
+                } else {
+                    while(is_end_of_line(*tokenizer->at)) {
+                        *tokenizer->at = ' ';
+                        ++tokenizer->at;
+                    }
+
+                    hash_backslash = false;
+                }
+            }
         }
 
         res.md.res = macro_res;
@@ -1863,79 +1934,98 @@ File preprocess_macros(File original_file, MacroData *passed_in_macro_data, Int 
         TempMemory param_memory = create_temp_buffer(sizeof(String) * 128); // TODO(Jonny): If this.
 
         Int macro_cnt = 0, macro_max = 512;
-        MacroData *macro_data = system_malloc_arr(sizeof * macro_data, macro_max);
+        MacroData *macro_data = system_malloc_arr(sizeof(*macro_data), macro_max);
         if(macro_data) {
             for(Int i = 0; (i < passed_in_macro_cnt); ++i) {
                 macro_data[macro_cnt++] = passed_in_macro_data[i];
             }
 
-            Tokenizer tokenizer = { file.e };
+            Int hash_start_cnt = 0, hash_start_max = 512;
+            Char **hash_start = system_malloc_arr(sizeof(*hash_start), hash_start_max);
+            if(hash_start) {
 
-            Bool parsing = true;
-            Token prev_token = {0};
-            Bool ignore_next_file = false;
-            while(parsing) {
-                Token token = get_token(&tokenizer);
-                switch(token.type) {
-                    case Token_Type_hash: {
-                        Token preprocessor_dir = get_token(&tokenizer);
+                Tokenizer tokenizer = { file.e };
 
-                        if(token_cstring_compare(preprocessor_dir, "include")) { // #include files.
-                            if(!ignore_next_file) {
-                                add_include_file(&tokenizer, &file);
+                Bool parsing = true;
+                Token prev_token = {0};
+                Bool ignore_next_file = false;
+                while(parsing) {
+                    Token token = get_token(&tokenizer);
+                    switch(token.type) {
+                        case Token_Type_hash: {
+                            assert(hash_start_cnt + 1 < hash_start_max);
+                            hash_start[hash_start_cnt++] = token.e;
+
+                            Token preprocessor_dir = get_token(&tokenizer);
+
+                            if(token_cstring_compare(preprocessor_dir, "include")) { // #include files.
+                                if(!ignore_next_file) {
+                                    add_include_file(&tokenizer, &file);
+                                } else {
+                                    ignore_next_file = false;
+                                }
+                            } else if(token_cstring_compare(preprocessor_dir, "define")) { // #define
+                                ParseMacroResult pmr = parse_macro(&tokenizer, &param_memory);
+                                if(pmr.success) {
+                                    assert(macro_cnt + 1 < macro_max);
+                                    macro_data[macro_cnt++] = pmr.md;
+                                }
+                            } else if(token_cstring_compare(preprocessor_dir, "undef")) { // #undef
+                                // TODO(Jonny): Hacky as fuck... I literally just turn whatever the macro identifier was into
+                                //              a series of spaces... instead, could I maybe just set the length of the string to 0?
+                                Token undef_macro = get_token(&tokenizer);
+                                for(Int i = 0; (i < macro_cnt); ++i) {
+                                    if(token_string_compare(undef_macro, macro_data[i].iden)) {
+                                        for(Int j = 0; (j < macro_data[i].iden.len); ++j) {
+                                            macro_data[i].iden.e[j] = ' ';
+                                        }
+                                    }
+                                }
+                            } else if(token_cstring_compare(preprocessor_dir, "if")) { // if
+                                handle_hash_if_statement(&tokenizer, macro_data, macro_cnt);
+                            } else if(preprocessor_dir.type == Token_Type_hash) { // ##
+                                Char *prev_token_end = prev_token.e + prev_token.len;
+                                Token next_token = peak_token(&tokenizer);
+                                Intptr diff = next_token.e - prev_token_end;
+
+                                move_stream(&file, token.e, -diff);
+                            }
+                        } break;
+
+                        case Token_Type_identifier: {
+                            if(token_cstring_compare(token, "PP_IGNORE")) {
+                                ignore_next_file = true;
                             } else {
-                                ignore_next_file = false;
-                            }
-                        } else if(token_cstring_compare(preprocessor_dir, "define")) { // #define
-                            ParseMacroResult pmr = parse_macro(&tokenizer, &param_memory);
-                            if(pmr.success) {
-                                assert(macro_cnt + 1 < macro_max);
-                                macro_data[macro_cnt++] = pmr.md;
-                            }
-                        } else if(token_cstring_compare(preprocessor_dir, "undef")) { // #undef
-                            // TODO(Jonny): Hacky as fuck... I literally just turn whatever the macro identifier was into
-                            //              a series of spaces... instead, could I maybe just set the length of the string to 0?
-                            Token undef_macro = get_token(&tokenizer);
-                            for(Int i = 0; (i < macro_cnt); ++i) {
-                                if(token_string_compare(undef_macro, macro_data[i].iden)) {
-                                    for(Int j = 0; (j < macro_data[i].iden.len); ++j) {
-                                        macro_data[i].iden.e[j] = ' ';
+                                for(Int i = 0; (i < macro_cnt); ++i) {
+                                    if(token_string_compare(token, macro_data[i].iden)) {
+                                        if(macro_data[i].res.len) {
+                                            Char *start = token.e;
+                                            macro_replace(token.e, &file, macro_data[i]);
+                                            tokenizer.at = start;
+                                        }
                                     }
                                 }
                             }
-                        } else if(token_cstring_compare(preprocessor_dir, "if")) { // if
-                            handle_hash_if_statement(&tokenizer, macro_data, macro_cnt);
-                        } else if(preprocessor_dir.type == Token_Type_hash) { // ##
-                            Char *prev_token_end = prev_token.e + prev_token.len;
-                            Token next_token = peak_token(&tokenizer);
-                            Intptr diff = next_token.e - prev_token_end;
+                        } break;
 
-                            move_stream(&file, token.e, -diff);
-                        }
-                    } break;
+                        case Token_Type_end_of_stream: {
+                            parsing = false;
+                        };
+                    }
 
-                    case Token_Type_identifier: {
-                        if(token_cstring_compare(token, "PP_IGNORE")) {
-                            ignore_next_file = true;
-                        } else {
-                            for(Int i = 0; (i < macro_cnt); ++i) {
-                                if(token_string_compare(token, macro_data[i].iden)) {
-                                    if(macro_data[i].res.len) {
-                                        Char *start = token.e;
-                                        macro_replace(token.e, &file, macro_data[i]);
-                                        tokenizer.at = start;
-                                    }
-                                }
-                            }
-                        }
-                    } break;
-
-                    case Token_Type_end_of_stream: {
-                        parsing = false;
-                    };
+                    prev_token = token;
                 }
 
-                prev_token = token;
+                // Now clear all the macro lines to whitespace;
+                for(Int i = 0; (i < hash_start_cnt); ++i) {
+                    Char *at = hash_start[i];
+                    while(!is_end_of_line(*at)) {
+                        *at = ' ';
+                        ++at;
+                    }
+                }
+
+                system_free(hash_start);
             }
 
             system_free(macro_data);
