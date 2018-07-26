@@ -11,12 +11,12 @@
 #define SGL_NO_CRT_DLL
 #include "../shared/sgl.h"
 
+#define SGLP_CALLBACK_FILE_LINKAGE SGL_EXPORT
+#include "../shared/sgl_platform.h"
+
 #define PP_ASSERT(x) SGL_ASSERT(x)// TODO - Implement.
 #define PP_SPRINTF stbsp_snprintf
 #include "pp_generated.h"
-
-#define SGLP_CALLBACK_FILE_LINKAGE SGL_EXPORT
-#include "../shared/sgl_platform.h"
 
 static sglp_API *global_api;
 

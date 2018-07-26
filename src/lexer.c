@@ -1563,6 +1563,7 @@ Void parse_stream(Char *stream, Parse_Result *res) {
                     }
                 } else {
 #if 1
+                    // TODO - Doesn't handle forward declared/implementation duplications properly.
                     AttemptFunctionResult r = attempt_to_parse_function(token, &tokenizer);
                     if(r.success) {
                         if(res->funcs.cnt + 1 >= res->func_max) {
