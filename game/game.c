@@ -769,6 +769,8 @@ Void create_room(sglp_API *api, Room *room, sglm_V2 top_left, Char *format, Int 
     Int width = 10;
     Int height = 10;
 
+    assert(len == width * height);
+
     for(Int i = 0; (i < width); ++i) {
         for(Int j = 0; (j < height); ++j) {
             Float x = (Float)j * 0.1f;
@@ -829,43 +831,43 @@ Void init(sglp_API *api, Game_State *gs) {
     Int room_index = 0;
 
     Char *room_one =
-        "          "
-        "          "
-        "          "
-        "          "
-        "          "
-        "          "
-        "     p    "
-        "          "
         "xxxxxxxxxx"
-        "          ";
+        "x         "
+        "x         "
+        "x         "
+        "x         "
+        "x         "
+        "x         "
+        "x         "
+        "x     p   "
+        "xxxxxxxxxx";
     create_room(api, &gs->room[room_index++], sglm_v2(0.0f, 0.0f), room_one, sgl_string_len(room_one));
 
     Char *room_two =
+        "xxxxxxxxxx"
         "          "
         "          "
         "          "
         "          "
         "          "
         "          "
-        "    x     "
-        "    x     "
-        "xxxxx     "
-        "          ";
+        "     xxxxx"
+        "     x    "
+        "xxxxxx    ";
     create_room(api, &gs->room[room_index++], sglm_v2(1.0f, 0.0f), room_two, sgl_string_len(room_two));
 
     Char *room_three =
+        "xxxxxxxxxx"
+        "          "
+        "          "
+        "          "
         "          "
         "          "
         "          "
         "xxxxx     "
-        "x         "
-        "xxxx      "
-        "x         "
-        "xxxxx     "
-        "    xxxxxx"
-        "          ";
-    create_room(api, &gs->room[room_index++], sglm_v2(1.0f, 1.0f), room_three, sgl_string_len(room_three));
+        "    x     "
+        "    xxxxxx";
+    create_room(api, &gs->room[room_index++], sglm_v2(2.0f, 0.0f), room_three, sgl_string_len(room_three));
 
     gs->current_room = &gs->room[0];
     stitch_rooms(gs);
